@@ -1,0 +1,10 @@
+DEBUG CONSOLE
+画面右下の「🐞 DEBUG」を押すと詳細ログが開きます。
+- GAME OPEN requested / success
+- ゲーム起動エラーとstack
+- JavaScript error
+- Promise rejection
+- ログは COPY LOG でワンクリップボードコピー
+- CLEARで消去
+
+ゲームボタンを押した際に起動できない場合も、エラー内容がここに残ります。
