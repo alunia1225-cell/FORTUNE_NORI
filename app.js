@@ -575,8 +575,8 @@ roulette(){
 },highlow(){
  $("gameBody").innerHTML=betbox()+`<div class="hl-game">
   <div class="hl-head"><span>HIGH</span><b id="hlValue">+0.0</b><span>LOW</span></div>
-  <div class="hl-axis"><span>+100.0</span><span>0.0</span><span>-100.0</span></div>
   <div class="hl-chart" id="hlChart">
+   <div class="hl-axis"><span>+100.0</span><span>0</span><span>-100.0</span></div>
    <div class="hl-zone high-zone"></div><div class="hl-zone low-zone"></div><div class="hl-center-line"></div>
    <svg viewBox="0 0 620 250" preserveAspectRatio="none"><path id="hlArea"></path><path id="hlLine"></path><circle id="hlDot" cx="12" cy="125" r="6"></circle></svg>
    <div id="hlDotValue" class="hl-dot-value hl-dot-draw">+0.0</div>
@@ -609,7 +609,7 @@ chohan(){
 coin(){
  $("gameBody").innerHTML=betbox()+`<div class="anim-game coin-game">
   <div class="anim-title">COIN TOSS</div>
-  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d show-head"><div class="coin-face coin-head"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail"><b>T</b><small>TAILS</small></div></div></div></div>
+  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d show-head"><div class="coin-face coin-head" aria-label="HEADS"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail" aria-label="TAILS"><b>T</b><small>TAILS</small></div></div></div></div>
   <div class="coin-choices"><button onclick="coinFlip('heads')"><b>HEADS</b><small>GOLD SIDE</small></button><div class="coin-vs">VS</div><button onclick="coinFlip('tails')"><b>TAILS</b><small>BLACK SIDE</small></button></div>
   <div id="res" class="result coin-result">CHOOSE YOUR SIDE</div>
   <div class="coin-history"><div class="coin-history-head"><b>COIN FLIP HISTORY</b><small>LAST 5</small></div><div id="coinHistory"></div></div>
@@ -620,9 +620,12 @@ lottery(){
  const wheelStyle=`conic-gradient(from 0deg,#17191b 0deg 306deg,#b8943d 306deg 351deg,#d1af55 351deg 358.2deg,#f0d77a 358.2deg 360deg)`;
  $("gameBody").innerHTML=`<div class="lottery-game">
   <div class="lottery-hero">ONE DRAW <b>100 COIN</b></div>
-  <div class="lottery-prizes"><div><b>100,000</b><small>JACKPOT / JP</small></div><div><b>10,000</b><small>GOLD</small></div><div><b>500</b><small>SILVER</small></div></div>
+  <div class="lottery-prizes">
+   <div class="lottery-prize jp"><b>100,000</b><small>JACKPOT / JP</small></div>
+   <div class="lottery-prize gold"><b>10,000</b><small>GOLD</small></div>
+   <div class="lottery-prize silver"><b>500</b><small>SILVER</small></div>
+  </div>
   <div class="lottery-wheel-stage"><div class="lottery-pointer"></div><div id="lotteryWheel" class="lottery-wheel" data-angle="0" style="background:${wheelStyle}">
-   <div class="lottery-segment-label lose">LOSE</div><div class="lottery-segment-label silver">SILVER</div><div class="lottery-segment-label gold">GOLD</div><div class="lottery-segment-label jp">JP</div>
    <div class="lottery-wheel-center"><span id="lotteryWheelValue"></span></div>
   </div></div>
   <div class="lottery-history"><div class="lottery-history-head"><b>RECENT DRAWS</b><small>LAST 5</small></div><div id="lotteryHistory"></div></div>
@@ -756,7 +759,7 @@ function hl(choice){
  const token=GB_GAME_TOKEN,line=$("hlLine"),area=$("hlArea"),dot=$("hlDot"),vEl=$("hlValue"),dotVal=$("hlDotValue"),res=$("res"),chart=$("hlChart");
  if(!line||!area||!dot||!vEl||!res||!chart){return}
  window.GB_ACTION_BUSY=true;
- const finalValue=Math.round((Math.random()*200-100)*10)/10;
+ const finalValue=Math.round(((Math.random()*199.8)-99.9)*10)/10;
  const side=finalValue>0?"high":finalValue<0?"low":"draw";
  const win=side==="draw"?!1:(choice===side);
  const start=performance.now(),duration=12000;
@@ -769,11 +772,18 @@ function hl(choice){
    if(!gbAlive(token)){window.GB_ACTION_BUSY=false;return}
    const p=Math.min(1,(now-start)/duration);
    const targetY=mapValue(finalValue);
-   const eased=p<.78?1-Math.pow(1-p/.78,2):1;
    const base=lastY;
-   const wave=(Math.sin(p*18.5)*2.5+Math.sin(p*7.2+1.2)*3.2)*(1-p*.65);
-   let y=p<.84?(base+(125-base)*.18+wave):base+(targetY-base)*((p-.84)/.16);
-   if(p>=.84)y=base+(targetY-base)*((p-.84)/.16);
+   let y;
+   if(p<.84){
+     const progress=p/.84;
+     const drift=Math.sin(progress*Math.PI*2.2+Math.random()*0.15)*18*(1-progress);
+     const targetBlend=125+(targetY-125)*0.18*progress;
+     y=targetBlend+drift;
+   }else{
+     const progress=(p-.84)/.16;
+     const ease=progress*progress*(3-2*progress);
+     y=base+(targetY-base)*ease;
+   }
    y=Math.max(24,Math.min(226,y));lastY=y;
    const x=12+596*p;
    points.push([x,y]);
