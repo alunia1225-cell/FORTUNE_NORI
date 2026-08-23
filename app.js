@@ -237,48 +237,61 @@ function playHighDice(){
  els.forEach((e,i)=>{e.classList.remove("hd-roll","hd-land");e.style.setProperty("--delay",`${i*90}ms`);e.style.setProperty("--drift",i%2?"12px":"-12px");void e.offsetWidth;e.classList.add("hd-roll")});sfx("dice");let t=0;
  const timer=setInterval(()=>{els.forEach(e=>hdSetDie(e,1+Math.floor(Math.random()*6)));if(++t>=12){clearInterval(timer);const v=els.map(()=>1+Math.floor(Math.random()*6));v.forEach((n,i)=>hdSetDie(els[i],n));els.forEach(e=>{e.classList.remove("hd-roll");e.classList.add("hd-land")});const pt=v[0]+v[1],dt=v[2]+v[3],draw=pt===dt,win=pt>dt;$("hdPTotal").textContent=pt;$("hdDTotal").textContent=dt;res.innerHTML=`<div class="hd-final">${pt} <em>VS</em> ${dt}</div><div class="hd-outcome">${draw?"DRAW":win?"PLAYER WIN":"DEALER WIN"} <b class="${draw?"draw":win?"win":"lose"}">${draw?"BET RETURN":win?"×2":"×0"}</b></div>`;settle(b,draw?b:(win?b*2:0),"HIGH DICE");sfx(draw?"win":(win?"win":"lose"));setTimeout(()=>{els.forEach(e=>e.classList.remove("hd-land"));window.GB_ACTION_BUSY=false},650)}},100);
 }
+const COIN_HISTORY_KEY="fn_coin_history_v1";
+function readCoinHistory(){
+ try{const a=JSON.parse(localStorage.getItem(COIN_HISTORY_KEY)||"[]");return Array.isArray(a)?a.slice(0,5):[]}
+ catch(_){return []}
+}
+function writeCoinHistory(r){
+ const a=readCoinHistory();a.unshift({side:r.side,win:Boolean(r.win),t:r.t||new Date().toLocaleTimeString()});
+ localStorage.setItem(COIN_HISTORY_KEY,JSON.stringify(a.slice(0,5)));
+}
+function renderCoinHistory(){
+ const el=$("coinHistory");if(!el)return;
+ const rows=readCoinHistory();
+ el.innerHTML=rows.length?rows.map((x,i)=>`<div class="coin-history-row"><span>#${i+1} <small>${x.t||""}</small></span><b class="${x.win?"win":"lose"}">${String(x.side||"").toUpperCase()} • ${x.win?"WIN":"LOSE"}</b></div>`).join(""):`<div class="coin-history-empty">NO HISTORY</div>`;
+}
 function coinFlip(pick){
-  if(window.GB_ACTION_BUSY)return;
-  const b=wager($("bet")?.value);
-  if(!b)return;
-  const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
-  if(!c||!stage){settleDraw(b,"COIN TOSS");window.GB_ACTION_BUSY=false;return}
-  window.GB_ACTION_BUSY=true;
-  const result=Math.random()<.5?"heads":"tails",win=result===pick;
-  res.textContent="FLIPPING…";
-  c.classList.remove("show-head","show-tail");
-  c.style.transform="rotateY(0deg)";
-  stage.style.transform="translate3d(0,32px,0)";
-  void stage.offsetWidth;
-  const finalAngle=result==="tails"?2340:2160;
-  const motion=stage.animate([
-    {transform:"translate3d(0,34px,0) scale(.92)"},
-    {transform:"translate3d(-24px,-14px,0) scale(1.02)"},
-    {transform:"translate3d(18px,-88px,0) scale(1.10)"},
-    {transform:"translate3d(-14px,-112px,0) scale(1.14)"},
-    {transform:"translate3d(14px,-58px,0) scale(1.08)"},
-    {transform:"translate3d(0,0,0) scale(1)"}
-  ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
-  const spin=c.animate([
-    {transform:"rotateY(0deg) rotateZ(-8deg)"},
-    {transform:"rotateY(720deg) rotateZ(8deg)"},
-    {transform:"rotateY(1440deg) rotateZ(-6deg)"},
-    {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
-  ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
-  sfx("flip");
-  Promise.all([motion.finished,spin.finished]).then(()=>{
-    motion.cancel();spin.cancel();
-    c.style.transform=result==="tails"?"rotateY(180deg)":"rotateY(0deg)";
-    c.classList.toggle("show-tail",result==="tails");
-    c.classList.toggle("show-head",result==="heads");
-    res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
-    settle(b,win?b*2:0,"COIN TOSS");
-    sfx(win?"win":"lose");
-    window.GB_ACTION_BUSY=false;
-  }).catch(()=>{
-    try{motion.cancel();spin.cancel()}catch(_){}
-    window.GB_ACTION_BUSY=false;
-  });
+ if(window.GB_ACTION_BUSY)return;
+ const b=wager($("bet")?.value);if(!b)return;
+ const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
+ if(!c||!stage){return}
+ window.GB_ACTION_BUSY=true;
+ const result=Math.random()<.5?"heads":"tails",win=result===pick;
+ res.textContent="FLIPPING…";
+ c.classList.remove("show-head","show-tail");
+ c.style.transform="rotateY(0deg)";
+ stage.style.transform="translate3d(0,32px,0)";
+ void stage.offsetWidth;
+ const finalAngle=result==="tails"?2340:2160;
+ const motion=stage.animate([
+   {transform:"translate3d(0,34px,0) scale(.92)"},
+   {transform:"translate3d(-24px,-14px,0) scale(1.02)"},
+   {transform:"translate3d(18px,-88px,0) scale(1.10)"},
+   {transform:"translate3d(-14px,-112px,0) scale(1.14)"},
+   {transform:"translate3d(14px,-58px,0) scale(1.08)"},
+   {transform:"translate3d(0,0,0) scale(1)"}
+ ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
+ const spin=c.animate([
+   {transform:"rotateY(0deg) rotateZ(-8deg)"},
+   {transform:"rotateY(720deg) rotateZ(8deg)"},
+   {transform:"rotateY(1440deg) rotateZ(-6deg)"},
+   {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
+ ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
+ sfx("flip");
+ Promise.all([motion.finished,spin.finished]).then(()=>{
+   motion.cancel();spin.cancel();
+   c.style.transform=result==="tails"?"rotateY(180deg)":"rotateY(0deg)";
+   c.classList.toggle("show-tail",result==="tails");
+   c.classList.toggle("show-head",result==="heads");
+   res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
+   writeCoinHistory({side:result,win});renderCoinHistory();
+   settle(b,win?b*2:0,"COIN TOSS");sfx(win?"win":"lose");
+   window.GB_ACTION_BUSY=false;
+ }).catch(()=>{
+   try{motion.cancel();spin.cancel()}catch(_){}
+   window.GB_ACTION_BUSY=false;
+ });
 }
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
 function flipHeroCard(i){H.heroRevealed[i]=!H.heroRevealed[i];sfx("card");hRender()}
@@ -377,12 +390,73 @@ function updateBetSlider(v){
 function scrollToGames(){$("games").scrollIntoView()}
 function toggleSound(){S.sound=!S.sound;$("sound").textContent=S.sound?"🔊":"🔇";if(S.sound)sfx("win");save()}
 
+function renderLotteryHistory(){
+ const el=$("lotteryHistory");if(!el)return;
+ const rows=(S.history||[]).filter(x=>x.g==="LOTTERY").slice(0,5);
+ el.innerHTML=rows.length?rows.map(x=>{
+   const label=x.result||"LOSE";
+   const cls=/^(JP|GOLD|SILVER)/.test(label)?"win":"lose";
+   return `<div class="lottery-history-row"><span>${x.t||""}</span><b class="${cls}">${label}</b></div>`;
+ }).join(""):`<div class="lottery-history-empty">NO DRAWS YET</div>`;
+}
+function pickLotteryOutcome(){
+ const r=Math.random();
+ if(r<0.005)return "JP";
+ if(r<0.025)return "GOLD";
+ if(r<0.15)return "SILVER";
+ return "LOSE";
+}
+function lotteryReward(outcome){
+ return outcome==="JP"?100000:outcome==="GOLD"?10000:outcome==="SILVER"?500:0;
+}
+function lotteryAngleRange(outcome){
+ // Roulette-style wheel layout. Segment size reflects the original probability.
+ if(outcome==="LOSE")return [0,306];
+ if(outcome==="SILVER")return [306,351];
+ if(outcome==="GOLD")return [351,358.2];
+ return [358.2,360];
+}
 function lottery(){
- if(window.GB_LOTTERY_BUSY)return;const b=10,res=$("res"),btn=document.querySelector(".lottery-draw");
+ if(window.GB_LOTTERY_BUSY)return;
+ const b=100,res=$("res"),btn=document.querySelector(".lottery-draw"),wheel=$("lotteryWheel"),valueEl=$("lotteryWheelValue");
  if(S.coins<b){if(res)res.textContent="NOT ENOUGH COINS";return}
- S.coins-=b;S.wagered+=b;save();render();window.GB_LOTTERY_BUSY=true;if(btn)btn.disabled=true;if(res)res.textContent="DRAWING…";sfx("spin");
- const r=Math.random(),win=r<.005?100000:r<.025?10000:r<.15?500:0;
- setTimeout(()=>{window.GB_LOTTERY_BUSY=false;if(btn)btn.disabled=false;if(win){S.coins+=win;S.profit+=win-b;S.wins++;S.maxwin=Math.max(S.maxwin,win-b);S.history.unshift({g:"LOTTERY",net:win-b,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();render();res.textContent=win===100000?"★ JACKPOT 100,000 ★":win===10000?"GOLD 10,000":"SILVER 500";sfx(win>=10000?"jackpot":"win");if(win>=100000)puchun()}else{S.profit-=b;S.history.unshift({g:"LOTTERY",net:-b,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();render();res.textContent="NO WIN";sfx("lose")}},1800);
+ if(!wheel||!valueEl){if(res)res.textContent="LOTTERY ERROR";return}
+ S.coins-=b;S.wagered+=b;save();render();
+ window.GB_LOTTERY_BUSY=true;if(btn)btn.disabled=true;
+ res.textContent="SPINNING…";valueEl.textContent="";sfx("roulette");
+ const outcome=pickLotteryOutcome(),reward=lotteryReward(outcome);
+ const [minA,maxA]=lotteryAngleRange(outcome);
+ const target=minA+Math.random()*(maxA-minA);
+ const current=Number(wheel.dataset.angle||0);
+ const turns=6+Math.floor(Math.random()*3);
+ const targetNorm=((target%360)+360)%360;
+ const currentNorm=((current%360)+360)%360;
+ let delta=targetNorm-currentNorm;if(delta<0)delta+=360;
+ const final=current+turns*360+delta;
+ const start=performance.now(),duration=6200+Math.floor(Math.random()*700),spinLabels=["LOSE","JP","GOLD","SILVER"];
+ const spinTimer=setInterval(()=>{valueEl.textContent=spinLabels[Math.floor(Math.random()*spinLabels.length)];},120);
+ const tick=now=>{
+   const p=Math.min(1,(now-start)/duration);
+   const ease=1-Math.pow(1-p,4);
+   wheel.style.transform=`rotate(${current+(final-current)*ease}deg)`;
+   if(p<1){requestAnimationFrame(tick);return}
+   clearInterval(spinTimer);
+   wheel.style.transform=`rotate(${final}deg)`;wheel.dataset.angle=String(final);
+   valueEl.textContent=outcome;
+   const label=outcome==="JP"?"JP • 100,000 COIN":outcome==="GOLD"?"GOLD • 10,000 COIN":outcome==="SILVER"?"SILVER • 500 COIN":"LOSE";
+   if(reward){
+     S.coins+=reward;S.profit+=reward-b;S.wins++;S.maxwin=Math.max(S.maxwin,reward-b);
+     S.history.unshift({g:"LOTTERY",net:reward-b,bet:b,result:label,t:new Date().toLocaleTimeString()});
+     S.history=S.history.slice(0,20);save();render();
+     res.textContent=`${label} • WIN`;sfx(reward>=10000?"jackpot":"win");if(reward>=100000)puchun();
+   }else{
+     S.profit-=b;S.history.unshift({g:"LOTTERY",net:-b,bet:b,result:"LOSE",t:new Date().toLocaleTimeString()});
+     S.history=S.history.slice(0,20);save();render();res.textContent="LOSE";sfx("lose");
+   }
+   renderLotteryHistory();
+   window.GB_LOTTERY_BUSY=false;if(btn)btn.disabled=false;
+ };
+ requestAnimationFrame(tick);
 }
 function daily(){
   const now=Date.now();
@@ -500,17 +574,19 @@ roulette(){
  renderRouletteHistory();
 },highlow(){
  $("gameBody").innerHTML=betbox()+`<div class="hl-game">
-   <div class="hl-head"><span>HIGH</span><b id="hlValue">—</b><span>LOW</span></div>
-   <div class="hl-axis"><span>HIGH ZONE</span><span>LOW ZONE</span></div>
-   <div class="hl-chart" id="hlChart">
-     <div class="hl-zone high-zone"></div><div class="hl-zone low-zone"></div>
-     <div class="hl-center-line"></div>
-     <svg viewBox="0 0 620 250" preserveAspectRatio="none"><path id="hlArea"></path><path id="hlLine"></path><circle id="hlDot" cx="12" cy="206" r="6"></circle></svg>
-     <div class="hl-live">LIVE MARKET PATH</div>
-   </div>
-   <div class="choices"><button onclick="hl('high')">HIGH</button><button onclick="hl('low')">LOW</button></div>
-   <div id="res" class="result">CHOOSE A SIDE</div>
+  <div class="hl-head"><span>HIGH</span><b id="hlValue">+0.0</b><span>LOW</span></div>
+  <div class="hl-axis"><span>+100.0</span><span>0.0</span><span>-100.0</span></div>
+  <div class="hl-chart" id="hlChart">
+   <div class="hl-zone high-zone"></div><div class="hl-zone low-zone"></div><div class="hl-center-line"></div>
+   <svg viewBox="0 0 620 250" preserveAspectRatio="none"><path id="hlArea"></path><path id="hlLine"></path><circle id="hlDot" cx="12" cy="125" r="6"></circle></svg>
+   <div id="hlDotValue" class="hl-dot-value hl-dot-draw">+0.0</div>
+   <div class="hl-live">LIVE MARKET PATH</div>
+  </div>
+  <div class="hl-history"><div class="hl-history-head"><b>HIGH &amp; LOW HISTORY</b><small>LAST 10</small></div><div id="hlHistory"></div></div>
+  <div class="choices hl-choices"><button onclick="hl('high')">HIGH</button><button onclick="hl('low')">LOW</button></div>
+  <div id="res" class="result">CHOOSE A SIDE</div>
  </div>`;
+ renderHighLowHistory();
 },
 
 chohan(){
@@ -531,11 +607,30 @@ chohan(){
  </div>`;
 },
 coin(){
-  document.getElementById("gameBody").innerHTML=betbox()+`<div class="anim-game coin-game">
-  <div class="anim-title">COIN TOSS</div><div class="coin-stage"><div id="coin3d" class="coin3d"><div class="coin-face coin-head">H</div><div class="coin-face coin-tail">T</div></div></div>
-  <div class="choices"><button onclick="coinFlip('heads')">HEADS</button><button onclick="coinFlip('tails')">TAILS</button></div><div id="res" class="result">CHOOSE YOUR SIDE</div></div>`;
+ $("gameBody").innerHTML=betbox()+`<div class="anim-game coin-game">
+  <div class="anim-title">COIN TOSS</div>
+  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d show-head"><div class="coin-face coin-head"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail"><b>T</b><small>TAILS</small></div></div></div></div>
+  <div class="coin-choices"><button onclick="coinFlip('heads')"><b>HEADS</b><small>GOLD SIDE</small></button><div class="coin-vs">VS</div><button onclick="coinFlip('tails')"><b>TAILS</b><small>BLACK SIDE</small></button></div>
+  <div id="res" class="result coin-result">CHOOSE YOUR SIDE</div>
+  <div class="coin-history"><div class="coin-history-head"><b>COIN FLIP HISTORY</b><small>LAST 5</small></div><div id="coinHistory"></div></div>
+ </div>`;
+ renderCoinHistory();
 },
-lottery(){$("gameBody").innerHTML=`<div class="lottery-game"><div class="lottery-hero">ONE DRAW <b>100 COIN</b></div><div class="lottery-prizes"><div><b>100,000</b><small>JACKPOT</small></div><div><b>10,000</b><small>GOLD</small></div><div><b>500</b><small>SILVER</small></div></div><div class="lottery-ball">?</div><button class="lottery-draw" onclick="lottery()">DRAW LOTTERY</button><div id="res" class="result">READY</div></div>`},
+lottery(){
+ const wheelStyle=`conic-gradient(from 0deg,#17191b 0deg 306deg,#b8943d 306deg 351deg,#d1af55 351deg 358.2deg,#f0d77a 358.2deg 360deg)`;
+ $("gameBody").innerHTML=`<div class="lottery-game">
+  <div class="lottery-hero">ONE DRAW <b>100 COIN</b></div>
+  <div class="lottery-prizes"><div><b>100,000</b><small>JACKPOT / JP</small></div><div><b>10,000</b><small>GOLD</small></div><div><b>500</b><small>SILVER</small></div></div>
+  <div class="lottery-wheel-stage"><div class="lottery-pointer"></div><div id="lotteryWheel" class="lottery-wheel" data-angle="0" style="background:${wheelStyle}">
+   <div class="lottery-segment-label lose">LOSE</div><div class="lottery-segment-label silver">SILVER</div><div class="lottery-segment-label gold">GOLD</div><div class="lottery-segment-label jp">JP</div>
+   <div class="lottery-wheel-center"><span id="lotteryWheelValue"></span></div>
+  </div></div>
+  <div class="lottery-history"><div class="lottery-history-head"><b>RECENT DRAWS</b><small>LAST 5</small></div><div id="lotteryHistory"></div></div>
+  <button class="lottery-draw" onclick="lottery()">SPIN LOTTERY</button>
+  <div id="res" class="result">READY</div>
+ </div>`;
+ renderLotteryHistory();
+},
 multiplier(){
  $("gameBody").innerHTML=betbox()+`<div class="crash-history-panel"><div class="crash-history-head"><span>HISTORY</span><small>LAST 5</small></div><div id="crashHistory" class="crash-history-list"></div></div><div class="crash-wrap">
  <div id="crashChart" class="crash-chart">
@@ -635,38 +730,83 @@ function spinSlot(){
 }
 let HL_BUSY=false;
 
+const HL_HISTORY_KEY="fn_highlow_history_v1";
+function readHighLowHistory(){
+ try{const a=JSON.parse(localStorage.getItem(HL_HISTORY_KEY)||"[]");
+  return Array.isArray(a)?a.filter(x=>x&&Number.isFinite(Number(x.value))).slice(0,10):[];
+ }catch(_){return []}
+}
+function writeHighLowHistory(r){
+ const a=readHighLowHistory();
+ a.unshift({value:Number(Number(r.value).toFixed(1)),side:r.side,result:r.result,net:Number(r.net||0),t:r.t||new Date().toLocaleTimeString()});
+ localStorage.setItem(HL_HISTORY_KEY,JSON.stringify(a.slice(0,10)));
+}
+function renderHighLowHistory(){
+ const el=$("hlHistory");if(!el)return;
+ const rows=readHighLowHistory();
+ el.innerHTML=rows.length?rows.map((x,i)=>{
+   const v=Number(x.value||0),side=x.side||(v>0?"high":v<0?"low":"draw");
+   const label=side==="high"?"HIGH":side==="low"?"LOW":"DRAW";
+   return `<div class="hl-history-row"><span>#${i+1} <small>${x.t||""}</small></span><b class="hl-${side}">${label} ${v>=0?"+":""}${v.toFixed(1)}</b></div>`;
+ }).join(""):`<div class="hl-history-empty">NO HISTORY</div>`;
+}
 function hl(choice){
- if(HL_BUSY)return;
+ if(window.GB_ACTION_BUSY)return;
  const b=wager($("bet")?.value);if(!b)return;
- HL_BUSY=true;const token=GB_GAME_TOKEN;
- const line=$("hlLine"),area=$("hlArea"),dot=$("hlDot"),vEl=$("hlValue"),res=$("res"),chart=$("hlChart");
- if(!line||!area||!dot||!vEl||!res||!chart){HL_BUSY=false;return}
- const finalHigh=Math.random()<.5,start=performance.now(),duration=10000,seed=Math.random()*1000;
- let points=[[12,214]],lastY=214,nextShock=start+1600;
- res.textContent="LIVE…";vEl.textContent="1.00";chart.classList.remove("hl-high","hl-low","hl-wild");sfx("click");
+ const token=GB_GAME_TOKEN,line=$("hlLine"),area=$("hlArea"),dot=$("hlDot"),vEl=$("hlValue"),dotVal=$("hlDotValue"),res=$("res"),chart=$("hlChart");
+ if(!line||!area||!dot||!vEl||!res||!chart){return}
+ window.GB_ACTION_BUSY=true;
+ const finalValue=Math.round((Math.random()*200-100)*10)/10;
+ const side=finalValue>0?"high":finalValue<0?"low":"draw";
+ const win=side==="draw"?!1:(choice===side);
+ const start=performance.now(),duration=12000;
+ const points=[[12,125]];
+ let lastY=125,lastRender=-Infinity;
+ res.textContent="LIVE…";vEl.textContent="0.0";chart.classList.remove("hl-high","hl-low","hl-wild");sfx("click");
+ const mapValue=v=>Math.max(24,Math.min(226,125-(v/100)*101));
+ const formatValue=v=>`${v>=0?"+":""}${v.toFixed(1)}`;
  const tick=now=>{
-   if(!gbAlive(token)){HL_BUSY=false;return}
-   const p=Math.min(1,(now-start)/duration),x=12+596*p;
-   const wave=Math.sin(seed+p*10)*2.3+Math.sin(seed*.31+p*18)*1.5;
-   const volatility=9*(1-p*.20);
-   let y=lastY+(Math.random()-.5)*volatility+wave;
-   if(p>.18&&p<.86&&now>=nextShock){
-     nextShock=now+1400+Math.random()*1300;
-     if(Math.random()<.45)y+=(Math.random()<.5?-1:1)*(14+Math.random()*28);
+   if(!gbAlive(token)){window.GB_ACTION_BUSY=false;return}
+   const p=Math.min(1,(now-start)/duration);
+   const targetY=mapValue(finalValue);
+   const eased=p<.78?1-Math.pow(1-p/.78,2):1;
+   const base=lastY;
+   const wave=(Math.sin(p*18.5)*2.5+Math.sin(p*7.2+1.2)*3.2)*(1-p*.65);
+   let y=p<.84?(base+(125-base)*.18+wave):base+(targetY-base)*((p-.84)/.16);
+   if(p>=.84)y=base+(targetY-base)*((p-.84)/.16);
+   y=Math.max(24,Math.min(226,y));lastY=y;
+   const x=12+596*p;
+   points.push([x,y]);
+   dot.setAttribute("cx",x.toFixed(1));dot.setAttribute("cy",y.toFixed(1));
+   const shownValue=p>=.84?finalValue:125;
+   const liveValue=125-((y-125)/101)*100;
+   const displayValue=p>=.84?finalValue:Math.max(-100,Math.min(100,liveValue));
+   if(now-lastRender>=120 || p>=1){
+     lastRender=now;
+     vEl.textContent=formatValue(displayValue);
+     if(dotVal){
+       dotVal.textContent=formatValue(displayValue);
+       dotVal.style.left=`${(x/620)*100}%`;
+       dotVal.style.top=`${(y/250)*100}%`;
+       dotVal.className=`hl-dot-value hl-dot-${displayValue>0?"high":displayValue<0?"low":"draw"}`;
+     }
    }
-   const finalStart=.83,blend=p>finalStart?Math.min(1,(p-finalStart)/(1-finalStart)):0;
-   const targetY=finalHigh?34:220;
-   y=y*(1-blend)+targetY*blend;
-   y=Math.max(24,Math.min(224,y));lastY=y;
-   points.push([x,y]);dot.setAttribute("cx",x);dot.setAttribute("cy",y);
-   const liveVal=finalHigh?(1.05+p*8.8):(8.8-p*8.3);vEl.textContent=liveVal.toFixed(2);
-   let d=`M ${points[0][0]} ${points[0][1]}`;for(let i=1;i<points.length;i++)d+=` L ${points[i][0].toFixed(1)} ${points[i][1].toFixed(1)}`;
+   let d=`M ${points[0][0].toFixed(1)} ${points[0][1].toFixed(1)}`;
+   for(let i=1;i<points.length;i++)d+=` L ${points[i][0].toFixed(1)} ${points[i][1].toFixed(1)}`;
    line.setAttribute("d",d);area.setAttribute("d",d+` L ${x.toFixed(1)} 125 L 12 125 Z`);
    if(p>=1){
-     HL_BUSY=false;chart.classList.remove("hl-wild");chart.classList.add(finalHigh?"hl-high":"hl-low");
-     const win=(choice==="high")===finalHigh;vEl.textContent=finalHigh?"9.80":"0.45";
-     res.textContent=`${finalHigh?"HIGH":"LOW"} • ${win?"WIN":"LOSE"}`;
-     settle(b,win?Math.floor(b*2):0,"HIGH & LOW");sfx(win?"win":"lose");return;
+     const result=side==="draw"?"DRAW":(win?"WIN":"LOSE");
+     window.GB_ACTION_BUSY=false;
+     chart.classList.remove("hl-wild");chart.classList.add(side==="high"?"hl-high":side==="low"?"hl-low":"");
+     vEl.textContent=formatValue(finalValue);
+     if(dotVal){dotVal.textContent=formatValue(finalValue);dotVal.className=`hl-dot-value hl-dot-${side}`;}
+     res.textContent=`${side==="high"?"HIGH":side==="low"?"LOW":"DRAW"} • ${result}`;
+     const payout=side==="draw"?b:(win?Math.floor(b*2):0);
+     if(side==="draw")settleDraw(b,"HIGH & LOW");else settle(b,payout,"HIGH & LOW");
+     writeHighLowHistory({value:finalValue,side,result,net:side==="draw"?0:(payout-b)});
+     renderHighLowHistory();
+     sfx(side==="draw"?"draw":(win?"win":"lose"));
+     return;
    }
    requestAnimationFrame(tick);
  };
