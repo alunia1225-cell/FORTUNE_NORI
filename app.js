@@ -401,20 +401,13 @@ function renderLotteryHistory(){
 }
 function pickLotteryOutcome(){
  const r=Math.random();
- if(r<0.005)return "JP";
- if(r<0.025)return "GOLD";
+ if(r<0.0005)return "JP";
+ if(r<0.0205)return "GOLD";
  if(r<0.15)return "SILVER";
  return "LOSE";
 }
 function lotteryReward(outcome){
  return outcome==="JP"?100000:outcome==="GOLD"?10000:outcome==="SILVER"?500:0;
-}
-function lotteryAngleRange(outcome){
- // Roulette-style wheel layout. Segment size reflects the original probability.
- if(outcome==="LOSE")return [0,306];
- if(outcome==="SILVER")return [306,351];
- if(outcome==="GOLD")return [351,358.2];
- return [358.2,360];
 }
 function lottery(){
  if(window.GB_LOTTERY_BUSY)return;
@@ -423,25 +416,21 @@ function lottery(){
  if(!wheel||!valueEl){if(res)res.textContent="LOTTERY ERROR";return}
  S.coins-=b;S.wagered+=b;save();render();
  window.GB_LOTTERY_BUSY=true;if(btn)btn.disabled=true;
- res.textContent="SPINNING…";valueEl.textContent="";sfx("roulette");
+ res.textContent="SPINNING…";valueEl.textContent="LOSE";sfx("roulette");
  const outcome=pickLotteryOutcome(),reward=lotteryReward(outcome);
- const [minA,maxA]=lotteryAngleRange(outcome);
- const target=minA+Math.random()*(maxA-minA);
  const current=Number(wheel.dataset.angle||0);
  const turns=6+Math.floor(Math.random()*3);
- const targetNorm=((target%360)+360)%360;
- const currentNorm=((current%360)+360)%360;
- let delta=targetNorm-currentNorm;if(delta<0)delta+=360;
- const final=current+turns*360+delta;
- const start=performance.now(),duration=6200+Math.floor(Math.random()*700),spinLabels=["LOSE","JP","GOLD","SILVER"];
+ const target=current+turns*360+Math.random()*360;
+ const start=performance.now(),duration=6200+Math.floor(Math.random()*700);
+ const spinLabels=["LOSE","JP","GOLD","SILVER"];
  const spinTimer=setInterval(()=>{valueEl.textContent=spinLabels[Math.floor(Math.random()*spinLabels.length)];},120);
  const tick=now=>{
    const p=Math.min(1,(now-start)/duration);
    const ease=1-Math.pow(1-p,4);
-   wheel.style.transform=`rotate(${current+(final-current)*ease}deg)`;
+   wheel.style.transform=`rotate(${current+(target-current)*ease}deg)`;
    if(p<1){requestAnimationFrame(tick);return}
    clearInterval(spinTimer);
-   wheel.style.transform=`rotate(${final}deg)`;wheel.dataset.angle=String(final);
+   wheel.style.transform=`rotate(${target}deg)`;wheel.dataset.angle=String(target);
    valueEl.textContent=outcome;
    const label=outcome==="JP"?"JP • 100,000 COIN":outcome==="GOLD"?"GOLD • 10,000 COIN":outcome==="SILVER"?"SILVER • 500 COIN":"LOSE";
    if(reward){
@@ -763,51 +752,59 @@ function hl(choice){
  const side=finalValue>0?"high":finalValue<0?"low":"draw";
  const win=side==="draw"?!1:(choice===side);
  const start=performance.now(),duration=12000;
- const points=[[12,125]];
- let lastY=125,lastRender=-Infinity;
- res.textContent="LIVE…";vEl.textContent="0.0";chart.classList.remove("hl-high","hl-low","hl-wild");sfx("click");
- const mapValue=v=>Math.max(24,Math.min(226,125-(v/100)*101));
+ const width=620,height=250,centerY=125;
+ const mapValue=v=>Math.max(18,Math.min(232,centerY-(v/100)*107));
  const formatValue=v=>`${v>=0?"+":""}${v.toFixed(1)}`;
+ const points=[];
+ // Large random swings through both positive and negative zones before converging on the final value.
+ const control=[];
+ const swings=7+Math.floor(Math.random()*4);
+ for(let i=0;i<=swings;i++){
+   const t=i/swings;
+   const envelope=1-Math.min(1,Math.abs(t-.72)/.72);
+   const v=Math.max(-92,Math.min(92,(Math.random()*184)-92))*Math.max(.45,envelope);
+   control.push({t,value:v});
+ }
+ control[0].value=0;
+ control[swings].value=finalValue;
+ const sampleCurve=p=>{
+   if(p>=1)return finalValue;
+   const u=p*swings;
+   const i=Math.min(swings-1,Math.floor(u));
+   const f=u-i;
+   const a=control[i]?.value??0,bv=control[i+1]?.value??finalValue;
+   const eased=f*f*(3-2*f);
+   return a+(bv-a)*eased;
+ };
+ let lastRender=-Infinity;
+ res.textContent="LIVE…";vEl.textContent="+0.0";chart.classList.remove("hl-high","hl-low","hl-wild");sfx("click");
  const tick=now=>{
    if(!gbAlive(token)){window.GB_ACTION_BUSY=false;return}
    const p=Math.min(1,(now-start)/duration);
-   const targetY=mapValue(finalValue);
-   const base=lastY;
-   let y;
-   if(p<.84){
-     const progress=p/.84;
-     const drift=Math.sin(progress*Math.PI*2.2+Math.random()*0.15)*18*(1-progress);
-     const targetBlend=125+(targetY-125)*0.18*progress;
-     y=targetBlend+drift;
-   }else{
-     const progress=(p-.84)/.16;
-     const ease=progress*progress*(3-2*progress);
-     y=base+(targetY-base)*ease;
-   }
-   y=Math.max(24,Math.min(226,y));lastY=y;
-   const x=12+596*p;
+   const liveValue=sampleCurve(p);
+   const y=mapValue(liveValue);
+   const x=12+(width-24)*p;
    points.push([x,y]);
    dot.setAttribute("cx",x.toFixed(1));dot.setAttribute("cy",y.toFixed(1));
-   const shownValue=p>=.84?finalValue:125;
-   const liveValue=125-((y-125)/101)*100;
-   const displayValue=p>=.84?finalValue:Math.max(-100,Math.min(100,liveValue));
-   if(now-lastRender>=120 || p>=1){
+   if(now-lastRender>=120||p>=1){
      lastRender=now;
+     const displayValue=p>=1?finalValue:liveValue;
      vEl.textContent=formatValue(displayValue);
      if(dotVal){
        dotVal.textContent=formatValue(displayValue);
-       dotVal.style.left=`${(x/620)*100}%`;
-       dotVal.style.top=`${(y/250)*100}%`;
+       dotVal.style.left=`${(x/width)*100}%`;
+       dotVal.style.top=`${(y/height)*100}%`;
        dotVal.className=`hl-dot-value hl-dot-${displayValue>0?"high":displayValue<0?"low":"draw"}`;
      }
    }
    let d=`M ${points[0][0].toFixed(1)} ${points[0][1].toFixed(1)}`;
    for(let i=1;i<points.length;i++)d+=` L ${points[i][0].toFixed(1)} ${points[i][1].toFixed(1)}`;
-   line.setAttribute("d",d);area.setAttribute("d",d+` L ${x.toFixed(1)} 125 L 12 125 Z`);
+   line.setAttribute("d",d);area.setAttribute("d",d+` L ${x.toFixed(1)} ${height} L 12 ${height} Z`);
    if(p>=1){
      const result=side==="draw"?"DRAW":(win?"WIN":"LOSE");
      window.GB_ACTION_BUSY=false;
-     chart.classList.remove("hl-wild");chart.classList.add(side==="high"?"hl-high":side==="low"?"hl-low":"");
+     chart.classList.remove("hl-high","hl-low","hl-wild");
+     if(side!=="draw")chart.classList.add(side==="high"?"hl-high":"hl-low");
      vEl.textContent=formatValue(finalValue);
      if(dotVal){dotVal.textContent=formatValue(finalValue);dotVal.className=`hl-dot-value hl-dot-${side}`;}
      res.textContent=`${side==="high"?"HIGH":side==="low"?"LOW":"DRAW"} • ${result}`;
