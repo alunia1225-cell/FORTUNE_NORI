@@ -3796,3 +3796,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
  #modal .lottery-segment-label.jp{transform:translate(73px,-4px) rotate(85deg)!important}
 }
 
+
+/* BALANCE ICON — current FN asset */
+.balance-icon{display:inline-block!important;width:22px!important;height:22px!important;object-fit:contain!important;vertical-align:-6px!important;margin-right:4px!important}
+.welcome-balance-icon{width:28px!important;height:28px!important;vertical-align:-8px!important;margin-right:5px!important}
