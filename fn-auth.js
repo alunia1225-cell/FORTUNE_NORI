@@ -20,9 +20,43 @@
 
   function showDebug(){
     document.documentElement.classList.remove('fn-nonadmin');
-    ['debugToggle','debugEmergency'].forEach(id=>{
+    ['debugToggle','debugEmergency','lobbyDebugBtn'].forEach(id=>{
       const e=document.getElementById(id); if(e)e.style.display='';
     });
+    ensureAdminDebugButton();
+  }
+
+  function syncGameProfile(name){
+    try{
+      const key='gb_profile_v2';
+      let p={name:'PLAYER',avatar:'FN',games:0,wins:0};
+      try{p=JSON.parse(localStorage.getItem(key)||'null')||p}catch(_){}
+      p.name=String(name||'PLAYER').trim()||'PLAYER';
+      p.avatar=(p.name==='391x'?'391':'FN').slice(0,3).toUpperCase();
+      localStorage.setItem(key,JSON.stringify(p));
+      const n=document.getElementById('playerName'); if(n)n.textContent=p.name;
+      const a=document.getElementById('avatarText'); if(a)a.textContent=p.avatar;
+      const m=document.getElementById('profileMeta'); if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1);
+    }catch(_){}
+  }
+
+  function ensureAdminDebugButton(){
+    if(role!=='admin')return;
+    let b=document.getElementById('fnAuthAdminDebug');
+    if(!b){
+      b=document.createElement('button');
+      b.id='fnAuthAdminDebug';
+      b.type='button';
+      b.textContent='ADMIN DEBUG';
+      b.onclick=()=>{try{window.toggleDebug&&window.toggleDebug()}catch(_){}};
+      document.body.appendChild(b);
+    }
+    b.style.display='block';
+  }
+
+  function removeAdminDebugButton(){
+    const b=document.getElementById('fnAuthAdminDebug');
+    if(b)b.style.display='none';
   }
 
   function setRole(r,name){
@@ -30,7 +64,14 @@
     if(r) localStorage.setItem(K.role,r);
     else localStorage.removeItem(K.role);
     if(name) localStorage.setItem(K.name,name);
-    if(r==='admin') showDebug(); else hideDebug();
+    if(r==='admin'){
+      showDebug();
+      syncGameProfile(name||ADMIN_ID);
+    }else{
+      hideDebug();
+      removeAdminDebugButton();
+      if(r==='player') syncGameProfile(name||'PLAYER');
+    }
   }
 
   async function api(path,options={},token){
@@ -105,7 +146,9 @@
         localStorage.setItem(K.admin,d.token);
         localStorage.removeItem(K.player);
         setRole('admin',ADMIN_ID);
+        syncGameProfile(ADMIN_ID);
         window.__FN_PROFILE_NAME=ADMIN_ID;
+        ensureAdminDebugButton();
         if(status) status.textContent='ADMIN AUTHENTICATED';
       }else{
         let pid=localStorage.getItem(K.pid)||'';
@@ -120,6 +163,7 @@
         localStorage.setItem(K.player,d.token);
         localStorage.removeItem(K.admin);
         setRole('player',name);
+        syncGameProfile(name);
         window.__FN_PROFILE_NAME=name;
         if(status) status.textContent='PLAYER AUTHENTICATED';
 
@@ -160,7 +204,9 @@
         const d=await api('/auth/me',{},at);
         if(d.role==='admin'){
           setRole('admin',ADMIN_ID);
+          syncGameProfile(ADMIN_ID);
           window.__FN_PROFILE_NAME=ADMIN_ID;
+          ensureAdminDebugButton();
           hideLogin();
           window.__FN_AUTHENTICATED=true;
           return true;
@@ -176,6 +222,7 @@
         if(d&&d.playerId){
           const name=localStorage.getItem(K.name)||d.name||'PLAYER';
           setRole('player',name);
+          syncGameProfile(name);
           window.__FN_PROFILE_NAME=name;
           hideLogin();
           window.__FN_AUTHENTICATED=true;
