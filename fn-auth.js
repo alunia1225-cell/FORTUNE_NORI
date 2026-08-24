@@ -1,5 +1,5 @@
 /* FORTUNE NOIR v1.10.0 - login gate / admin-only diagnostics
- * Upload this file beside index.html, app.js and style.css.
+ * Fixed against the current app.js title/lobby lifecycle.
  * Existing game logic is intentionally untouched.
  */
 (function(){
@@ -17,28 +17,34 @@
     });
     document.documentElement.classList.add('fn-nonadmin');
   }
+
   function showDebug(){
     document.documentElement.classList.remove('fn-nonadmin');
     ['debugToggle','debugEmergency'].forEach(id=>{
       const e=document.getElementById(id); if(e)e.style.display='';
     });
   }
+
   function setRole(r,name){
-    role=r; localStorage.setItem(K.role,r); if(name)localStorage.setItem(K.name,name);
-    if(r==='admin')showDebug(); else hideDebug();
+    role=r||'';
+    if(r) localStorage.setItem(K.role,r);
+    else localStorage.removeItem(K.role);
+    if(name) localStorage.setItem(K.name,name);
+    if(r==='admin') showDebug(); else hideDebug();
   }
 
-  async function api(path,options,token){
-    const headers=Object.assign({'content-type':'application/json'},(options&&options.headers)||{});
-    if(token)headers.Authorization='Bearer '+token;
-    const r=await fetch(API+path,Object.assign({},options||{},{headers,cache:'no-store'}));
-    let d={}; try{d=await r.json()}catch(_){ }
-    if(!r.ok)throw new Error(d.error||'API_ERROR');
+  async function api(path,options={},token){
+    const headers=Object.assign({'content-type':'application/json'},options.headers||{});
+    if(token) headers.Authorization='Bearer '+token;
+    const r=await fetch(API+path,Object.assign({},options,{headers,cache:'no-store'}));
+    let d={};
+    try{d=await r.json()}catch(_){ }
+    if(!r.ok) throw new Error(d.error||'API_ERROR');
     return d;
   }
 
   function ensureUI(){
-    if(document.getElementById('fnLoginOverlay'))return;
+    if(document.getElementById('fnLoginOverlay')) return;
     const o=document.createElement('div');
     o.id='fnLoginOverlay';
     o.innerHTML=`
@@ -54,86 +60,179 @@
         <div id="fnLoginStatus">SERVER AUTHENTICATION</div>
       </div>`;
     document.body.appendChild(o);
+
     const n=o.querySelector('#fnLoginName');
     const p=o.querySelector('#fnLoginPassword');
     const b=o.querySelector('#fnLoginButton');
     n.value=localStorage.getItem(K.name)||'';
     b.onclick=()=>login(n.value.trim(),p.value);
-    [n,p].forEach(x=>x.addEventListener('keydown',e=>{if(e.key==='Enter')login(n.value.trim(),p.value)}));
+    [n,p].forEach(x=>x.addEventListener('keydown',e=>{
+      if(e.key==='Enter') login(n.value.trim(),p.value);
+    }));
+  }
+
+  function hideLogin(){
+    const o=document.getElementById('fnLoginOverlay');
+    if(o) o.classList.add('hidden');
+  }
+
+  function showLogin(){
+    ensureUI();
+    const o=document.getElementById('fnLoginOverlay');
+    if(o) o.classList.remove('hidden');
+    const n=document.getElementById('fnLoginName');
+    if(n){n.focus();n.select();}
   }
 
   async function login(name,password){
-    if(busy)return;
+    if(busy) return false;
     name=(name||'').trim();
     const status=document.getElementById('fnLoginStatus');
     const button=document.getElementById('fnLoginButton');
-    if(!name){status.textContent='PLAYER NAME REQUIRED';return;}
-    busy=true;button.disabled=true;status.textContent='AUTHENTICATING...';
+    if(!name){ if(status)status.textContent='PLAYER NAME REQUIRED'; return false; }
+
+    busy=true;
+    if(button) button.disabled=true;
+    if(status) status.textContent='AUTHENTICATING...';
+
     try{
       if(name.toLowerCase()===ADMIN_ID.toLowerCase()){
-        if(!password){status.textContent='ADMIN PASSWORD REQUIRED';throw new Error('ADMIN_PASSWORD_REQUIRED');}
-        const d=await api('/auth/login',{method:'POST',body:JSON.stringify({username:ADMIN_ID,password})});
+        if(!password){ if(status)status.textContent='ADMIN PASSWORD REQUIRED'; return false; }
+        const d=await api('/auth/login',{
+          method:'POST',
+          body:JSON.stringify({username:ADMIN_ID,password})
+        });
         localStorage.setItem(K.admin,d.token);
         localStorage.removeItem(K.player);
         setRole('admin',ADMIN_ID);
         window.__FN_PROFILE_NAME=ADMIN_ID;
-        status.textContent='ADMIN AUTHENTICATED';
+        if(status) status.textContent='ADMIN AUTHENTICATED';
       }else{
         let pid=localStorage.getItem(K.pid)||'';
         if(!/^[a-f0-9-]{20,80}$/i.test(pid)){
-          pid=crypto.randomUUID();localStorage.setItem(K.pid,pid);
+          pid=crypto.randomUUID();
+          localStorage.setItem(K.pid,pid);
         }
-        const d=await api('/player/session',{method:'POST',body:JSON.stringify({playerId:pid,name})});
+        const d=await api('/player/session',{
+          method:'POST',
+          body:JSON.stringify({playerId:pid,name})
+        });
         localStorage.setItem(K.player,d.token);
+        localStorage.removeItem(K.admin);
         setRole('player',name);
         window.__FN_PROFILE_NAME=name;
-        status.textContent='PLAYER AUTHENTICATED';
+        if(status) status.textContent='PLAYER AUTHENTICATED';
+
+        // Keep the existing app.js player session/name in sync without changing its game logic.
+        try{
+          if(typeof window.fnEnsureOnlinePlayer==='function'){
+            await window.fnEnsureOnlinePlayer();
+          }
+        }catch(_){ }
       }
-      document.getElementById('fnLoginOverlay').classList.add('hidden');
-      if(typeof window.__FN_AUTH_COMPLETE==='function')window.__FN_AUTH_COMPLETE();
+
+      hideLogin();
+      window.__FN_AUTHENTICATED=true;
+      window.__FN_AUTH_COMPLETE=true;
+      return true;
     }catch(e){
-      status.textContent=e.message==='INVALID_CREDENTIALS'?'INVALID ADMIN PASSWORD':'LOGIN FAILED';
-      if(name.toLowerCase()===ADMIN_ID.toLowerCase()){localStorage.removeItem(K.admin);setRole('player',name)}
-    }finally{busy=false;button.disabled=false;}
+      if(status){
+        status.textContent=
+          e.message==='INVALID_CREDENTIALS' ? 'INVALID ADMIN PASSWORD' : 'LOGIN FAILED';
+      }
+      if(name.toLowerCase()===ADMIN_ID.toLowerCase()){
+        localStorage.removeItem(K.admin);
+        setRole('', '');
+      }
+      return false;
+    }finally{
+      busy=false;
+      if(button)button.disabled=false;
+    }
   }
 
   async function restore(){
     ensureUI();
+
     const at=localStorage.getItem(K.admin);
     if(at){
-      try{const d=await api('/auth/me',{},at);if(d.role==='admin'){setRole('admin',ADMIN_ID);window.__FN_PROFILE_NAME=ADMIN_ID;document.getElementById('fnLoginOverlay').classList.add('hidden');return true;}}catch(_){}
+      try{
+        const d=await api('/auth/me',{},at);
+        if(d.role==='admin'){
+          setRole('admin',ADMIN_ID);
+          window.__FN_PROFILE_NAME=ADMIN_ID;
+          hideLogin();
+          window.__FN_AUTHENTICATED=true;
+          return true;
+        }
+      }catch(_){ }
       localStorage.removeItem(K.admin);
     }
+
     const pt=localStorage.getItem(K.player);
     if(pt){
-      try{const d=await api('/balance',{},pt);if(d&&d.playerId){setRole('player',localStorage.getItem(K.name)||d.name||'PLAYER');window.__FN_PROFILE_NAME=localStorage.getItem(K.name)||d.name||'PLAYER';document.getElementById('fnLoginOverlay').classList.add('hidden');return true;}}catch(_){}
+      try{
+        const d=await api('/balance',{},pt);
+        if(d&&d.playerId){
+          const name=localStorage.getItem(K.name)||d.name||'PLAYER';
+          setRole('player',name);
+          window.__FN_PROFILE_NAME=name;
+          hideLogin();
+          window.__FN_AUTHENTICATED=true;
+          return true;
+        }
+      }catch(_){ }
       localStorage.removeItem(K.player);
     }
-    setRole('player','');
+
+    // No valid session: remain unauthenticated. Do NOT treat this as player.
+    setRole('', '');
+    window.__FN_AUTHENTICATED=false;
+    showLogin();
     return false;
   }
 
-  // Make the existing debug functions admin-only. This is in addition to hiding the UI.
+  // Existing debug functions become admin-only in addition to visual hiding.
   const originalToggle=window.toggleDebug;
-  window.toggleDebug=function(){if(role!=='admin')return;return originalToggle&&originalToggle();};
+  window.toggleDebug=function(){
+    if(role!=='admin')return;
+    return originalToggle&&originalToggle();
+  };
   const originalCopy=window.copyDebug;
-  window.copyDebug=function(){if(role!=='admin')return;return originalCopy&&originalCopy();};
+  window.copyDebug=function(){
+    if(role!=='admin')return;
+    return originalCopy&&originalCopy();
+  };
   const originalClear=window.clearDebug;
-  window.clearDebug=function(){if(role!=='admin')return;return originalClear&&originalClear();};
+  window.clearDebug=function(){
+    if(role!=='admin')return;
+    return originalClear&&originalClear();
+  };
 
   function installStartGate(){
     const button=document.getElementById('tapStart');
     if(!button||button.__fnAuthGate)return;
     button.__fnAuthGate=true;
-    button.addEventListener('click',async function(e){
-      e.preventDefault();e.stopImmediatePropagation();
+
+    // IMPORTANT: when authenticated, do nothing here. The current app.js
+    // click handler must receive the event and run its real start() function.
+    button.addEventListener('click',function(e){
       if(role==='admin'||role==='player'){
-        if(typeof window.GB_START_APP==='function')window.GB_START_APP();
         return;
       }
-      document.getElementById('fnLoginOverlay').classList.remove('hidden');
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      showLogin();
     },true);
-    button.addEventListener('touchend',async function(e){e.preventDefault();e.stopImmediatePropagation();},true);
+
+    button.addEventListener('touchend',function(e){
+      if(role==='admin'||role==='player'){
+        return;
+      }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      showLogin();
+    },true);
   }
 
   document.addEventListener('DOMContentLoaded',async function(){
@@ -141,10 +240,5 @@
     hideDebug();
     await restore();
     installStartGate();
-    // Existing DOM listeners may have been installed already; use a capture gate on the button.
-    window.__FN_AUTH_COMPLETE=function(){
-      installStartGate();
-      if(typeof window.GB_START_APP==='function')window.GB_START_APP();
-    };
   });
 })();
