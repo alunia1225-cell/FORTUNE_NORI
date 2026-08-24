@@ -301,9 +301,28 @@
     };
   }
 
+  function forceOpenProfile(){
+    const o=document.getElementById('socialOverlay');
+    const p=document.getElementById('socialPanel');
+    if(!o||!p)return false;
+    o.classList.remove('hidden');
+    const x={name:localStorage.getItem(K.name)||localStorage.getItem('gb_profile_v2') ? (function(){try{return JSON.parse(localStorage.getItem('gb_profile_v2')||'{}').name||localStorage.getItem(K.name)||'PLAYER'}catch(_){return localStorage.getItem(K.name)||'PLAYER'}})() : 'PLAYER',avatar:'FN'};
+    try{const q=JSON.parse(localStorage.getItem('gb_profile_v2')||'{}');x.avatar=q.avatar||'FN';x.games=q.games||0;}catch(_){}
+    p.innerHTML='<h2>PROFILE</h2>'+(role==='admin'?'':'<div class=\"fn-profile-admin-entry\"><button type=\"button\" id=\"fnProfileAdminLogin\">ADMIN LOGIN</button></div>')+'<label>PLAYER NAME</label><input id=\"pname\" maxlength=\"16\" value=\"'+String(x.name).replace(/\"/g,'&quot;')+'\"><label>AVATAR TAG</label><input id=\"pavatar\" maxlength=\"3\" value=\"'+String(x.avatar).replace(/\"/g,'&quot;')+'\"><div class=\"socialActions\"><button class=\"primary\" id=\"saveP\">SAVE</button><button id=\"closeP\">CLOSE</button></div>';
+    const adminBtn=p.querySelector('#fnProfileAdminLogin');
+    if(adminBtn)adminBtn.onclick=()=>{o.classList.add('hidden');showLogin();const n=document.getElementById('fnLoginName');if(n){n.value=ADMIN_ID;n.readOnly=true}const pw=document.getElementById('fnLoginPassword');if(pw){pw.value='';pw.focus()}};
+    const close=p.querySelector('#closeP');if(close)close.onclick=()=>o.classList.add('hidden');
+    const save=p.querySelector('#saveP');if(save)save.onclick=()=>{const name=(p.querySelector('#pname').value||'PLAYER').trim()||'PLAYER';const av=(p.querySelector('#pavatar').value||'FN').trim().slice(0,3).toUpperCase()||'FN';try{const q=JSON.parse(localStorage.getItem('gb_profile_v2')||'{}');q.name=name;q.avatar=av;localStorage.setItem('gb_profile_v2',JSON.stringify(q));localStorage.setItem(K.name,name)}catch(_){};syncGameProfile(name);o.classList.add('hidden')};
+    return true;
+  }
+
   document.addEventListener('click',function(e){
     const t=e.target.closest?.('#profileBtn,#profileCard');
-    if(t) setTimeout(injectProfileAdminLogin,30);
+    if(t){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      forceOpenProfile();
+    }
   },true);
 
   document.addEventListener('DOMContentLoaded',async function(){
