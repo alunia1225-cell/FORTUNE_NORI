@@ -2,7 +2,8 @@
 <html lang="ja">
 <head><meta name="FN-build" content="1.10.0">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>FORTUNE NOIR 1.10.0</title><link rel="stylesheet" href="style.css?v=1.10.0"><link rel="stylesheet" href="fn-auth.css?v=1.0.0"></head>
+<title>FORTUNE NOIR 1.10.0</title><link rel="stylesheet" href="style.css?v=1.10.0"><link rel="stylesheet" href="fn-auth.css?v=1.0.1">
+</head>
 <body>
 
 <div id="blackout" aria-hidden="true"></div>
@@ -48,7 +49,7 @@
   <pre id="debugBody"></pre>
   <div class="dbg-footer"><span>WEB RUNTIME</span><span id="debugClock">--:--:--</span></div>
 </div>
-<script src="app.js?v=1.10.0"></script><script src="fn-auth.js?v=1.0.0"></script>
+<script src="app.js?v=1.10.0"></script>
 <script>
 (function(){
   function tick(){var e=document.getElementById("debugClock");if(e)e.textContent=new Date().toLocaleTimeString();requestAnimationFrame(tick)}
@@ -85,4 +86,5 @@
   <section class="lobbyTools"><button id="roomBtn"><small>PRIVATE ROOM</small><b>PLAY WITH FRIENDS</b><span id="roomCode">CREATE INVITE →</span></button><div class="profile-tool"><button id="profileCard"><small>PROFILE</small><b id="profileMeta">PLAYER • LV.1</b><span>EDIT PROFILE →</span></button><button type="button" id="lobbyDebugBtn" class="profile-system-btn"><span class="dbg-led"></span><span>SYSTEM</span><b id="debugCountLobby">0</b></button></div></section>
 </div>
 <div id="socialOverlay" class="socialOverlay hidden"><div id="socialPanel"></div></div>
+<script src="fn-auth.js?v=1.0.1"></script>
 </body></html>
