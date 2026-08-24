@@ -7,3 +7,6 @@ html.fn-nonadmin #debugToggle,html.fn-nonadmin #debugEmergency,html.fn-nonadmin 
 
 /* Admin-only diagnostics launcher. Hidden unless authenticated as 391x. */
 #fnAuthAdminDebug{position:fixed;right:14px;bottom:76px;z-index:2147483647;display:none;padding:10px 12px;border:1px solid #c8a74f;border-radius:8px;background:linear-gradient(180deg,#c8a54e,#725720);color:#080705;font:900 10px Orbitron,Arial,sans-serif;letter-spacing:1px;box-shadow:0 4px 18px rgba(0,0,0,.45);touch-action:manipulation}
+
+.fn-profile-admin-entry{margin:0 0 14px}
+.fn-profile-admin-entry button{width:100%;min-height:42px;border:1px solid rgba(218,181,86,.55);border-radius:8px;background:linear-gradient(180deg,#d9b85f,#9d7830);color:#080808;font-weight:800;letter-spacing:1px;cursor:pointer}

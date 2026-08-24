@@ -80,7 +80,7 @@
     const r=await fetch(API+path,Object.assign({},options,{headers,cache:'no-store'}));
     let d={};
     try{d=await r.json()}catch(_){ }
-    if(!r.ok) throw new Error(d.error||'API_ERROR');
+    if(!r.ok){ const err=new Error(d.error||'API_ERROR'); err.status=r.status; throw err; }
     return d;
   }
 
@@ -182,7 +182,7 @@
     }catch(e){
       if(status){
         status.textContent=
-          e.message==='INVALID_CREDENTIALS' ? 'INVALID ADMIN PASSWORD' : 'LOGIN FAILED';
+          e.message==='INVALID_CREDENTIALS' ? 'INVALID ADMIN PASSWORD' : ('LOGIN FAILED '+(e.status||'')+' '+e.message).trim();
       }
       if(name.toLowerCase()===ADMIN_ID.toLowerCase()){
         localStorage.removeItem(K.admin);
@@ -281,6 +281,30 @@
       showLogin();
     },true);
   }
+
+  function injectProfileAdminLogin(){
+    if(role==='admin') return;
+    const panel=document.getElementById('socialPanel');
+    if(!panel || panel.dataset.fnAdminInjected==='1') return;
+    if(!/PROFILE/i.test(panel.querySelector('h2')?.textContent||'')) return;
+    panel.dataset.fnAdminInjected='1';
+    const box=document.createElement('div');
+    box.className='fn-profile-admin-entry';
+    box.innerHTML='<button type="button" id="fnProfileAdminLogin">ADMIN LOGIN</button>';
+    panel.insertBefore(box,panel.firstChild?.nextSibling||panel.firstChild);
+    const btn=box.querySelector('#fnProfileAdminLogin');
+    if(btn) btn.onclick=()=>{
+      const o=document.getElementById('socialOverlay'); if(o)o.classList.add('hidden');
+      showLogin();
+      const n=document.getElementById('fnLoginName'); if(n){n.value=ADMIN_ID;n.readOnly=true;}
+      const p=document.getElementById('fnLoginPassword'); if(p){p.value='';p.focus();}
+    };
+  }
+
+  document.addEventListener('click',function(e){
+    const t=e.target.closest?.('#profileBtn,#profileCard');
+    if(t) setTimeout(injectProfileAdminLogin,30);
+  },true);
 
   document.addEventListener('DOMContentLoaded',async function(){
     ensureUI();
