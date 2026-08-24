@@ -257,13 +257,34 @@ function coinFlip(pick){
  const b=wager($("bet")?.value);if(!b)return;
  const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
  if(!c||!stage||!res){window.GB_ACTION_BUSY=false;return}
+ const head=c.querySelector(".coin-head"),tail=c.querySelector(".coin-tail");
+ if(!head||!tail){window.GB_ACTION_BUSY=false;return}
  window.GB_ACTION_BUSY=true;
  const result=Math.random()<.5?"heads":"tails",win=result===pick;
- res.textContent="FLIPPING…";
+ const headMark=head.querySelector("b"),headText=head.querySelector("small");
+ const tailMark=tail.querySelector("b"),tailText=tail.querySelector("small");
+ if(headMark)headMark.textContent="H"; if(headText)headText.textContent="HEADS";
+ if(tailMark)tailMark.textContent="T"; if(tailText)tailText.textContent="TAILS";
+ const setSettledFace=face=>{
+   c.dataset.face=face;
+   c.style.transform="rotateY(0deg)";
+   c.style.removeProperty("opacity");
+   head.style.transform="rotateY(0deg) translateZ(1px)";
+   tail.style.transform="rotateY(0deg) translateZ(1px)";
+   head.style.opacity=face==="heads"?"1":"0";
+   tail.style.opacity=face==="tails"?"1":"0";
+   head.style.visibility=face==="heads"?"visible":"hidden";
+   tail.style.visibility=face==="tails"?"visible":"hidden";
+ };
  c.dataset.face="flipping";
+ head.style.transform="rotateY(0deg) translateZ(1px)";
+ tail.style.transform="rotateY(180deg) translateZ(1px)";
+ head.style.opacity="1";tail.style.opacity="1";
+ head.style.visibility="visible";tail.style.visibility="visible";
  c.style.transform="rotateY(0deg)";
  stage.style.transform="translate3d(0,34px,0) scale(.92)";
  void stage.offsetWidth;
+ res.textContent="FLIPPING…";
  const finalAngle=result==="tails"?2340:2160;
  const motion=stage.animate([
    {transform:"translate3d(0,34px,0) scale(.92)"},
@@ -282,18 +303,18 @@ function coinFlip(pick){
  sfx("flip");
  Promise.all([motion.finished,spin.finished]).then(()=>{
    motion.cancel();spin.cancel();
-   c.style.transform=result==="tails"?"rotateY(180deg)":"rotateY(0deg)";
-   c.dataset.face=result;
+   setSettledFace(result);
    res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
    writeCoinHistory({side:result,win});renderCoinHistory();
    settle(b,win?b*2:0,"COIN TOSS");sfx(win?"win":"lose");
    window.GB_ACTION_BUSY=false;
  }).catch(()=>{
-   try{motion.cancel();spin.cancel()}catch(_){ }
-   c.style.transform="rotateY(0deg)";c.dataset.face="heads";
+   try{motion.cancel();spin.cancel()}catch(_){}
+   setSettledFace("heads");
    window.GB_ACTION_BUSY=false;
  });
 }
+
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
 function flipHeroCard(i){H.heroRevealed[i]=!H.heroRevealed[i];sfx("card");hRender()}
 function toggleHandFocus(){document.querySelector(".compact-poker").classList.toggle("hand-focused")}
@@ -402,10 +423,10 @@ function renderLotteryHistory(){
  }).join(""):`<div class="lottery-history-empty">NO DRAWS YET</div>`;
 }
 const LOTTERY_SECTORS={
- LOSE:{start:0,end:307.62},
- SILVER:{start:307.62,end:352.62},
- GOLD:{start:352.62,end:359.82},
- JP:{start:359.82,end:360}
+ LOSE:{start:0,end:90,angle:45},
+ SILVER:{start:90,end:180,angle:135},
+ GOLD:{start:180,end:270,angle:225},
+ JP:{start:270,end:360,angle:315}
 };
 function pickLotteryOutcome(){
  const r=Math.random();
@@ -422,12 +443,19 @@ function lotterySectorAtRotation(rotation){
 }
 function lotteryTargetForOutcome(outcome,current){
  const q=LOTTERY_SECTORS[outcome]||LOTTERY_SECTORS.LOSE;
- const sectorAngle=q.start+Math.random()*(q.end-q.start);
+ const sectorAngle=q.start+8+Math.random()*74;
  const desired=((360-sectorAngle)%360+360)%360;
  const currentNorm=((current%360)+360)%360;
  let delta=desired-currentNorm;if(delta<0)delta+=360;
  return current+(6+Math.floor(Math.random()*3))*360+delta;
 }
+function lotterySetActiveSector(wheel,name){
+ if(!wheel)return;
+ const q=LOTTERY_SECTORS[name]||LOTTERY_SECTORS.LOSE;
+ wheel.style.setProperty("--active-start",`${q.start}deg`);
+ wheel.dataset.active=name;
+}
+
 function lottery(){
  if(window.GB_LOTTERY_BUSY)return;
  const b=100,res=$("res"),btn=document.querySelector(".lottery-draw"),wheel=$("lotteryWheel"),valueEl=$("lotteryWheelValue");
@@ -435,7 +463,7 @@ function lottery(){
  if(!wheel||!valueEl){if(res)res.textContent="LOTTERY ERROR";return}
  S.coins-=b;S.wagered+=b;save();render();
  window.GB_LOTTERY_BUSY=true;if(btn)btn.disabled=true;
- res.textContent="SPINNING…";valueEl.textContent="LOSE";sfx("roulette");
+ res.textContent="SPINNING…";valueEl.textContent="LOSE";lotterySetActiveSector(wheel,"LOSE");sfx("roulette");
  const outcome=pickLotteryOutcome(),reward=lotteryReward(outcome);
  const current=Number(wheel.dataset.angle||0),final=lotteryTargetForOutcome(outcome,current);
  const start=performance.now(),duration=6200+Math.floor(Math.random()*700);
@@ -444,9 +472,9 @@ function lottery(){
    const p=Math.min(1,(now-start)/duration),ease=1-Math.pow(1-p,4),rotation=current+(final-current)*ease;
    wheel.style.transform=`rotate(${rotation}deg)`;
    const liveOutcome=lotterySectorAtRotation(rotation);
-   if(liveOutcome!==lastLabel){lastLabel=liveOutcome;valueEl.textContent=liveOutcome;}
+   if(liveOutcome!==lastLabel){lastLabel=liveOutcome;valueEl.textContent=liveOutcome;lotterySetActiveSector(wheel,liveOutcome);}
    if(p<1){requestAnimationFrame(tick);return}
-   wheel.style.transform=`rotate(${final}deg)`;wheel.dataset.angle=String(final);valueEl.textContent=outcome;
+   wheel.style.transform=`rotate(${final}deg)`;wheel.dataset.angle=String(final);valueEl.textContent=outcome;lotterySetActiveSector(wheel,outcome);
    const label=outcome==="JP"?"JP • 100,000 COIN":outcome==="GOLD"?"GOLD • 10,000 COIN":outcome==="SILVER"?"SILVER • 500 COIN":"LOSE";
    if(reward){S.coins+=reward;S.profit+=reward-b;S.wins++;S.maxwin=Math.max(S.maxwin,reward-b);S.history.unshift({g:"LOTTERY",net:reward-b,bet:b,result:label,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();render();res.textContent=`${label} • WIN`;sfx(reward>=10000?"jackpot":"win");if(reward>=100000)puchun()}
    else{S.profit-=b;S.history.unshift({g:"LOTTERY",net:-b,bet:b,result:"LOSE",t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();render();res.textContent="LOSE";sfx("lose")}
