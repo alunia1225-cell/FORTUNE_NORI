@@ -17,6 +17,53 @@ window.GB_RUNTIME=window.GB_RUNTIME||{active:false,epoch:0,timeouts:new Set(),in
 /* ===== SAFE RUNTIME / DEBUG BOOT ===== */
 const TEST_MODE=true;
 const TEST_COINS=9999;
+
+/* ===== SECURE ONLINE BALANCE / ADMIN API ===== */
+const FN_API_URL = (window.FN_ADMIN_API_URL || "").replace(/\/$/, "");
+let FN_PLAYER_TOKEN = localStorage.getItem("FN_PLAYER_TOKEN") || "";
+let FN_ADMIN_TOKEN = localStorage.getItem("FN_ADMIN_TOKEN") || "";
+let FN_SERVER_PLAYER_ID = localStorage.getItem("FN_SERVER_PLAYER_ID") || "";
+let FN_SERVER_BALANCE = null;
+let FN_SERVER_SYNCING = false;
+function fnApi(path, options={}, tokenOverride=null){
+  if(!FN_API_URL) return Promise.reject(new Error("FN_ADMIN_API_URL_NOT_CONFIGURED"));
+  const headers=Object.assign({"content-type":"application/json"},options.headers||{});
+  const tok=tokenOverride===null?FN_PLAYER_TOKEN:tokenOverride;
+  if(tok) headers.Authorization="Bearer "+tok;
+  return fetch(FN_API_URL+path,Object.assign({},options,{headers,cache:"no-store"})).then(async r=>{let d={};try{d=await r.json()}catch(_){} if(!r.ok)throw Object.assign(new Error(d.error||"API_ERROR"),{status:r.status,data:d});return d;});
+}
+function fnPlayerId(){
+  let id=FN_SERVER_PLAYER_ID;
+  if(!/^[a-f0-9-]{20,80}$/i.test(id)){
+    id=(crypto.randomUUID?crypto.randomUUID():([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16)));
+    FN_SERVER_PLAYER_ID=id; localStorage.setItem("FN_SERVER_PLAYER_ID",id);
+  }
+  return id;
+}
+async function fnEnsureOnlinePlayer(){
+  if(!FN_API_URL)return false;
+  try{
+    const d=await fnApi("/player/session",{method:"POST",body:JSON.stringify({playerId:fnPlayerId(),name:(window.__FN_PROFILE_NAME||"PLAYER")})});
+    FN_PLAYER_TOKEN=d.token; localStorage.setItem("FN_PLAYER_TOKEN",FN_PLAYER_TOKEN);
+    FN_SERVER_PLAYER_ID=d.playerId; localStorage.setItem("FN_SERVER_PLAYER_ID",d.playerId);
+    FN_SERVER_BALANCE=Number(d.balance);
+    S.coins=FN_SERVER_BALANCE; localStorage.setItem(KEY,JSON.stringify(S)); render();
+    return true;
+  }catch(e){debugLog("WARN","ONLINE BALANCE OFFLINE",{error:String(e)});return false}
+}
+async function fnSyncServerBalance(){
+  if(!FN_API_URL||!FN_PLAYER_TOKEN||FN_SERVER_SYNCING)return false;
+  FN_SERVER_SYNCING=true;
+  try{const d=await fnApi("/balance",{method:"GET"});FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render();return true}catch(e){debugLog("WARN","BALANCE SYNC FAILED",{error:String(e)});return false}finally{FN_SERVER_SYNCING=false}
+}
+async function fnCommitBalanceDelta(delta, reason){
+  if(!FN_API_URL||!FN_PLAYER_TOKEN||!Number.isSafeInteger(delta)||delta===0)return false;
+  try{
+    const txId=(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random());
+    const d=await fnApi("/player/adjust",{method:"POST",body:JSON.stringify({delta,reason:String(reason||"GAME").slice(0,80),txId})});
+    FN_SERVER_BALANCE=Number(d.balance); S.coins=FN_SERVER_BALANCE; return true;
+  }catch(e){debugLog("ERROR","ONLINE BALANCE COMMIT FAILED",{error:String(e),delta,reason});await fnSyncServerBalance();return false}
+}
 window.__GB_DEBUG_LINES=window.__GB_DEBUG_LINES||[];
 window.__GB_DEBUG_COUNT=window.__GB_DEBUG_COUNT||0;
 
@@ -319,7 +366,15 @@ function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
 function flipHeroCard(i){H.heroRevealed[i]=!H.heroRevealed[i];sfx("card");hRender()}
 function toggleHandFocus(){document.querySelector(".compact-poker").classList.toggle("hand-focused")}
 function pokerCut(t){const e=$("hcut");if(!e)return;e.textContent=t;e.classList.remove("hidden");void e.offsetWidth;e.classList.add("show");setTimeout(()=>e.classList.add("hidden"),900)}
-function save(){localStorage.setItem(KEY,JSON.stringify(S));render()}
+let FN_SAVE_CHAIN=Promise.resolve();
+function save(){
+  const previous=Number.isFinite(Number(FN_SERVER_BALANCE))?Number(FN_SERVER_BALANCE):null;
+  const current=Number(S.coins)||0;
+  localStorage.setItem(KEY,JSON.stringify(S)); render();
+  if(FN_API_URL&&FN_PLAYER_TOKEN&&previous!==null&&current!==previous){
+    const delta=current-previous; FN_SAVE_CHAIN=FN_SAVE_CHAIN.then(()=>fnCommitBalanceDelta(delta,"GAME")).then(()=>{FN_SERVER_BALANCE=Number(S.coins)}).catch(()=>{});
+  }
+}
 function fmt(n){return Math.floor(n).toLocaleString()}
 function audio(){if(!S.sound)return null; try{return audioCtx||(audioCtx=new (window.AudioContext||window.webkitAudioContext)())}catch(e){return null}}
 function tone(freq,d=.08,type="sine",vol=.035,delay=0){let a=audio();if(!a)return;let o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(0.0001,a.currentTime+delay);g.gain.exponentialRampToValueAtTime(vol,a.currentTime+delay+.01);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+delay+d);o.connect(g);g.connect(a.destination);o.start(a.currentTime+delay);o.stop(a.currentTime+delay+d+.02)}
@@ -1458,6 +1513,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   try{
     if(typeof render==="function")render();
     debugLog("BOOT","APPLICATION INITIALIZED",{coins:S.coins});
+    if(FN_API_URL) fnEnsureOnlinePlayer();
   }catch(e){debugLog("ERROR","INITIALIZATION FAILED",{error:String(e),stack:e.stack})}
 });
 
@@ -1468,6 +1524,38 @@ document.addEventListener("DOMContentLoaded",()=>{
  },{passive:true});
 })();
 
+/* ===== ADMIN PANEL: server-authoritative grant UI ===== */
+(function(){
+  function el(tag,attrs,html){const e=document.createElement(tag);Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,v));if(html!==undefined)e.innerHTML=html;return e}
+  function panel(){
+    if(document.getElementById("fnAdminPanel"))return document.getElementById("fnAdminPanel");
+    const p=el("div",{id:"fnAdminPanel",class:"fn-admin-panel hidden"});
+    p.innerHTML='<div class="fn-admin-card"><div class="fn-admin-head"><div><small>FORTUNE NOIR / SECURE CONTROL</small><h2>ADMIN CONSOLE</h2></div><button id="fnAdminClose" type="button">×</button></div><div class="fn-admin-status" id="fnAdminStatus">SERVER CONNECTED</div><label>PLAYER ID</label><input id="fnAdminPlayer" placeholder="player id"><label>COIN AMOUNT</label><input id="fnAdminAmount" type="number" step="1" placeholder="10000"><label>NOTE</label><input id="fnAdminNote" maxlength="120" placeholder="ADMIN GRANT"><div class="fn-admin-presets"><button data-a="1000">+1,000</button><button data-a="10000">+10,000</button><button data-a="50000">+50,000</button><button data-a="-1000">-1,000</button></div><button class="fn-admin-grant" id="fnAdminGrant" type="button">GRANT COINS</button><div class="fn-admin-balance" id="fnAdminBalance">TARGET BALANCE —</div><pre id="fnAdminLogs"></pre><button id="fnAdminLogout" type="button">LOGOUT</button></div>';
+    document.body.appendChild(p);
+    p.querySelector("#fnAdminClose").onclick=()=>p.classList.add("hidden");
+    p.querySelectorAll(".fn-admin-presets button").forEach(b=>b.onclick=()=>p.querySelector("#fnAdminAmount").value=b.dataset.a);
+    p.querySelector("#fnAdminGrant").onclick=grant; p.querySelector("#fnAdminLogout").onclick=logout;
+    return p;
+  }
+  async function login(){
+    if(!FN_API_URL){alert("ADMIN API URLが未設定です");return false}
+    const username="391x",password=prompt("FORTUNE NOIR ADMIN PASSWORD"); if(password===null)return false;
+    try{const d=await fetch(FN_API_URL+"/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username,password}),cache:"no-store"}).then(async r=>{const x=await r.json();if(!r.ok)throw new Error(x.error||"LOGIN_FAILED");return x});FN_ADMIN_TOKEN=d.token;localStorage.setItem("FN_ADMIN_TOKEN",d.token);setAdminButton(true);return true}catch(e){alert("ADMIN LOGIN FAILED");debugLog("WARN","ADMIN LOGIN FAILED",{error:String(e)});return false}
+  }
+  async function open(){if(!FN_ADMIN_TOKEN){if(!(await login()))return}try{const me=await fnApi("/auth/me",{},FN_ADMIN_TOKEN);if(me.role!=="admin")throw new Error("FORBIDDEN");const p=panel();p.classList.remove("hidden");loadLogs()}catch(e){FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN");setAdminButton(false);alert("ADMIN SESSION EXPIRED");}}
+  async function grant(){const p=panel(),playerId=p.querySelector("#fnAdminPlayer").value.trim(),amount=Number(p.querySelector("#fnAdminAmount").value),note=p.querySelector("#fnAdminNote").value.trim();if(!playerId||!Number.isSafeInteger(amount)||amount===0){p.querySelector("#fnAdminStatus").textContent="INVALID INPUT";return}try{const d=await fnApi("/admin/grant",{method:"POST",body:JSON.stringify({playerId,amount,note})},FN_ADMIN_TOKEN);p.querySelector("#fnAdminBalance").textContent="TARGET BALANCE "+Number(d.balance).toLocaleString("ja-JP");p.querySelector("#fnAdminStatus").textContent="GRANT SUCCESS";loadLogs();if(playerId===FN_SERVER_PLAYER_ID){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render()}}catch(e){p.querySelector("#fnAdminStatus").textContent="GRANT FAILED: "+(e.message||"ERROR")}}
+  async function loadLogs(){try{const d=await fnApi("/admin/logs",{},FN_ADMIN_TOKEN);const pre=panel().querySelector("#fnAdminLogs");pre.textContent=(d.logs||[]).map(x=>new Date(x.created_at).toLocaleString()+"  "+x.target_player_id+"  "+(x.amount>0?"+":"")+x.amount+"  "+x.note).join("\n")||"NO ADMIN LOGS"}catch(_) {}}
+  async function logout(){try{await fnApi("/auth/logout",{method:"POST"},FN_ADMIN_TOKEN)}catch(_){}FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN");setAdminButton(false);document.getElementById("fnAdminPanel")?.classList.add("hidden")}
+  function setAdminButton(on){let b=document.getElementById("fnAdminButton");if(on){if(!b){b=document.createElement("button");b.id="fnAdminButton";b.className="fn-admin-button";b.textContent="ADMIN";b.onclick=open;document.body.appendChild(b)}}else b?.remove()}
+  function mountLogin(){
+    if(!FN_API_URL)return;
+    const profile=document.getElementById("profileBtn"); if(profile&&!profile.__fnAdmin){profile.__fnAdmin=true;profile.addEventListener("contextmenu",e=>{e.preventDefault();login().then(ok=>ok&&setAdminButton(true))})}
+    if(FN_ADMIN_TOKEN)fnApi("/auth/me",{},FN_ADMIN_TOKEN).then(d=>{if(d.role==="admin")setAdminButton(true)}).catch(()=>{FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN")});
+  }
+  window.FN_ADMIN_LOGIN=login;window.FN_ADMIN_OPEN=open;
+  document.addEventListener("DOMContentLoaded",mountLogin);
+})();
+
 /* ===== REAL APP TITLE / LOBBY SHELL ===== */
 (function(){
   const profileKey='gb_profile_v2';
@@ -1476,7 +1564,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile()}
   function renderProfile(){const p=prof();const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a)a.textContent=(p.avatar||'FN').slice(0,3).toUpperCase();if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
-  function openSocial(type){const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');o.classList.remove('hidden');if(type==='profile'){const x=prof();p.innerHTML='<h2>PROFILE</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+String(x.name).replace(/"/g,'&quot;')+'"><label>AVATAR TAG</label><input id="pavatar" maxlength="3" value="'+String(x.avatar).replace(/"/g,'&quot;')+'"><div class="socialActions"><button class="primary" id="saveP">SAVE</button><button id="closeP">CLOSE</button></div>';document.getElementById('saveP').onclick=()=>{x.name=(document.getElementById('pname').value||'PLAYER').trim()||'PLAYER';x.avatar=(document.getElementById('pavatar').value||'FN').trim().slice(0,3).toUpperCase()||'FN';saveProf(x);renderProfile();o.classList.add('hidden')};document.getElementById('closeP').onclick=()=>o.classList.add('hidden')}
+  function openSocial(type){const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');o.classList.remove('hidden');if(type==='profile'){const x=prof();p.innerHTML='<h2>PROFILE</h2><button type="button" id="fnProfileAdminLogin" class="fn-profile-admin-login">ADMIN LOGIN</button><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+String(x.name).replace(/"/g,'&quot;')+'"><label>AVATAR TAG</label><input id="pavatar" maxlength="3" value="'+String(x.avatar).replace(/"/g,'&quot;')+'"><div class="socialActions"><button class="primary" id="saveP">SAVE</button><button id="closeP">CLOSE</button></div>';document.getElementById('fnProfileAdminLogin').onclick=()=>{login().then(ok=>{if(ok){o.classList.add('hidden');setAdminButton(true)}})};document.getElementById('saveP').onclick=()=>{x.name=(document.getElementById('pname').value||'PLAYER').trim()||'PLAYER';x.avatar=(document.getElementById('pavatar').value||'FN').trim().slice(0,3).toUpperCase()||'FN';saveProf(x);renderProfile();o.classList.add('hidden')};document.getElementById('closeP').onclick=()=>o.classList.add('hidden')}
   else if(type==='friends'){p.innerHTML='<h2>FRIENDS</h2><p style="color:#777;font-size:10px">Friend system is ready for the online backend.</p><label>ADD FRIEND NAME</label><input id="friendName" maxlength="16" placeholder="PLAYER"><div class="socialActions"><button class="primary" onclick="this.textContent=\'ADDED\'">ADD</button><button id="closeF">CLOSE</button></div>';document.getElementById('closeF').onclick=()=>o.classList.add('hidden')}
   else{const code=Math.random().toString(36).slice(2,8).toUpperCase(),url=location.origin+location.pathname+'#room='+code;p.innerHTML='<h2>PRIVATE ROOM</h2><p style="color:#777;font-size:10px">Share this URL when the online server is connected.</p><div class="roomCode"><small>ROOM CODE</small><strong>'+code+'</strong></div><div class="socialActions"><button class="primary" id="copyRoom">COPY URL</button><button id="closeR">CLOSE</button></div>';document.getElementById('copyRoom').onclick=()=>navigator.clipboard?.writeText(url);document.getElementById('closeR').onclick=()=>o.classList.add('hidden')}}
   document.addEventListener('DOMContentLoaded',()=>{document.getElementById('tapStart')?.addEventListener('click',start);document.getElementById('profileBtn')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('profileCard')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('friendsBtn')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('lobbyDebugBtn')?.addEventListener('click',toggleDebug);document.getElementById('roomBtn')?.addEventListener('click',()=>openSocial('room'));document.querySelectorAll('.lobbyGrid button').forEach(b=>b.addEventListener('click',()=>{const p=prof();p.games=(p.games||0)+1;saveProf(p);renderProfile();document.getElementById('appLobby').classList.add('hidden');openGame(b.dataset.game)}));document.querySelectorAll('#lobbyTabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#lobbyTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.lobbyGrid button').forEach(g=>g.style.display=b.dataset.cat==='all'||g.dataset.cat===b.dataset.cat?'flex':'none')}));});
