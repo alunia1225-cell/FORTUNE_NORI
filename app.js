@@ -1513,7 +1513,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   try{
     if(typeof render==="function")render();
     debugLog("BOOT","APPLICATION INITIALIZED",{coins:S.coins});
-    if(FN_API_URL) fnEnsureOnlinePlayer();
+    if(FN_API_URL && localStorage.getItem("FN_ROLE")==="player") fnEnsureOnlinePlayer();
   }catch(e){debugLog("ERROR","INITIALIZATION FAILED",{error:String(e),stack:e.stack})}
 });
 
