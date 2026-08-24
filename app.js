@@ -148,7 +148,7 @@ function clearDebug(){
 async function copyDebug(){const text=(window.__GB_DEBUG_LINES||[]).join("\n")||"NO DEBUG LOGS";try{await navigator.clipboard.writeText(text);debugLog("SYSTEM","DEBUG COPIED")}catch(e){const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}}
 window.addEventListener("DOMContentLoaded",()=>{
   const t=document.getElementById("debugToggle");
-  if(t)t.addEventListener("click",toggleDebug);
+  if(t)t.addEventListener("click",e=>{if(window.__FN_AUTH_ROLE!=="admin"){e.preventDefault();return}toggleDebug()},{once:true});
   debugLog("BOOT","DEBUG RUNTIME ONLINE",{version:"1.10.0"});
 });
 
@@ -1513,7 +1513,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   try{
     if(typeof render==="function")render();
     debugLog("BOOT","APPLICATION INITIALIZED",{coins:S.coins});
-    if(FN_API_URL && localStorage.getItem("FN_ROLE")==="player") fnEnsureOnlinePlayer();
+    if(FN_API_URL && localStorage.getItem("FN_ROLE")==="player" && localStorage.getItem("FN_PLAYER_TOKEN")) fnEnsureOnlinePlayer();
+    try{window.FN_ENFORCE_DEBUG_ACCESS?.()}catch(_){}
   }catch(e){debugLog("ERROR","INITIALIZATION FAILED",{error:String(e),stack:e.stack})}
 });
 
