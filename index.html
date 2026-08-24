@@ -2,43 +2,11 @@
 <html lang="ja">
 <head><meta name="FN-build" content="1.10.0">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>FORTUNE NOIR 1.10.0</title><link rel="stylesheet" href="style.css?v=1.10.0"><style>
-/* FORTUNE NOIR — premium casino lobby header */
-.fn-brand-header{
-  position:relative;
-  overflow:hidden;
-  border:1px solid rgba(212,174,72,.55);
-  border-radius:22px;
-  background:
-    radial-gradient(circle at 72% 35%,rgba(212,174,72,.13),transparent 34%),
-    linear-gradient(145deg,#17130b 0%,#080808 48%,#12100a 100%);
-  box-shadow:0 18px 45px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.04);
-}
-.fn-brand-header:before{
-  content:"";
-  position:absolute;inset:0;
-  background:linear-gradient(115deg,transparent 0%,rgba(235,199,105,.08) 48%,transparent 66%);
-  pointer-events:none;
-}
-.fn-brand-kicker{
-  letter-spacing:.34em!important;
-  text-transform:uppercase;
-  color:#c9a958!important;
-}
-.fn-brand-title{
-  letter-spacing:.06em!important;
-  text-transform:uppercase;
-  text-shadow:0 0 28px rgba(220,184,77,.18);
-}
-.fn-brand-mark{
-  border-color:rgba(212,174,72,.7)!important;
-  box-shadow:0 0 28px rgba(212,174,72,.12),inset 0 0 22px rgba(212,174,72,.05);
-}
-</style></head>
+<title>FORTUNE NOIR 1.10.0</title><link rel="stylesheet" href="style.css?v=1.10.0"></head>
 <body>
 
 <div id="blackout" aria-hidden="true"></div>
-<header><div class="logo">GAMBLE<span>BOX</span><small>3.0</small></div><div class="topstats"><span>● ONLINE</span><b>💎 <em id="coins">10000</em></b><button onclick="toggleSound()" id="sound">🔊</button></div></header>
+<header><div class="logo">FORTUNE <span>NORI</span><small>FN</small></div><div class="topstats"><span>● ONLINE</span><b>💎 <em id="coins">10000</em></b><button onclick="toggleSound()" id="sound">🔊</button></div></header>
 <div class="ticker"><span>LIVE</span><div>JACKPOT LIVE　•••　VIRTUAL COINS ONLY　•••　GOOD LUCK　•••　BIG WIN CHANCE　•••</div></div>
 <main>
 
@@ -80,31 +48,6 @@
   <pre id="debugBody"></pre>
   <div class="dbg-footer"><span>WEB RUNTIME</span><span id="debugClock">--:--:--</span></div>
 </div>
-<script>
-(function(){
-  // Emergency app-shell bootstrap: keeps the title screen usable even if a later runtime component fails.
-  window.GB_START_APP=window.GB_START_APP||function(){
-    var splash=document.getElementById("appSplash"), lobby=document.getElementById("appLobby"), btn=document.getElementById("tapStart"), box=document.getElementById("loadBox"), fill=document.getElementById("loadFill"), pct=document.getElementById("loadPct"), txt=document.getElementById("loadText"), detail=document.getElementById("loadDetail");
-    if(!splash||!lobby||!btn)return;
-    if(window.__GB_LOADING)return; window.__GB_LOADING=true;
-    btn.classList.add("hidden"); if(box)box.classList.remove("hidden");
-    var assets=["style.css?v=1.10.0","app.js?v=1.10.0","click.wav","chip.wav","card.wav","spin.wav","roulette.wav","dice.wav","flip.wav","win.wav","lose.wav","jackpot.wav","crash.wav"];
-    var i=0;
-    function step(){
-      if(i>=assets.length){if(txt)txt.textContent="READY";if(detail)detail.textContent="GAME RUNTIME ONLINE";setTimeout(function(){splash.classList.add("hide");lobby.classList.remove("hidden");},300);return;}
-      if(txt)txt.textContent=i<3?"INITIALIZING":i<assets.length-2?"LOADING ASSETS":"FINALIZING";
-      if(detail)detail.textContent="Loading "+assets[i];
-      var q=Math.round((i+1)/assets.length*100);if(fill)fill.style.width=q+"%";if(pct)pct.textContent=q+"%";
-      i++;setTimeout(step,70);
-    }
-    step();
-  };
-  document.addEventListener("DOMContentLoaded",function(){
-    var b=document.getElementById("tapStart");
-    if(b&&!b.__gbBound){b.__gbBound=true;b.addEventListener("click",window.GB_START_APP,{passive:true});b.addEventListener("touchend",function(e){e.preventDefault();window.GB_START_APP();},{passive:false});}
-  });
-})();
-</script>
 <script src="app.js?v=1.10.0"></script>
 <script>
 (function(){
@@ -119,12 +62,12 @@
   <div class="splashKicker">FORTUNE NOIR</div>
   <h1>VIRTUAL<br><em>CASINO</em></h1>
   <p>MOBILE GAME PLATFORM</p>
-  <button id="tapStart">TAP TO START</button>
+  <button id="tapStart">TAP TO ENTER</button>
   <div id="loadBox" class="loadBox hidden"><div><b id="loadText">INITIALIZING</b><strong id="loadPct">0%</strong></div><div class="loadTrack"><i id="loadFill"></i></div><small id="loadDetail">Preparing game runtime...</small></div>
   <footer>VIRTUAL COINS ONLY</footer>
 </div>
 <div id="appLobby" class="appLobby hidden">
-  <div class="lobbyBar"><button id="profileBtn">PROFILE</button><b>GAMBLE<span>BOX</span><small>LOBBY</small></b><button id="friendsBtn">FRIENDS</button></div>
+  <div class="lobbyBar"><button id="profileBtn">PROFILE</button><b>FORTUNE <span>NORI</span><small>FORTUNE NOIR • FN</small></b><button id="friendsBtn">FRIENDS</button></div>
   <section class="welcome"><div><small>WELCOME BACK</small><h2>CHOOSE YOUR<br><em>TABLE.</em></h2><p>Touch-first casino experience.</p></div><div class="welcomeBalance"><small>BALANCE</small><b><img class="balance-icon welcome-balance-icon" src="balance_icon.png" alt=""> <span id="welcomeCoins">9,999</span></b><em>COIN</em></div><div class="avatar"><span id="avatarText">FN</span><b id="playerName">PLAYER</b><small>READY</small></div></section>
   <nav id="lobbyTabs"><button class="active" data-cat="all">ALL</button><button data-cat="casino">CASINO</button><button data-cat="table">TABLE</button><button data-cat="classic">CLASSIC</button><button data-cat="reward">REWARDS</button></nav>
   <section class="lobbyGrid">

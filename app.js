@@ -28,7 +28,8 @@ function syncBalanceBar(){
    document.getElementById("balance"),
    document.getElementById("balanceValue"),
    document.querySelector(".balance-value"),
-   document.querySelector(".coins-value")
+   document.querySelector(".coins-value"),
+   document.getElementById("gameCoins")
  ].filter(Boolean);
  els.forEach(el=>{el.textContent=v.toLocaleString("ja-JP");});
  const bars=document.querySelectorAll(".balance-bar,.coins-bar,.top-balance,.hud-balance");
@@ -255,21 +256,21 @@ function coinFlip(pick){
  if(window.GB_ACTION_BUSY)return;
  const b=wager($("bet")?.value);if(!b)return;
  const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
- if(!c||!stage){return}
+ if(!c||!stage||!res){window.GB_ACTION_BUSY=false;return}
  window.GB_ACTION_BUSY=true;
  const result=Math.random()<.5?"heads":"tails",win=result===pick;
  res.textContent="FLIPPING…";
- c.classList.remove("show-head","show-tail");
+ c.dataset.face="flipping";
  c.style.transform="rotateY(0deg)";
- stage.style.transform="translate3d(0,32px,0)";
+ stage.style.transform="translate3d(0,34px,0) scale(.92)";
  void stage.offsetWidth;
  const finalAngle=result==="tails"?2340:2160;
  const motion=stage.animate([
    {transform:"translate3d(0,34px,0) scale(.92)"},
-   {transform:"translate3d(-24px,-14px,0) scale(1.02)"},
-   {transform:"translate3d(18px,-88px,0) scale(1.10)"},
-   {transform:"translate3d(-14px,-112px,0) scale(1.14)"},
-   {transform:"translate3d(14px,-58px,0) scale(1.08)"},
+   {transform:"translate3d(-34px,-20px,0) scale(1.02)"},
+   {transform:"translate3d(28px,-104px,0) scale(1.12)"},
+   {transform:"translate3d(-20px,-126px,0) scale(1.16)"},
+   {transform:"translate3d(22px,-66px,0) scale(1.09)"},
    {transform:"translate3d(0,0,0) scale(1)"}
  ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
  const spin=c.animate([
@@ -282,14 +283,14 @@ function coinFlip(pick){
  Promise.all([motion.finished,spin.finished]).then(()=>{
    motion.cancel();spin.cancel();
    c.style.transform=result==="tails"?"rotateY(180deg)":"rotateY(0deg)";
-   c.classList.toggle("show-tail",result==="tails");
-   c.classList.toggle("show-head",result==="heads");
+   c.dataset.face=result;
    res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
    writeCoinHistory({side:result,win});renderCoinHistory();
    settle(b,win?b*2:0,"COIN TOSS");sfx(win?"win":"lose");
    window.GB_ACTION_BUSY=false;
  }).catch(()=>{
-   try{motion.cancel();spin.cancel()}catch(_){}
+   try{motion.cancel();spin.cancel()}catch(_){ }
+   c.style.transform="rotateY(0deg)";c.dataset.face="heads";
    window.GB_ACTION_BUSY=false;
  });
 }
@@ -312,7 +313,7 @@ function sfx(name){if(!S.sound)return; const fileMap={click:"click.wav",chip:"ch
  (sets[name]||sets.click).forEach((x,i)=>tone(x[0],x[1],x[2]||"sine",.035,i*.06));
 }
 function wager(v){
- syncBalanceBar();v=Number(v);if(!Number.isFinite(v)||v<10||v>S.coins)return 0;lastBet=v;S.coins-=v;S.wagered+=v;lastBet=v;sfx("chip");return v}
+ syncBalanceBar();v=Number(v);if(!Number.isFinite(v)||v<10||v>S.coins)return 0;lastBet=v;S.coins-=v;S.wagered+=v;lastBet=v;syncBalanceBar();sfx("chip");return v}
 function showOutcome(kind,game,amount,multiplier,net){
  const root=document.getElementById("modalContent");if(!root)return;
  const old=document.getElementById("gbOutcome");if(old)old.remove();
@@ -353,6 +354,7 @@ function settle(b,p,g){
  S.history.unshift({g,net,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();return net;
 }
 function render(){$("coins").textContent=fmt(S.coins);$("coins2").textContent=fmt(S.coins);if($("welcomeCoins"))$("welcomeCoins").textContent=fmt(S.coins);$("profit").textContent=(S.profit>=0?"+":"")+fmt(S.profit);$("wagered").textContent=fmt(S.wagered);$("level").textContent=Math.floor(S.wagered/10000)+1;$("history").innerHTML=S.history.length?S.history.map(x=>`<div class="history-row"><span>${x.g}</span><b class="${x.net>=0?"win":"lose"}">${x.net>=0?"+":""}${fmt(x.net)}</b><small>${x.t}</small></div>`).join(""):"<div class='history-row'>NO DATA</div>";let names=["YOU","777_MASTER","BLACK_KING","LUCKY_ACE","HOUSE"];$("ranking").innerHTML=names.map((n,i)=>`<div class="rank-row"><span>#${i+1}　${n}</span><b>${fmt(i?250000-i*28000:S.maxwin)} COIN</b><small>${i?"ONLINE":"YOU"}</small></div>`).join("")}
+ syncBalanceBar();
 
 let GB_GAME_TOKEN=0;
 function gbAlive(t){return t===GB_GAME_TOKEN&&window.GB_RUNTIME&&window.GB_RUNTIME.active}
@@ -365,7 +367,7 @@ function openGame(g){
  window.GB_stopGameRuntime();window.GB_startGameRuntime(g);
  const token=GB_GAME_TOKEN;
  const title={slot:"ULTIMATE SLOTS",dice:"HIGH DICE",blackjack:"BLACKJACK",holdem:"TEXAS HOLD'EM",roulette:"ROULETTE",highlow:"HIGH & LOW",chohan:"丁半",coin:"COIN FLIP",lottery:"LOTTERY",multiplier:"CRASH ×",daily:"DAILY VAULT",shop:"CHIP SHOP"}[g]||g.toUpperCase();
- $("modalContent").innerHTML=`<div class="game"><div class="jackpot">FORTUNE NOIR / ${title}</div><h2>${title}</h2><div id="gameBody"></div></div>`;
+ $("modalContent").innerHTML=`<div class="game"><div class="jackpot">FORTUNE NOIR / ${title}</div><h2>${title}</h2><div class="game-balance-hud" aria-label="CURRENT BALANCE"><img src="balance_icon.png" alt=""><span id="gameCoins">${fmt(S.coins)}</span><small>COIN</small></div><div id="gameBody"></div></div>`;
  $("modal").classList.remove("hidden");sfx("click");
  try{if(typeof games[g]!=="function")throw new Error("Unknown game: "+g);games[g]();debugLog("GAME","Launch success",{game:g,token})}
  catch(e){debugLog("ERROR","Game launch failed",{game:g,error:String(e),stack:e.stack});$("modalContent").innerHTML=`<div class="game"><h2>GAME ERROR</h2><pre class="debug-error">${String(e.stack||e)}</pre></div>`}
@@ -399,6 +401,12 @@ function renderLotteryHistory(){
    return `<div class="lottery-history-row"><span>${x.t||""}</span><b class="${cls}">${label}</b></div>`;
  }).join(""):`<div class="lottery-history-empty">NO DRAWS YET</div>`;
 }
+const LOTTERY_SECTORS={
+ LOSE:{start:0,end:307.62},
+ SILVER:{start:307.62,end:352.62},
+ GOLD:{start:352.62,end:359.82},
+ JP:{start:359.82,end:360}
+};
 function pickLotteryOutcome(){
  const r=Math.random();
  if(r<0.0005)return "JP";
@@ -406,8 +414,19 @@ function pickLotteryOutcome(){
  if(r<0.15)return "SILVER";
  return "LOSE";
 }
-function lotteryReward(outcome){
- return outcome==="JP"?100000:outcome==="GOLD"?10000:outcome==="SILVER"?500:0;
+function lotteryReward(outcome){return outcome==="JP"?100000:outcome==="GOLD"?10000:outcome==="SILVER"?500:0}
+function lotterySectorAtRotation(rotation){
+ const a=(((-rotation)%360)+360)%360;
+ for(const name of ["LOSE","SILVER","GOLD","JP"]){const q=LOTTERY_SECTORS[name];if(a>=q.start&&a<q.end)return name}
+ return "LOSE";
+}
+function lotteryTargetForOutcome(outcome,current){
+ const q=LOTTERY_SECTORS[outcome]||LOTTERY_SECTORS.LOSE;
+ const sectorAngle=q.start+Math.random()*(q.end-q.start);
+ const desired=((360-sectorAngle)%360+360)%360;
+ const currentNorm=((current%360)+360)%360;
+ let delta=desired-currentNorm;if(delta<0)delta+=360;
+ return current+(6+Math.floor(Math.random()*3))*360+delta;
 }
 function lottery(){
  if(window.GB_LOTTERY_BUSY)return;
@@ -418,32 +437,20 @@ function lottery(){
  window.GB_LOTTERY_BUSY=true;if(btn)btn.disabled=true;
  res.textContent="SPINNING…";valueEl.textContent="LOSE";sfx("roulette");
  const outcome=pickLotteryOutcome(),reward=lotteryReward(outcome);
- const current=Number(wheel.dataset.angle||0);
- const turns=6+Math.floor(Math.random()*3);
- const target=current+turns*360+Math.random()*360;
+ const current=Number(wheel.dataset.angle||0),final=lotteryTargetForOutcome(outcome,current);
  const start=performance.now(),duration=6200+Math.floor(Math.random()*700);
- const spinLabels=["LOSE","JP","GOLD","SILVER"];
- const spinTimer=setInterval(()=>{valueEl.textContent=spinLabels[Math.floor(Math.random()*spinLabels.length)];},120);
+ let lastLabel="";
  const tick=now=>{
-   const p=Math.min(1,(now-start)/duration);
-   const ease=1-Math.pow(1-p,4);
-   wheel.style.transform=`rotate(${current+(target-current)*ease}deg)`;
+   const p=Math.min(1,(now-start)/duration),ease=1-Math.pow(1-p,4),rotation=current+(final-current)*ease;
+   wheel.style.transform=`rotate(${rotation}deg)`;
+   const liveOutcome=lotterySectorAtRotation(rotation);
+   if(liveOutcome!==lastLabel){lastLabel=liveOutcome;valueEl.textContent=liveOutcome;}
    if(p<1){requestAnimationFrame(tick);return}
-   clearInterval(spinTimer);
-   wheel.style.transform=`rotate(${target}deg)`;wheel.dataset.angle=String(target);
-   valueEl.textContent=outcome;
+   wheel.style.transform=`rotate(${final}deg)`;wheel.dataset.angle=String(final);valueEl.textContent=outcome;
    const label=outcome==="JP"?"JP • 100,000 COIN":outcome==="GOLD"?"GOLD • 10,000 COIN":outcome==="SILVER"?"SILVER • 500 COIN":"LOSE";
-   if(reward){
-     S.coins+=reward;S.profit+=reward-b;S.wins++;S.maxwin=Math.max(S.maxwin,reward-b);
-     S.history.unshift({g:"LOTTERY",net:reward-b,bet:b,result:label,t:new Date().toLocaleTimeString()});
-     S.history=S.history.slice(0,20);save();render();
-     res.textContent=`${label} • WIN`;sfx(reward>=10000?"jackpot":"win");if(reward>=100000)puchun();
-   }else{
-     S.profit-=b;S.history.unshift({g:"LOTTERY",net:-b,bet:b,result:"LOSE",t:new Date().toLocaleTimeString()});
-     S.history=S.history.slice(0,20);save();render();res.textContent="LOSE";sfx("lose");
-   }
-   renderLotteryHistory();
-   window.GB_LOTTERY_BUSY=false;if(btn)btn.disabled=false;
+   if(reward){S.coins+=reward;S.profit+=reward-b;S.wins++;S.maxwin=Math.max(S.maxwin,reward-b);S.history.unshift({g:"LOTTERY",net:reward-b,bet:b,result:label,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();render();res.textContent=`${label} • WIN`;sfx(reward>=10000?"jackpot":"win");if(reward>=100000)puchun()}
+   else{S.profit-=b;S.history.unshift({g:"LOTTERY",net:-b,bet:b,result:"LOSE",t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();render();res.textContent="LOSE";sfx("lose")}
+   renderLotteryHistory();window.GB_LOTTERY_BUSY=false;if(btn)btn.disabled=false;
  };
  requestAnimationFrame(tick);
 }
@@ -598,7 +605,7 @@ chohan(){
 coin(){
  $("gameBody").innerHTML=betbox()+`<div class="anim-game coin-game">
   <div class="anim-title">COIN TOSS</div>
-  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d show-head"><div class="coin-face coin-head" aria-label="HEADS"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail" aria-label="TAILS"><b>T</b><small>TAILS</small></div></div></div></div>
+  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads"><div class="coin-face coin-head" aria-label="HEADS"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail" aria-label="TAILS"><b>T</b><small>TAILS</small></div></div></div></div>
   <div class="coin-choices"><button onclick="coinFlip('heads')"><b>HEADS</b><small>GOLD SIDE</small></button><div class="coin-vs">VS</div><button onclick="coinFlip('tails')"><b>TAILS</b><small>BLACK SIDE</small></button></div>
   <div id="res" class="result coin-result">CHOOSE YOUR SIDE</div>
   <div class="coin-history"><div class="coin-history-head"><b>COIN FLIP HISTORY</b><small>LAST 5</small></div><div id="coinHistory"></div></div>
@@ -606,7 +613,7 @@ coin(){
  renderCoinHistory();
 },
 lottery(){
- const wheelStyle=`conic-gradient(from 0deg,#17191b 0deg 306deg,#b8943d 306deg 351deg,#d1af55 351deg 358.2deg,#f0d77a 358.2deg 360deg)`;
+ const wheelStyle=`conic-gradient(from 0deg,#17191b 0deg 307.62deg,#a68a4f 307.62deg 352.62deg,#d1af55 352.62deg 359.82deg,#f0d77a 359.82deg 360deg)`;
  $("gameBody").innerHTML=`<div class="lottery-game">
   <div class="lottery-hero">ONE DRAW <b>100 COIN</b></div>
   <div class="lottery-prizes">
@@ -615,7 +622,8 @@ lottery(){
    <div class="lottery-prize silver"><b>500</b><small>SILVER</small></div>
   </div>
   <div class="lottery-wheel-stage"><div class="lottery-pointer"></div><div id="lotteryWheel" class="lottery-wheel" data-angle="0" style="background:${wheelStyle}">
-   <div class="lottery-wheel-center"><span id="lotteryWheelValue"></span></div>
+   <div class="lottery-sector-labels" aria-hidden="true"><span class="lottery-sector-label lose">LOSE</span><span class="lottery-sector-label silver">SILVER</span><span class="lottery-sector-label gold">GOLD</span><span class="lottery-sector-label jp">JP</span></div>
+   <div class="lottery-wheel-center"><span id="lotteryWheelValue">LOSE</span></div>
   </div></div>
   <div class="lottery-history"><div class="lottery-history-head"><b>RECENT DRAWS</b><small>LAST 5</small></div><div id="lotteryHistory"></div></div>
   <button class="lottery-draw" onclick="lottery()">SPIN LOTTERY</button>
@@ -748,7 +756,7 @@ function hl(choice){
  const token=GB_GAME_TOKEN,line=$("hlLine"),area=$("hlArea"),dot=$("hlDot"),vEl=$("hlValue"),dotVal=$("hlDotValue"),res=$("res"),chart=$("hlChart");
  if(!line||!area||!dot||!vEl||!res||!chart){return}
  window.GB_ACTION_BUSY=true;
- const finalValue=Math.round(((Math.random()*199.8)-99.9)*10)/10;
+ const finalValue=Math.round((Math.random()*1998-999))/10;
  const side=finalValue>0?"high":finalValue<0?"low":"draw";
  const win=side==="draw"?!1:(choice===side);
  const start=performance.now(),duration=12000;
@@ -756,17 +764,14 @@ function hl(choice){
  const mapValue=v=>Math.max(18,Math.min(232,centerY-(v/100)*107));
  const formatValue=v=>`${v>=0?"+":""}${v.toFixed(1)}`;
  const points=[];
- // Large random swings through both positive and negative zones before converging on the final value.
- const control=[];
- const swings=7+Math.floor(Math.random()*4);
- for(let i=0;i<=swings;i++){
-   const t=i/swings;
-   const envelope=1-Math.min(1,Math.abs(t-.72)/.72);
-   const v=Math.max(-92,Math.min(92,(Math.random()*184)-92))*Math.max(.45,envelope);
-   control.push({t,value:v});
- }
- control[0].value=0;
- control[swings].value=finalValue;
+ // Every round gets a fresh, wide path. The path is deliberately allowed to cross 0 several times before the final value.
+ const swings=8+Math.floor(Math.random()*4),control=[{t:0,value:0}];
+ for(let i=1;i<swings;i++)control.push({t:i/swings,value:Math.round((Math.random()*190-95)*10)/10});
+ const negIndex=1;
+ const posIndex=swings-2;
+ control[negIndex].value=-Math.round((55+Math.random()*40)*10)/10;
+ control[posIndex].value=Math.round((55+Math.random()*40)*10)/10;
+ control.push({t:1,value:finalValue});
  const sampleCurve=p=>{
    if(p>=1)return finalValue;
    const u=p*swings;
@@ -853,7 +858,7 @@ function bjDeal(){
 }
 function bjHit(){if(BJ.over)return;const hand=BJ.split?BJ.hands[BJ.active]:BJ.p;hand.push(BJ.deck.pop());sfx("card");bjRender();if(val(hand)>21){BJ.reveal=true;BJ.over=true;bjRender();settle(BJ.bet,0,"BLACKJACK");sfx("lose");bjActions(false);$("bjdeal").disabled=false}else if(val(hand)===21)bjStand()}
 function bjStand(){if(BJ.over)return;BJ.reveal=true;while(val(BJ.d)<17){BJ.d.push(BJ.deck.pop());sfx("card")}BJ.over=true;bjRender();bjResolve()}
-function bjDouble(){if(BJ.over||S.coins<BJ.bet)return;S.coins-=BJ.bet;S.wagered+=BJ.bet;BJ.bet*=2;BJ.p.push(BJ.deck.pop());sfx("chip");if(val(BJ.p)>21){BJ.reveal=true;BJ.over=true;bjRender();settle(BJ.bet,0,"BLACKJACK");sfx("lose");bjActions(false);$("bjdeal").disabled=false;return}bjStand()}
+function bjDouble(){if(BJ.over||S.coins<BJ.bet)return;S.coins-=BJ.bet;S.wagered+=BJ.bet;syncBalanceBar();BJ.bet*=2;BJ.p.push(BJ.deck.pop());sfx("chip");if(val(BJ.p)>21){BJ.reveal=true;BJ.over=true;bjRender();settle(BJ.bet,0,"BLACKJACK");sfx("lose");bjActions(false);$("bjdeal").disabled=false;return}bjStand()}
 function bjResolve(){
  const pv=val(BJ.p),dv=val(BJ.d);
  if(pv===dv){
@@ -1442,7 +1447,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   function saveProf(x){localStorage.setItem(profileKey,JSON.stringify(x))}
   function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile()}
   function renderProfile(){const p=prof();const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a)a.textContent=(p.avatar||'FN').slice(0,3).toUpperCase();if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
-  async function start(){const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
+  async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   function openSocial(type){const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');o.classList.remove('hidden');if(type==='profile'){const x=prof();p.innerHTML='<h2>PROFILE</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+String(x.name).replace(/"/g,'&quot;')+'"><label>AVATAR TAG</label><input id="pavatar" maxlength="3" value="'+String(x.avatar).replace(/"/g,'&quot;')+'"><div class="socialActions"><button class="primary" id="saveP">SAVE</button><button id="closeP">CLOSE</button></div>';document.getElementById('saveP').onclick=()=>{x.name=(document.getElementById('pname').value||'PLAYER').trim()||'PLAYER';x.avatar=(document.getElementById('pavatar').value||'FN').trim().slice(0,3).toUpperCase()||'FN';saveProf(x);renderProfile();o.classList.add('hidden')};document.getElementById('closeP').onclick=()=>o.classList.add('hidden')}
   else if(type==='friends'){p.innerHTML='<h2>FRIENDS</h2><p style="color:#777;font-size:10px">Friend system is ready for the online backend.</p><label>ADD FRIEND NAME</label><input id="friendName" maxlength="16" placeholder="PLAYER"><div class="socialActions"><button class="primary" onclick="this.textContent=\'ADDED\'">ADD</button><button id="closeF">CLOSE</button></div>';document.getElementById('closeF').onclick=()=>o.classList.add('hidden')}
   else{const code=Math.random().toString(36).slice(2,8).toUpperCase(),url=location.origin+location.pathname+'#room='+code;p.innerHTML='<h2>PRIVATE ROOM</h2><p style="color:#777;font-size:10px">Share this URL when the online server is connected.</p><div class="roomCode"><small>ROOM CODE</small><strong>'+code+'</strong></div><div class="socialActions"><button class="primary" id="copyRoom">COPY URL</button><button id="closeR">CLOSE</button></div>';document.getElementById('copyRoom').onclick=()=>navigator.clipboard?.writeText(url);document.getElementById('closeR').onclick=()=>o.classList.add('hidden')}}
