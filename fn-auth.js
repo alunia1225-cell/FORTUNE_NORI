@@ -1,4 +1,4 @@
-/* FORTUNE NOIR unified authentication gate v7.0.0 */
+/* FORTUNE NOIR unified authentication gate v8.0.0 */
 (function(){
   'use strict';
   const API='https://fortune-noir-admin-api.alunia1225.workers.dev';
@@ -94,7 +94,7 @@
     button.disabled=true; status.textContent='AUTHENTICATING...';
     try{
       if(name.toLowerCase()===ADMIN_ID.toLowerCase()){
-        const d=await api('/auth/login',{method:'POST',body:JSON.stringify({username:ADMIN_ID,password:pass})});
+        const passwordB64=btoa(unescape(encodeURIComponent(pass))); const d=await api('/auth/login',{method:'POST',body:JSON.stringify({username:ADMIN_ID,password:pass,password_b64:passwordB64})});
         if(!d.token || d.role!=='admin') throw new Error('INVALID_ADMIN_RESPONSE');
         window.FN_ADMIN_TOKEN=d.token; localStorage.setItem(K.admin,d.token); localStorage.removeItem(K.player); localStorage.setItem(K.role,'admin'); localStorage.setItem(K.name,ADMIN_ID);
         setRole('admin',ADMIN_ID); hideLogin(); status.textContent='ADMIN AUTHENTICATED'; return true;

@@ -1513,7 +1513,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   try{
     if(typeof render==="function")render();
     debugLog("BOOT","APPLICATION INITIALIZED",{coins:S.coins});
-    if(FN_API_URL && localStorage.getItem("FN_ROLE")==="player" && localStorage.getItem("FN_PLAYER_TOKEN")) fnEnsureOnlinePlayer();
+    if(window.__FN_AUTH_ROLE==="player" && FN_API_URL && localStorage.getItem("FN_PLAYER_TOKEN")) fnEnsureOnlinePlayer();
     try{window.FN_ENFORCE_DEBUG_ACCESS?.()}catch(_){}
   }catch(e){debugLog("ERROR","INITIALIZATION FAILED",{error:String(e),stack:e.stack})}
 });
@@ -1535,21 +1535,49 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.body.appendChild(p);
     p.querySelector("#fnAdminClose").onclick=()=>p.classList.add("hidden");
     p.querySelectorAll(".fn-admin-presets button").forEach(b=>b.onclick=()=>p.querySelector("#fnAdminAmount").value=b.dataset.a);
-    p.querySelector("#fnAdminGrant").onclick=grant; p.querySelector("#fnAdminLogout").onclick=logout;
+    p.querySelector("#fnAdminGrant").onclick=grant;
+    p.querySelector("#fnAdminLogout").onclick=logout;
     return p;
   }
-  async function open(){FN_ADMIN_TOKEN=localStorage.getItem("FN_ADMIN_TOKEN")||FN_ADMIN_TOKEN;if(!FN_ADMIN_TOKEN){window.FN_AUTH_LOGIN?.();return}try{const me=await fnApi("/auth/me",{},FN_ADMIN_TOKEN);if(me.role!=="admin")throw new Error("FORBIDDEN");const p=panel();p.classList.remove("hidden");loadLogs()}catch(e){FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN");setAdminButton(false);alert("ADMIN SESSION EXPIRED");}}
-  async function grant(){const p=panel(),playerId=p.querySelector("#fnAdminPlayer").value.trim(),amount=Number(p.querySelector("#fnAdminAmount").value),note=p.querySelector("#fnAdminNote").value.trim();if(!playerId||!Number.isSafeInteger(amount)||amount===0){p.querySelector("#fnAdminStatus").textContent="INVALID INPUT";return}try{const d=await fnApi("/admin/grant",{method:"POST",body:JSON.stringify({playerId,amount,note})},FN_ADMIN_TOKEN);p.querySelector("#fnAdminBalance").textContent="TARGET BALANCE "+Number(d.balance).toLocaleString("ja-JP");p.querySelector("#fnAdminStatus").textContent="GRANT SUCCESS";loadLogs();if(playerId===FN_SERVER_PLAYER_ID){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render()}}catch(e){p.querySelector("#fnAdminStatus").textContent="GRANT FAILED: "+(e.message||"ERROR")}}
-  async function loadLogs(){try{const d=await fnApi("/admin/logs",{},FN_ADMIN_TOKEN);const pre=panel().querySelector("#fnAdminLogs");pre.textContent=(d.logs||[]).map(x=>new Date(x.created_at).toLocaleString()+"  "+x.target_player_id+"  "+(x.amount>0?"+":"")+x.amount+"  "+x.note).join("\n")||"NO ADMIN LOGS"}catch(_) {}}
-  async function logout(){try{await fnApi("/auth/logout",{method:"POST"},FN_ADMIN_TOKEN)}catch(_){}FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN");setAdminButton(false);document.getElementById("fnAdminPanel")?.classList.add("hidden")}
-  function setAdminButton(on){let b=document.getElementById("fnAdminButton");if(on){if(!b){b=document.createElement("button");b.id="fnAdminButton";b.className="fn-admin-button";b.textContent="ADMIN";b.onclick=open;document.body.appendChild(b)}}else b?.remove()}
-  function mountLogin(){
-    if(!FN_API_URL)return;
-        FN_ADMIN_TOKEN=localStorage.getItem("FN_ADMIN_TOKEN")||FN_ADMIN_TOKEN;
-        if(FN_ADMIN_TOKEN)fnApi("/auth/me",{},FN_ADMIN_TOKEN).then(d=>{if(d.role==="admin")setAdminButton(true)}).catch(()=>{FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN")});
+  async function open(){
+    if(window.__FN_AUTH_ROLE!=='admin'){window.FN_AUTH_LOGIN?.();return;}
+    const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';
+    if(!token){window.FN_AUTH_LOGIN?.();return;}
+    try{
+      const me=await fnApi('/auth/me',{},token);
+      if(me.role!=='admin')throw new Error('FORBIDDEN');
+      const p=panel();p.classList.remove('hidden');loadLogs();
+    }catch(e){
+      localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);window.FN_AUTH_LOGIN?.();
+    }
   }
-  window.FN_ADMIN_LOGIN=login;window.FN_ADMIN_OPEN=open;
-  document.addEventListener("DOMContentLoaded",mountLogin);
+  async function grant(){
+    const p=panel(),playerId=p.querySelector("#fnAdminPlayer").value.trim(),amount=Number(p.querySelector("#fnAdminAmount").value),note=p.querySelector("#fnAdminNote").value.trim();
+    if(!playerId||!Number.isSafeInteger(amount)||amount===0){p.querySelector("#fnAdminStatus").textContent="INVALID INPUT";return}
+    try{
+      const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';
+      const d=await fnApi("/admin/grant",{method:"POST",body:JSON.stringify({playerId,amount,note})},token);
+      p.querySelector("#fnAdminBalance").textContent="TARGET BALANCE "+Number(d.balance).toLocaleString("ja-JP");
+      p.querySelector("#fnAdminStatus").textContent="GRANT SUCCESS";loadLogs();
+      if(playerId===FN_SERVER_PLAYER_ID){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render()}
+    }catch(e){p.querySelector("#fnAdminStatus").textContent="GRANT FAILED: "+(e.message||"ERROR")}
+  }
+  async function loadLogs(){
+    try{const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';const d=await fnApi("/admin/logs",{},token);panel().querySelector("#fnAdminLogs").textContent=(d.logs||[]).map(x=>new Date(x.created_at).toLocaleString()+"  "+x.target_player_id+"  "+(x.amount>0?"+":"")+x.amount+"  "+x.note).join("\n")||"NO ADMIN LOGS"}catch(_){ }
+  }
+  async function logout(){
+    const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';try{if(token)await fnApi('/auth/logout',{method:'POST'},token)}catch(_){ }
+    localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);document.getElementById('fnAdminPanel')?.classList.add('hidden');window.FN_AUTH_LOGOUT?.();
+  }
+  function setAdminButton(on){
+    let b=document.getElementById('fnAdminButton');
+    if(on){if(!b){b=document.createElement('button');b.id='fnAdminButton';b.className='fn-admin-button';b.textContent='ADMIN';b.onclick=open;document.body.appendChild(b)}}
+    else b?.remove();
+  }
+  window.FN_ADMIN_OPEN=open;
+  window.FN_ADMIN_LOGIN=()=>window.FN_AUTH_LOGIN?.();
+  window.addEventListener('fn-auth-changed',e=>setAdminButton(e.detail?.role==='admin'));
+  document.addEventListener('DOMContentLoaded',()=>{if(window.__FN_AUTH_ROLE==='admin')setAdminButton(true)});
 })();
 
 /* ===== REAL APP TITLE / LOBBY SHELL ===== */
