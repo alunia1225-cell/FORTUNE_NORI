@@ -1,4 +1,4 @@
-/* FORTUNE NOIR AUTH v5.0.0
+/* FORTUNE NOIR AUTH v6.0.0
  * Integrated with the supplied app.js v1.10.0.
  * Auth is established BEFORE the game runtime starts.
  * No PROFILE dependency. No programmatic TAP firing. No duplicate event binding.
@@ -6,7 +6,7 @@
 (function(){
   'use strict';
   const API='https://fortune-noir-admin-api.alunia1225.workers.dev';
-  const ZERO_WIDTH=/[\u200B-\u200D\uFEFF]/g;
+  const INVISIBLE=/[\u200B-\u200D\uFEFF\u2060\u2061\u2062\u2063\u2064\u2065\u2066\u2067\u2068\u2069\u206A-\u206F]/g;
   const ADMIN_ID='391x';
   const K={admin:'FN_ADMIN_TOKEN',player:'FN_PLAYER_TOKEN',pid:'FN_SERVER_PLAYER_ID',role:'FN_ROLE',name:'FN_LOGIN_NAME'};
   window.FN_ADMIN_API_URL=API;
@@ -103,7 +103,7 @@
   function showLogin(){ensureUI();const o=$('fnLoginOverlay');if(o)o.classList.remove('hidden');setTimeout(()=>{$('fnLoginName')?.focus()},0);}
 
   function cleanPassword(v){
-    return String(v==null?'':v).replace(ZERO_WIDTH,'').replace(/[\r\n]/g,'');
+    return String(v==null?'':v).normalize('NFKC').replace(INVISIBLE,'').replace(/[\u0000-\u001F\u007F]/g,'').replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g,' ').trim();
   }
 
   async function login(rawName,rawPass){
@@ -141,7 +141,7 @@
       const code=e.status||'NETWORK';
       status.textContent='LOGIN FAILED ['+code+'] '+(e.message||'UNKNOWN_ERROR');
       if(name.toLowerCase()===ADMIN_ID.toLowerCase() && code===401){
-        status.textContent='LOGIN FAILED [401] INVALID_CREDENTIALS — Worker rejected the submitted password (length '+pass.length+')';
+        status.textContent='LOGIN FAILED [401] INVALID_CREDENTIALS — Worker rejected the submitted password (length '+pass.length+', normalized)';
       }
       if(name.toLowerCase()===ADMIN_ID.toLowerCase()){localStorage.removeItem(K.admin);localStorage.removeItem(K.role);window.__FN_AUTH_ROLE='';window.__FN_AUTHENTICATED=false;showDebug(false);}
       return false;
