@@ -1525,59 +1525,57 @@ document.addEventListener("DOMContentLoaded",()=>{
  },{passive:true});
 })();
 
-/* ===== ADMIN PANEL: server-authoritative grant UI ===== */
+/* ===== ADMIN PANEL: server-authoritative admin center ===== */
 (function(){
   function el(tag,attrs,html){const e=document.createElement(tag);Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,v));if(html!==undefined)e.innerHTML=html;return e}
+  let currentTab='overview';
   function panel(){
-    if(document.getElementById("fnAdminPanel"))return document.getElementById("fnAdminPanel");
-    const p=el("div",{id:"fnAdminPanel",class:"fn-admin-panel hidden"});
-    p.innerHTML='<div class="fn-admin-card"><div class="fn-admin-head"><div><small>FORTUNE NOIR / SECURE CONTROL</small><h2>ADMIN CONSOLE</h2></div><button id="fnAdminClose" type="button">×</button></div><div class="fn-admin-status" id="fnAdminStatus">SERVER CONNECTED</div><label>PLAYER ID</label><input id="fnAdminPlayer" placeholder="player id"><label>COIN AMOUNT</label><input id="fnAdminAmount" type="number" step="1" placeholder="10000"><label>NOTE</label><input id="fnAdminNote" maxlength="120" placeholder="ADMIN GRANT"><div class="fn-admin-presets"><button data-a="1000">+1,000</button><button data-a="10000">+10,000</button><button data-a="50000">+50,000</button><button data-a="-1000">-1,000</button></div><button class="fn-admin-grant" id="fnAdminGrant" type="button">GRANT COINS</button><div class="fn-admin-balance" id="fnAdminBalance">TARGET BALANCE —</div><pre id="fnAdminLogs"></pre><button id="fnAdminLogout" type="button">LOGOUT</button></div>';
+    if(document.getElementById('fnAdminPanel'))return document.getElementById('fnAdminPanel');
+    const p=el('div',{id:'fnAdminPanel',class:'fn-admin-panel hidden'});
+    p.innerHTML='<div class="fn-admin-card fn-admin-center">'+
+      '<div class="fn-admin-head"><div><small>FORTUNE NOIR / SECURE CONTROL</small><h2>ADMIN CENTER</h2></div><button id="fnAdminClose" type="button">×</button></div>'+ 
+      '<div class="fn-admin-tabs">'+
+      '<button data-tab="overview">OVERVIEW</button><button data-tab="players">PLAYERS</button><button data-tab="balance">BALANCE</button><button data-tab="logs">LOGS</button><button data-tab="games">GAME CONTROL</button><button data-tab="debug">DEBUG</button></div>'+ 
+      '<div id="fnAdminContent"></div><button id="fnAdminLogout" class="fn-admin-logout" type="button">LOGOUT</button></div>';
     document.body.appendChild(p);
-    p.querySelector("#fnAdminClose").onclick=()=>p.classList.add("hidden");
-    p.querySelectorAll(".fn-admin-presets button").forEach(b=>b.onclick=()=>p.querySelector("#fnAdminAmount").value=b.dataset.a);
-    p.querySelector("#fnAdminGrant").onclick=grant;
-    p.querySelector("#fnAdminLogout").onclick=logout;
+    p.querySelector('#fnAdminClose').onclick=()=>p.classList.add('hidden');
+    p.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{currentTab=b.dataset.tab;renderTab()});
+    p.querySelector('#fnAdminLogout').onclick=logout;
     return p;
   }
-  async function open(){
-    if(window.__FN_AUTH_ROLE!=='admin'){window.FN_AUTH_LOGIN?.();return;}
-    const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';
-    if(!token){window.FN_AUTH_LOGIN?.();return;}
-    try{
-      const me=await fnApi('/auth/me',{},token);
-      if(me.role!=='admin')throw new Error('FORBIDDEN');
-      const p=panel();p.classList.remove('hidden');loadLogs();
-    }catch(e){
-      localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);window.FN_AUTH_LOGIN?.();
-    }
+  async function apiAdmin(path,options={}){const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';return fnApi(path,options,token)}
+  function content(){return panel().querySelector('#fnAdminContent')}
+  async function renderTab(){
+    const c=content(); c.innerHTML='<div class="fn-admin-loading">LOADING…</div>';
+    if(currentTab==='overview')return overview();
+    if(currentTab==='players')return players();
+    if(currentTab==='balance')return balance();
+    if(currentTab==='logs')return logs();
+    if(currentTab==='games')return games();
+    if(currentTab==='debug')return debugTab();
   }
-  async function grant(){
-    const p=panel(),playerId=p.querySelector("#fnAdminPlayer").value.trim(),amount=Number(p.querySelector("#fnAdminAmount").value),note=p.querySelector("#fnAdminNote").value.trim();
-    if(!playerId||!Number.isSafeInteger(amount)||amount===0){p.querySelector("#fnAdminStatus").textContent="INVALID INPUT";return}
-    try{
-      const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';
-      const d=await fnApi("/admin/grant",{method:"POST",body:JSON.stringify({playerId,amount,note})},token);
-      p.querySelector("#fnAdminBalance").textContent="TARGET BALANCE "+Number(d.balance).toLocaleString("ja-JP");
-      p.querySelector("#fnAdminStatus").textContent="GRANT SUCCESS";loadLogs();
-      if(playerId===FN_SERVER_PLAYER_ID){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render()}
-    }catch(e){p.querySelector("#fnAdminStatus").textContent="GRANT FAILED: "+(e.message||"ERROR")}
+  async function overview(){
+    try{const d=await apiAdmin('/admin/stats');content().innerHTML=`<div class="fn-admin-grid"><div><b>PLAYERS</b><strong>${d.players}</strong></div><div><b>TOTAL BALANCE</b><strong>${d.totalBalance.toLocaleString('ja-JP')}</strong></div><div><b>LEDGER TX</b><strong>${d.ledgerCount}</strong></div><div><b>TODAY GRANTED</b><strong>+${d.todayGrant.toLocaleString('ja-JP')}</strong></div><div><b>TODAY REVOKED</b><strong>-${d.todayRevoke.toLocaleString('ja-JP')}</strong></div><div><b>MAINTENANCE</b><strong>${d.maintenance?'ON':'OFF'}</strong></div></div><div class="fn-admin-note">Server-authoritative admin center. All balance changes are recorded server-side.</div>`}catch(e){content().innerHTML='<div class="fn-admin-error">FAILED: '+(e.message||e)+'</div>'}
   }
-  async function loadLogs(){
-    try{const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';const d=await fnApi("/admin/logs",{},token);panel().querySelector("#fnAdminLogs").textContent=(d.logs||[]).map(x=>new Date(x.created_at).toLocaleString()+"  "+x.target_player_id+"  "+(x.amount>0?"+":"")+x.amount+"  "+x.note).join("\n")||"NO ADMIN LOGS"}catch(_){ }
+  async function players(){
+    content().innerHTML='<div class="fn-admin-row"><input id="fnPlayerSearch" placeholder="PLAYER ID / NAME"><button id="fnPlayerSearchBtn">SEARCH</button></div><div id="fnPlayersList"></div>';
+    const load=async()=>{const q=content().querySelector('#fnPlayerSearch').value.trim();try{const d=await apiAdmin('/admin/players?'+new URLSearchParams({q}));content().querySelector('#fnPlayersList').innerHTML=(d.players||[]).map(x=>`<button class="fn-player-row" data-pid="${x.player_id}"><span>${x.name}</span><small>${x.player_id}</small><b>${Number(x.balance).toLocaleString('ja-JP')}</b></button>`).join('')||'<div class="fn-admin-note">NO PLAYERS</div>';content().querySelectorAll('.fn-player-row').forEach(b=>b.onclick=()=>playerDetail(b.dataset.pid))}catch(e){content().querySelector('#fnPlayersList').textContent='FAILED: '+e.message}};
+    content().querySelector('#fnPlayerSearchBtn').onclick=load; content().querySelector('#fnPlayerSearch').onkeydown=e=>{if(e.key==='Enter')load()}; load();
   }
-  async function logout(){
-    const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';try{if(token)await fnApi('/auth/logout',{method:'POST'},token)}catch(_){ }
-    localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);document.getElementById('fnAdminPanel')?.classList.add('hidden');window.FN_AUTH_LOGOUT?.();
+  async function playerDetail(pid){try{const d=await apiAdmin('/admin/player?'+new URLSearchParams({playerId:pid}));content().innerHTML=`<button id="fnBackPlayers">← PLAYERS</button><h3>${d.player.name}</h3><div class="fn-admin-note">${d.player.player_id}<br>BALANCE: ${Number(d.player.balance).toLocaleString('ja-JP')}</div><div class="fn-admin-table">${(d.transactions||[]).map(x=>`<div><span>${new Date(x.created_at).toLocaleString('ja-JP')}</span><b>${x.delta>0?'+':''}${x.delta}</b><small>${x.reason||''}</small></div>`).join('')||'NO TRANSACTIONS'}</div>`;content().querySelector('#fnBackPlayers').onclick=players}catch(e){content().innerHTML='FAILED: '+e.message}}
+  async function balance(){
+    content().innerHTML='<h3>BALANCE CONTROL</h3><label>PLAYER ID</label><input id="fnAdminPlayer" placeholder="player id"><label>AMOUNT</label><input id="fnAdminAmount" type="number" step="1" placeholder="10000"><label>NOTE</label><input id="fnAdminNote" maxlength="120" placeholder="ADMIN GRANT"><div class="fn-admin-presets"><button data-a="1000">+1,000</button><button data-a="10000">+10,000</button><button data-a="50000">+50,000</button><button data-a="-1000">-1,000</button></div><button class="fn-admin-grant" id="fnAdminGrant">APPLY BALANCE</button><div id="fnAdminBalance"></div>';
+    content().querySelectorAll('.fn-admin-presets button').forEach(b=>b.onclick=()=>content().querySelector('#fnAdminAmount').value=b.dataset.a);content().querySelector('#fnAdminGrant').onclick=grant;
   }
-  function setAdminButton(on){
-    let b=document.getElementById('fnAdminButton');
-    if(on){if(!b){b=document.createElement('button');b.id='fnAdminButton';b.className='fn-admin-button';b.textContent='ADMIN';b.onclick=open;document.body.appendChild(b)}}
-    else b?.remove();
-  }
-  window.FN_ADMIN_OPEN=open;
-  window.FN_ADMIN_LOGIN=()=>window.FN_AUTH_LOGIN?.();
-  window.addEventListener('fn-auth-changed',e=>setAdminButton(e.detail?.role==='admin'));
-  document.addEventListener('DOMContentLoaded',()=>{if(window.__FN_AUTH_ROLE==='admin')setAdminButton(true)});
+  async function grant(){const c=content(),playerId=c.querySelector('#fnAdminPlayer').value.trim(),amount=Number(c.querySelector('#fnAdminAmount').value),note=c.querySelector('#fnAdminNote').value.trim();if(!playerId||!Number.isSafeInteger(amount)||amount===0){c.querySelector('#fnAdminBalance').textContent='INVALID INPUT';return}try{const d=await apiAdmin('/admin/grant',{method:'POST',body:JSON.stringify({playerId,amount,note})});c.querySelector('#fnAdminBalance').textContent='SUCCESS • BALANCE '+Number(d.balance).toLocaleString('ja-JP');if(playerId===FN_SERVER_PLAYER_ID){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render()}}catch(e){c.querySelector('#fnAdminBalance').textContent='FAILED: '+e.message}}
+  async function logs(){try{const d=await apiAdmin('/admin/logs');content().innerHTML='<h3>ADMIN LOGS</h3><pre class="fn-admin-logbox">'+((d.logs||[]).map(x=>new Date(x.created_at).toLocaleString('ja-JP')+'  '+x.target_player_id+'  '+(x.amount>0?'+':'')+x.amount+'  '+x.note).join('\n')||'NO ADMIN LOGS')+'</pre>'}catch(e){content().textContent='FAILED: '+e.message}}
+  async function games(){try{const d=await apiAdmin('/admin/stats');content().innerHTML=`<h3>GAME CONTROL</h3><div class="fn-admin-control"><span>MAINTENANCE MODE</span><b>${d.maintenance?'ON':'OFF'}</b><button id="fnMaint">${d.maintenance?'DISABLE':'ENABLE'}</button></div><div class="fn-admin-control danger"><span>EMERGENCY STOP</span><button id="fnEmergency">${d.maintenance?'RELEASE ALL GAMES':'STOP ALL GAMES'}</button></div><p class="fn-admin-note">Maintenance state is stored server-side. Game clients can use this state to block play.</p>`;content().querySelector('#fnMaint').onclick=()=>toggleMaintenance(!d.maintenance);content().querySelector('#fnEmergency').onclick=()=>toggleMaintenance(!d.maintenance)}catch(e){content().textContent='FAILED: '+e.message}}
+  async function toggleMaintenance(enabled){try{await apiAdmin('/admin/maintenance',{method:'POST',body:JSON.stringify({enabled})});games()}catch(e){content().innerHTML='<div class="fn-admin-error">FAILED: '+e.message+'</div>'}}
+  function debugTab(){content().innerHTML='<h3>DEBUG</h3><button id="fnOpenDebug">OPEN DEBUG PANEL</button><button id="fnClearDebug">CLEAR DEBUG LOG</button>';content().querySelector('#fnOpenDebug').onclick=()=>{if(window.__FN_AUTH_ROLE==='admin'&&typeof window.toggleDebug==='function')window.toggleDebug()};content().querySelector('#fnClearDebug').onclick=()=>window.clearDebug?.()}
+  async function open(){if(window.__FN_AUTH_ROLE!=='admin'){window.FN_AUTH_LOGIN?.();return}const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';if(!token){window.FN_AUTH_LOGIN?.();return}try{const me=await fnApi('/auth/me',{},token);if(me.role!=='admin')throw new Error('FORBIDDEN');panel().classList.remove('hidden');renderTab()}catch(e){localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);window.FN_AUTH_LOGIN?.()}}
+  async function logout(){const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';try{if(token)await fnApi('/auth/logout',{method:'POST'},token)}catch(_){}localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);document.getElementById('fnAdminPanel')?.classList.add('hidden');window.FN_AUTH_LOGOUT?.()}
+  function setAdminButton(on){let b=document.getElementById('fnAdminButton');if(on){if(!b){b=document.createElement('button');b.id='fnAdminButton';b.className='fn-admin-button';b.textContent='ADMIN';b.onclick=open;document.body.appendChild(b)}}else b?.remove()}
+  window.FN_ADMIN_OPEN=open;window.FN_ADMIN_LOGIN=()=>window.FN_AUTH_LOGIN?.();window.addEventListener('fn-auth-changed',e=>setAdminButton(e.detail?.role==='admin'));document.addEventListener('DOMContentLoaded',()=>{if(window.__FN_AUTH_ROLE==='admin')setAdminButton(true)});
 })();
 
 /* ===== REAL APP TITLE / LOBBY SHELL ===== */
