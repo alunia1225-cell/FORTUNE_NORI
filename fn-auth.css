@@ -28,3 +28,28 @@ html.fn-nonadmin #lobbyAdminBtn{display:none!important;visibility:hidden!importa
 
 /* ADMIN CONTROL must remain tappable above lobby decoration/overlays. */
 #lobbyAdminBtn.profile-admin-btn{position:relative!important;z-index:10001!important;pointer-events:auto!important;touch-action:manipulation!important;}
+
+/* ADMIN CONTROL / CENTER: lobby uses an intentionally very high stacking context. */
+#lobbyAdminBtn.profile-admin-btn,
+.lobbyTools .profile-tool,
+.lobbyTools .profile-admin-btn{
+  position:relative!important;
+  z-index:2147483002!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+}
+/* The admin center must sit ABOVE #appLobby (which is z-index:2147482000). */
+#fnAdminPanel{
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483005!important;
+  pointer-events:auto!important;
+  touch-action:auto!important;
+}
+#fnAdminPanel.hidden{display:none!important}
+#fnAdminPanel .fn-admin-card,
+#fnAdminPanel button,
+#fnAdminPanel input{
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+}
