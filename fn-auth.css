@@ -53,3 +53,8 @@ html.fn-nonadmin #lobbyAdminBtn{display:none!important;visibility:hidden!importa
   pointer-events:auto!important;
   touch-action:manipulation!important;
 }
+
+/* ===== Phase 1 online / player controls ===== */
+.fn-admin-password-wrap[hidden]{display:none!important}
+.fn-admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.fn-admin-actions button{flex:1;min-width:120px;background:#171717;color:#fff;border:1px solid #444;border-radius:8px;padding:10px}
+.friend-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;margin:5px 0;background:#111;border:1px solid #2d2d2d;border-radius:8px}.friend-row button{background:#171717;color:#fff;border:1px solid #444;border-radius:7px;padding:7px 9px}.roomCode{margin:14px 0;text-align:center;padding:16px;background:#101010;border:1px solid #3d321d;border-radius:10px}.roomCode strong{display:block;font:900 30px Orbitron,system-ui,sans-serif;letter-spacing:6px;color:#d9bb61;margin-top:6px}.socialActions input{flex:1;min-width:0}
