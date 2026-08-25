@@ -25,3 +25,6 @@ html.fn-nonadmin #debugToggle,html.fn-nonadmin #debugEmergency,html.fn-nonadmin 
 .profile-admin-btn:active{transform:translateY(1px);background:#211b0d}
 html.fn-nonadmin #lobbyAdminBtn{display:none!important;visibility:hidden!important;pointer-events:none!important}
 @media(max-width:700px){.profile-admin-btn{min-height:54px}}
+
+/* ADMIN CONTROL must remain tappable above lobby decoration/overlays. */
+#lobbyAdminBtn.profile-admin-btn{position:relative!important;z-index:10001!important;pointer-events:auto!important;touch-action:manipulation!important;}

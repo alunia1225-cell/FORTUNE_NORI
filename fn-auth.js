@@ -41,15 +41,11 @@
     ['debugToggle','debugEmergency','debugEmergencyPanel','debugPanel','lobbyDebugBtn'].forEach(id=>{
       const e=$(id); if(e)e.style.setProperty('display',admin?'':'none','important');
     });
+    // DEBUG is accessed from the ADMIN CENTER / lobby SYSTEM button.
+    // Do not create a fixed ADMIN DEBUG overlay because it can sit over the
+    // mobile ADMIN CONTROL button and steal pointer events.
     const b=$('fnAuthAdminDebug');
-    if(admin){
-      if(!b){
-        const x=document.createElement('button'); x.id='fnAuthAdminDebug'; x.type='button'; x.textContent='ADMIN DEBUG';
-        x.addEventListener('click',()=>{ if(window.__FN_AUTH_ROLE==='admin' && typeof window.toggleDebug==='function') window.toggleDebug(); });
-        document.body.appendChild(x);
-      }
-      b?.style.setProperty('display','block','important');
-    }else b?.style.setProperty('display','none','important');
+    if(b) b.remove();
   }
   window.FN_ENFORCE_DEBUG_ACCESS=enforceDebug;
 
