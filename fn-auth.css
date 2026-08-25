@@ -12,3 +12,7 @@ html.fn-nonadmin #lobbyDebugBtn,
 html.fn-nonadmin #fnAuthAdminDebug{display:none!important;pointer-events:none!important;visibility:hidden!important;opacity:0!important}
 
 .fn-password-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch}.fn-password-row input{min-width:0}.fn-password-row button{border:1px solid #62502a;background:#12110d;color:#d9bb61;border-radius:6px;padding:0 14px;font:800 10px Orbitron;cursor:pointer}.fn-password-row button:active{transform:translateY(1px)}
+
+/* HARD AUTH VISIBILITY */
+html.fn-nonadmin #debugToggle,html.fn-nonadmin #debugEmergency,html.fn-nonadmin #debugEmergencyPanel,html.fn-nonadmin #debugPanel,html.fn-nonadmin #lobbyDebugBtn,html.fn-nonadmin #fnAuthAdminDebug{display:none!important;pointer-events:none!important}
+#fnLoginPassword{font-family:ui-monospace,monospace;letter-spacing:.04em}

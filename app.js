@@ -1538,18 +1538,14 @@ document.addEventListener("DOMContentLoaded",()=>{
     p.querySelector("#fnAdminGrant").onclick=grant; p.querySelector("#fnAdminLogout").onclick=logout;
     return p;
   }
-  async function login(){
-    if(!FN_API_URL){alert("ADMIN API URLが未設定です");return false}
-    const username="391x",password=prompt("FORTUNE NOIR ADMIN PASSWORD"); if(password===null)return false;
-    try{const d=await fetch(FN_API_URL+"/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username,password}),cache:"no-store"}).then(async r=>{const x=await r.json();if(!r.ok)throw new Error(x.error||"LOGIN_FAILED");return x});FN_ADMIN_TOKEN=d.token;localStorage.setItem("FN_ADMIN_TOKEN",d.token);setAdminButton(true);return true}catch(e){alert("ADMIN LOGIN FAILED");debugLog("WARN","ADMIN LOGIN FAILED",{error:String(e)});return false}
-  }
-  async function open(){if(!FN_ADMIN_TOKEN){if(!(await login()))return}try{const me=await fnApi("/auth/me",{},FN_ADMIN_TOKEN);if(me.role!=="admin")throw new Error("FORBIDDEN");const p=panel();p.classList.remove("hidden");loadLogs()}catch(e){FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN");setAdminButton(false);alert("ADMIN SESSION EXPIRED");}}
+  async function open(){FN_ADMIN_TOKEN=localStorage.getItem("FN_ADMIN_TOKEN")||FN_ADMIN_TOKEN;if(!FN_ADMIN_TOKEN){window.FN_AUTH_LOGIN?.();return}try{const me=await fnApi("/auth/me",{},FN_ADMIN_TOKEN);if(me.role!=="admin")throw new Error("FORBIDDEN");const p=panel();p.classList.remove("hidden");loadLogs()}catch(e){FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN");setAdminButton(false);alert("ADMIN SESSION EXPIRED");}}
   async function grant(){const p=panel(),playerId=p.querySelector("#fnAdminPlayer").value.trim(),amount=Number(p.querySelector("#fnAdminAmount").value),note=p.querySelector("#fnAdminNote").value.trim();if(!playerId||!Number.isSafeInteger(amount)||amount===0){p.querySelector("#fnAdminStatus").textContent="INVALID INPUT";return}try{const d=await fnApi("/admin/grant",{method:"POST",body:JSON.stringify({playerId,amount,note})},FN_ADMIN_TOKEN);p.querySelector("#fnAdminBalance").textContent="TARGET BALANCE "+Number(d.balance).toLocaleString("ja-JP");p.querySelector("#fnAdminStatus").textContent="GRANT SUCCESS";loadLogs();if(playerId===FN_SERVER_PLAYER_ID){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render()}}catch(e){p.querySelector("#fnAdminStatus").textContent="GRANT FAILED: "+(e.message||"ERROR")}}
   async function loadLogs(){try{const d=await fnApi("/admin/logs",{},FN_ADMIN_TOKEN);const pre=panel().querySelector("#fnAdminLogs");pre.textContent=(d.logs||[]).map(x=>new Date(x.created_at).toLocaleString()+"  "+x.target_player_id+"  "+(x.amount>0?"+":"")+x.amount+"  "+x.note).join("\n")||"NO ADMIN LOGS"}catch(_) {}}
   async function logout(){try{await fnApi("/auth/logout",{method:"POST"},FN_ADMIN_TOKEN)}catch(_){}FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN");setAdminButton(false);document.getElementById("fnAdminPanel")?.classList.add("hidden")}
   function setAdminButton(on){let b=document.getElementById("fnAdminButton");if(on){if(!b){b=document.createElement("button");b.id="fnAdminButton";b.className="fn-admin-button";b.textContent="ADMIN";b.onclick=open;document.body.appendChild(b)}}else b?.remove()}
   function mountLogin(){
     if(!FN_API_URL)return;
+        FN_ADMIN_TOKEN=localStorage.getItem("FN_ADMIN_TOKEN")||FN_ADMIN_TOKEN;
         if(FN_ADMIN_TOKEN)fnApi("/auth/me",{},FN_ADMIN_TOKEN).then(d=>{if(d.role==="admin")setAdminButton(true)}).catch(()=>{FN_ADMIN_TOKEN="";localStorage.removeItem("FN_ADMIN_TOKEN")});
   }
   window.FN_ADMIN_LOGIN=login;window.FN_ADMIN_OPEN=open;
