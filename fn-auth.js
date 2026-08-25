@@ -102,29 +102,18 @@
   function hideLogin(){const o=$('fnLoginOverlay');if(o)o.classList.add('hidden');}
   function showLogin(){ensureUI();const o=$('fnLoginOverlay');if(o)o.classList.remove('hidden');setTimeout(()=>{$('fnLoginName')?.focus()},0);}
 
-  function cleanPassword(v){
-    return String(v==null?'':v).normalize('NFKC').replace(INVISIBLE,'').replace(/[\u0000-\u001F\u007F]/g,'').replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g,' ').trim();
-  }
+  function rawPassword(v){ return String(v==null?'':v); }
 
   async function login(rawName,rawPass){
     const name=String(rawName||'').trim();
-    const pass=cleanPassword(rawPass);
+    const pass=rawPassword(rawPass);
     const status=$('fnLoginStatus'),button=$('fnLoginButton');
     if(!name){status.textContent='PLAYER NAME REQUIRED';return false;}
     if(name.toLowerCase()===ADMIN_ID.toLowerCase()&&!pass){status.textContent='ADMIN PASSWORD REQUIRED';return false;}
     button.disabled=true;status.textContent='AUTHENTICATING...';
     try{
       if(name.toLowerCase()===ADMIN_ID.toLowerCase()){
-        let d;
-        try{
-          d=await api('/auth/login',{method:'POST',body:JSON.stringify({username:ADMIN_ID,password:pass})});
-        }catch(first){
-          // Retry once after removing only common invisible/copy-paste whitespace.
-          const retryPass=pass.trim();
-          if(first.status===401 && retryPass!==pass){
-            d=await api('/auth/login',{method:'POST',body:JSON.stringify({username:ADMIN_ID,password:retryPass})});
-          }else throw first;
-        }
+        const d=await api('/auth/login',{method:'POST',body:JSON.stringify({username:ADMIN_ID,password:pass})});
         if(!d.token||d.role!=='admin')throw new Error('INVALID_ADMIN_RESPONSE');
         localStorage.setItem(K.admin,d.token);localStorage.removeItem(K.player);localStorage.setItem(K.role,'admin');localStorage.setItem(K.name,ADMIN_ID);
         setRole('admin',ADMIN_ID);hideLogin();status.textContent='ADMIN AUTHENTICATED';
@@ -141,7 +130,7 @@
       const code=e.status||'NETWORK';
       status.textContent='LOGIN FAILED ['+code+'] '+(e.message||'UNKNOWN_ERROR');
       if(name.toLowerCase()===ADMIN_ID.toLowerCase() && code===401){
-        status.textContent='LOGIN FAILED [401] INVALID_CREDENTIALS — Worker rejected the submitted password (length '+pass.length+', normalized)';
+        status.textContent='LOGIN FAILED [401] INVALID_CREDENTIALS — Worker rejected the submitted password (length '+pass.length+', raw)';
       }
       if(name.toLowerCase()===ADMIN_ID.toLowerCase()){localStorage.removeItem(K.admin);localStorage.removeItem(K.role);window.__FN_AUTH_ROLE='';window.__FN_AUTHENTICATED=false;showDebug(false);}
       return false;
