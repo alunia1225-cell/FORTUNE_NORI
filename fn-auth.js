@@ -73,7 +73,7 @@
     document.body.appendChild(o);
     const n=$('fnLoginName'),p=$('fnLoginPassword'),b=$('fnLoginButton'),sp=$('fnShowPassword'),wrap=$('fnAdminPasswordWrap');
     const syncAdminField=()=>{const isAdmin=n.value.trim().toLowerCase()===ADMIN_ID.toLowerCase();wrap.hidden=!isAdmin;if(!isAdmin){p.value='';p.type='password';if(sp)sp.textContent='SHOW';} b.textContent=isAdmin?'VERIFY ADMIN':'ENTER';};
-    n.addEventListener('input',syncAdminField); n.addEventListener('change',syncAdminField); syncAdminField();
+    n.addEventListener('input',()=>{n.classList.remove('fn-auth-invalid');syncAdminField()}); n.addEventListener('change',syncAdminField); syncAdminField();
     sp?.addEventListener('click',()=>{p.type=p.type==='password'?'text':'password';sp.textContent=p.type==='password'?'SHOW':'HIDE';});
     b.addEventListener('click',()=>login(n.value,p.value));
     p.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();login(n.value,p.value)}});
@@ -85,8 +85,9 @@
   async function login(rawName,rawPass){
     const name=String(rawName||'').trim();
     const pass=String(rawPass==null?'':rawPass); // NEVER trim/normalize password
-    const status=$('fnLoginStatus'),button=$('fnLoginButton');
-    if(!name){status.textContent='PLAYER NAME REQUIRED';return false;}
+    const status=$('fnLoginStatus'),button=$('fnLoginButton'),nameInput=$('fnLoginName');
+    if(!name){status.textContent='PLAYER NAME REQUIRED';nameInput?.classList.add('fn-auth-invalid');return false;}
+    nameInput?.classList.remove('fn-auth-invalid');
     if(name.toLowerCase()===ADMIN_ID && pass.length===0){status.textContent='ADMIN PASSWORD REQUIRED';return false;}
     button.disabled=true; status.textContent='AUTHENTICATING...';
     try{
@@ -101,8 +102,16 @@
       localStorage.setItem(K.player,d.token); localStorage.removeItem(K.admin); localStorage.setItem(K.role,'player'); localStorage.setItem(K.name,d.name||name); localStorage.setItem(K.pid,String(d.playerId||''));
       setRole('player',name); hideLogin(); status.textContent='PLAYER AUTHENTICATED'; return true;
     }catch(e){
-      if(name.toLowerCase()===ADMIN_ID.toLowerCase()) status.textContent='LOGIN FAILED ['+(e.status||'NETWORK')+'] '+(e.message||'UNKNOWN_ERROR')+' — RAW PASSWORD LENGTH '+pass.length;
-      else status.textContent='LOGIN FAILED ['+(e.status||'NETWORK')+'] '+(e.message||'UNKNOWN_ERROR');
+      if(name.toLowerCase()!==ADMIN_ID.toLowerCase() && e.status===400 && String(e.message||'').toUpperCase()==='INVALID_PLAYER_NAME'){
+        status.textContent='このプレイヤー名は既に使用されています';
+        nameInput?.classList.add('fn-auth-invalid');
+        nameInput?.focus();
+      }else if(name.toLowerCase()===ADMIN_ID.toLowerCase()){
+        status.textContent='LOGIN FAILED ['+(e.status||'NETWORK')+'] '+(e.message||'UNKNOWN_ERROR')+' — RAW PASSWORD LENGTH '+pass.length;
+      }else{
+        status.textContent='LOGIN FAILED ['+(e.status||'NETWORK')+'] '+(e.message||'UNKNOWN_ERROR');
+        nameInput?.classList.remove('fn-auth-invalid');
+      }
       if(name.toLowerCase()===ADMIN_ID.toLowerCase()){window.FN_ADMIN_TOKEN='';localStorage.removeItem(K.admin);localStorage.removeItem(K.role);window.__FN_AUTH_ROLE='';window.__FN_AUTHENTICATED=false;enforceDebug();}
       return false;
     }finally{button.disabled=false;}
