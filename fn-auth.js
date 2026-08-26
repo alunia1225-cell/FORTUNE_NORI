@@ -28,7 +28,7 @@
       let p={name:'PLAYER',avatar:'FN',games:0,wins:0};
       try{p=JSON.parse(localStorage.getItem(key)||'null')||p}catch(_){ }
       p.name=String(name||'PLAYER').trim()||'PLAYER';
-      p.icon=p.name===ADMIN_ID?'♠':(p.icon||'♠');p.frame=p.name===ADMIN_ID?'gold':(p.frame||'classic');
+      p.icon=p.icon||'♠';p.frame=p.frame||'classic';
       localStorage.setItem(key,JSON.stringify(p));
       const n=$('playerName'),a=$('avatarText'),m=$('profileMeta');
       if(n)n.textContent=p.name; if(a)a.textContent=p.icon||'♠'; if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1);
@@ -66,9 +66,9 @@
     const o=document.createElement('div'); o.id='fnLoginOverlay';
     o.innerHTML='<div class="fn-login-card">'
       +'<div class="fn-login-kicker">FORTUNE NOIR / SECURE ACCESS</div>'
-      +'<h1>ENTER FORTUNE NOIR</h1><p class="fn-login-sub">Player names are saved on the server. 391x is reserved for administrator access.</p>'
+      +'<h1>ENTER FORTUNE NOIR</h1><p class="fn-login-sub">Player names are saved on the server.</p>'
       +'<label>PLAYER NAME</label><input id="fnLoginName" maxlength="16" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="PLAYER">'
-      +'<div id="fnAdminPasswordWrap" class="fn-admin-password-wrap" hidden><label>ADMIN PASSWORD <small>391x ONLY</small></label><div class="fn-password-row"><input id="fnLoginPassword" type="password" inputmode="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="••••••••"><button id="fnShowPassword" type="button">SHOW</button></div></div>'
+      +'<div id="fnAdminPasswordWrap" class="fn-admin-password-wrap" hidden><label>ADMIN PASSWORD</label><div class="fn-password-row"><input id="fnLoginPassword" type="password" inputmode="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="••••••••"><button id="fnShowPassword" type="button">SHOW</button></div></div>'
       +'<button id="fnLoginButton" type="button">ENTER</button><div id="fnLoginStatus">NAME REGISTRATION READY</div></div>';
     document.body.appendChild(o);
     const n=$('fnLoginName'),p=$('fnLoginPassword'),b=$('fnLoginButton'),sp=$('fnShowPassword'),wrap=$('fnAdminPasswordWrap');
@@ -88,7 +88,7 @@
     const status=$('fnLoginStatus'),button=$('fnLoginButton'),nameInput=$('fnLoginName');
     if(!name){status.textContent='PLAYER NAME REQUIRED';nameInput?.classList.add('fn-auth-invalid');return false;}
     nameInput?.classList.remove('fn-auth-invalid');
-    if(name.toLowerCase()===ADMIN_ID && pass.length===0){status.textContent='ADMIN PASSWORD REQUIRED';return false;}
+    if(name.toLowerCase()===ADMIN_ID && pass.length===0){status.textContent='ENTER ADMIN PASSWORD';return false;}
     button.disabled=true; status.textContent='AUTHENTICATING...';
     try{
       if(name.toLowerCase()===ADMIN_ID.toLowerCase()){
