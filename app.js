@@ -181,34 +181,29 @@ function renderRouletteHistory(){
    ? list.map((x,i)=>`<span class="roulette-history-number ${rouletteHistoryColor(x)}" title="${x}">${x}</span>`).join("")
    : `<small>NO HISTORY</small>`;
 }
-
-
-
-
-
 function puchun(){
-  const overlay=$("blackout");
-  if(!overlay)return;
-  overlay.classList.add("puchun-active");
-  overlay.style.display="flex";
-  overlay.innerHTML='<video id="puchunEffectVideo" playsinline preload="auto" autoplay></video>';
-  const video=$("puchunEffectVideo");
-  if(!video)return;
-  video.src="puchun_effect.mp4?v=1";
-  video.muted=false;
-  video.volume=1;
-  const finish=()=>{
-    video.pause();
-    video.removeAttribute("src");
-    video.load();
-    overlay.classList.remove("puchun-active");
-    overlay.style.display="none";
-    overlay.innerHTML="";
-  };
-  video.addEventListener("ended",finish,{once:true});
-  video.addEventListener("error",finish,{once:true});
-  video.play().catch(()=>{});
-  debugLog&&debugLog("AUDIO","PUCHUN VIDEO",{file:"puchun_effect.mp4",audio:"embedded",blackout:true});
+  const e=$("blackout");
+  if(e){
+    e.classList.add("puchun-active");
+    e.style.display="flex";
+  }
+  // The supplied 2.68s announcement is the only Puchun sound.
+  try{
+    const au=new Audio("puchun_notice.mp3?v=4.2");
+    au.volume=.9;
+    au.currentTime=0;
+    au.play().catch(()=>{});
+    au.addEventListener("ended",()=>{
+      if(e){e.classList.remove("puchun-active");e.style.display="none"}
+    },{once:true});
+    // Fallback in case mobile Safari does not fire ended.
+    setTimeout(()=>{
+      if(e){e.classList.remove("puchun-active");e.style.display="none"}
+    },2900);
+  }catch(err){
+    if(e){setTimeout(()=>{e.classList.remove("puchun-active");e.style.display="none"},2900)}
+  }
+  debugLog&&debugLog("AUDIO","PUCHUN",{file:"puchun_notice.mp3",blackout:true});
 }
 
 const CRASH_HISTORY_KEY="gb_crash_history_v1";
