@@ -3707,17 +3707,18 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 #modal .hl-choices{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;max-width:520px!important;margin:10px auto 4px!important}
 #modal .hl-choices button{min-height:56px!important;border-radius:9px!important;border:1px solid #b99036!important;background:linear-gradient(180deg,#282216 0%,#12110e 48%,#060606 100%)!important;color:#e8c86e!important;font:900 13px Orbitron,sans-serif!important;letter-spacing:.08em!important;box-shadow:inset 0 1px rgba(255,246,198,.14),inset 0 -10px 20px rgba(0,0,0,.22),0 8px 20px rgba(0,0,0,.55)!important;cursor:pointer!important;text-shadow:0 1px 1px #000!important}
 #modal .hl-choices button:active{transform:translateY(1px)!important;box-shadow:inset 0 1px rgba(255,246,198,.08),0 4px 10px rgba(0,0,0,.5)!important}
-/* COIN TOSS — single 3D implementation */
+/* COIN TOSS — one face, one animation path; no mirrored backside */
 #modal .coin-game{max-width:620px!important;margin:auto!important}
-#modal .coin-stage{height:255px!important;position:relative!important;display:grid!important;place-items:center!important;perspective:1200px!important;overflow:visible!important}
+#modal .coin-stage{height:255px!important;position:relative!important;display:grid!important;place-items:center!important;perspective:900px!important;overflow:visible!important}
 #modal .coin-flip-motion{display:grid!important;place-items:center!important;will-change:transform!important}
-#modal .coin3d{width:116px!important;height:116px!important;position:relative!important;transform-style:preserve-3d!important;transform-origin:center!important;will-change:transform!important;filter:drop-shadow(0 18px 18px rgba(0,0,0,.65))!important}
-#modal .coin3d::before{content:""!important;position:absolute!important;inset:4px!important;border:5px solid #92712a!important;border-radius:50%!important;background:#121416!important;transform:translateZ(0)!important;box-shadow:inset 0 0 12px rgba(0,0,0,.8),0 0 0 2px rgba(239,211,122,.16)!important}
-#modal .coin-face{position:absolute!important;inset:0!important;width:116px!important;height:116px!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:5px!important;border:5px solid #e7ca6b!important;border-radius:50%!important;backface-visibility:hidden!important;-webkit-backface-visibility:hidden!important;overflow:hidden!important;box-shadow:inset 0 0 0 3px rgba(255,241,172,.28),inset 0 -16px 24px rgba(0,0,0,.3),0 0 22px rgba(212,171,76,.15)!important}
-#modal .coin-head{transform:translateZ(6px)!important;background:radial-gradient(circle at 32% 28%,#fff3ad,#e8c663 35%,#a77d2a 65%,#4b3310)!important;color:#251703!important}
-#modal .coin-tail{transform:rotateY(180deg) translateZ(6px)!important;background:radial-gradient(circle at 32% 28%,#4b4d51,#202225 38%,#08090b 76%,#000)!important;border-color:#d4ad51!important;color:#f4d67c!important}
-#modal .coin-face b{font:950 44px/1 Orbitron,sans-serif!important;text-shadow:0 2px 2px rgba(0,0,0,.4)!important}
-#modal .coin-face small{font:900 8px/1 Orbitron,sans-serif!important;letter-spacing:.2em!important}
+#modal .coin3d{width:116px!important;height:116px!important;position:relative!important;display:grid!important;place-items:center!important;transform-origin:center!important;will-change:transform!important;filter:drop-shadow(0 18px 18px rgba(0,0,0,.65))!important}
+#modal .coin-surface{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:5px!important;border:5px solid #e7ca6b!important;border-radius:50%!important;overflow:hidden!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important;box-shadow:inset 0 0 0 3px rgba(255,241,172,.28),inset 0 -16px 24px rgba(0,0,0,.3),0 0 22px rgba(212,171,76,.15)!important}
+#modal .coin3d[data-face="heads"] .coin-surface{background:radial-gradient(circle at 32% 28%,#fff3ad,#e8c663 35%,#a77d2a 65%,#4b3310)!important;color:#251703!important}
+#modal .coin3d[data-face="tails"] .coin-surface{background:radial-gradient(circle at 32% 28%,#4b4d51,#202225 38%,#08090b 76%,#000)!important;border-color:#d4ad51!important;color:#f4d67c!important}
+#modal .coin-mark{font:950 44px/1 Orbitron,sans-serif!important;text-shadow:0 2px 2px rgba(0,0,0,.4)!important}
+#modal .coin-label{font:900 8px/1 Orbitron,sans-serif!important;letter-spacing:.2em!important}
+#modal .coin3d[data-face="heads"] .coin-surface:after{content:"GOLD SIDE"!important;display:block!important;color:rgba(55,31,3,.72)!important;font:800 6px/1 Orbitron,sans-serif!important;letter-spacing:.16em!important;margin-top:1px!important}
+#modal .coin3d[data-face="tails"] .coin-surface:after{content:"BLACK SIDE"!important;display:block!important;color:rgba(242,214,124,.68)!important;font:800 6px/1 Orbitron,sans-serif!important;letter-spacing:.16em!important;margin-top:1px!important}
 #modal .coin-choices{display:grid!important;grid-template-columns:1fr 44px 1fr!important;align-items:center!important;gap:8px!important;max-width:430px!important;margin:8px auto 12px!important}
 #modal .coin-choices button{min-height:60px!important;border:1px solid #b99036!important;border-radius:9px!important;background:linear-gradient(180deg,#2a2418,#0b0b0a)!important;color:#efcf74!important;font:900 13px/1 Orbitron,sans-serif!important;letter-spacing:.09em!important;box-shadow:inset 0 1px rgba(255,245,193,.16),0 7px 18px rgba(0,0,0,.58)!important;cursor:pointer!important}
 #modal .coin-choices button:last-child{background:linear-gradient(180deg,#171716,#050505)!important;color:#e4c66c!important}
@@ -3888,27 +3889,24 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 #modal .lottery-outcome.lose{color:#e27b84}
 #modal .lottery-result{min-height:28px;color:#ddd;font:800 12px Orbitron}
 #modal .lottery-prize-board{margin:14px 0;background:#0b0c0e;border:1px solid #2d2f32;border-radius:6px;overflow:hidden}
-#modal .lottery-board-title{padding:12px 14px;text-align:left;font:900 9px Orbitron;color:#d6b85e;border-bottom:1px solid #25272a;letter-spacing:2px}
-#modal .lottery-prize-row{display:grid;grid-template-columns:1fr auto 72px;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid #1e2024;text-align:left}
+#modal .lottery-board-title{padding:10px 14px;text-align:left;font:900 9px Orbitron;color:#d6b85e;border-bottom:1px solid #25272a;letter-spacing:2px}
+#modal .lottery-prize-row{display:grid;grid-template-columns:minmax(0,1fr) 80px 100px;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid #1e2024;text-align:left}
 #modal .lottery-prize-row:last-child{border-bottom:0}
-#modal .lottery-prize-row span{display:flex;flex-direction:column}
-#modal .lottery-prize-row b{font:900 10px Orbitron}
-#modal .lottery-prize-row small{font-size:7px;color:#666;margin-top:3px}
-#modal .lottery-prize-row strong{font:900 12px Orbitron}
-#modal .lottery-prize-row em{font:normal 8px Orbitron;color:#777;text-align:right}
+#modal .lottery-prize-row b{font:900 10px Orbitron!important}
+#modal .lottery-prize-row em{font:900 9px Orbitron!important;color:#d6d0bf!important;text-align:right!important;font-style:normal!important}
+#modal .lottery-prize-row strong{font:900 12px Orbitron!important;text-align:right!important}
 #modal .lottery-prize-row.jp b,#modal .lottery-prize-row.jp strong{color:#f0d36f}
 #modal .lottery-prize-row.gold b,#modal .lottery-prize-row.gold strong{color:#d8b95c}
 #modal .lottery-prize-row.silver b,#modal .lottery-prize-row.silver strong{color:#bfc3c8}
 #modal .lottery-prize-row.lose b,#modal .lottery-prize-row.lose strong{color:#d17a82}
 #modal .lottery-draw{padding:12px 30px!important;border-radius:6px!important;background:linear-gradient(180deg,#2a2418,#0b0b0a)!important;border:1px solid #b99036!important;color:#e0c36b!important;font:900 10px Orbitron!important;cursor:pointer!important;box-shadow:inset 0 1px rgba(255,245,193,.14),0 7px 18px rgba(0,0,0,.55)!important}
 #modal .lottery-draw:disabled{opacity:.45!important;cursor:not-allowed!important}
-/* PROFILE FRAME — inner avatar only */
+/* PROFILE FRAME — align to the existing small inner avatar circle */
 #avatar{position:relative;overflow:hidden}
-#avatar #avatarFrame{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;object-fit:contain!important;object-position:center!important;display:block!important;z-index:1!important;pointer-events:none!important;border:0!important;border-radius:50%!important}
-#avatar #avatarText,#avatar #playerName,#avatar>small{position:relative!important;z-index:2!important}
+#avatar #avatarFrame{position:absolute!important;left:50%!important;top:calc(50% - 41px)!important;width:56px!important;height:56px!important;max-width:none!important;max-height:none!important;margin:0!important;transform:translateX(-50%)!important;object-fit:contain!important;object-position:center!important;display:block!important;z-index:3!important;pointer-events:none!important;border:0!important;border-radius:0!important}
+#avatar #avatarText,#avatar #playerName,#avatar>small{position:relative!important;z-index:4!important}
 #avatar #avatarText{flex:0 0 auto!important}
 #avatar #playerName{display:block!important}
-@media(max-width:600px){#avatar{width:86px!important;height:86px!important}#avatar #avatarFrame{width:86px!important;height:86px!important}}
 /* PUCHUN VIDEO OVERLAY */
 #blackout{z-index:9999!important;background:#000!important;display:none;align-items:center;justify-content:center;overflow:hidden}
 #blackout.puchun-active{display:flex!important}

@@ -204,7 +204,7 @@ function puchun(){
   };
   const fallback=()=>{
     try{
-      const au=new Audio("puchun_notice.mp3?v=4.2");
+      const au=new Audio("puchun.wav?v=1");
       au.volume=.9;au.currentTime=0;au.play().catch(()=>{});
     }catch(_){}
     fallbackTimer=setTimeout(finish,3000);
@@ -343,47 +343,78 @@ function coinFlip(pick){
  if(window.GB_ACTION_BUSY)return;
  const b=wager($("bet")?.value);if(!b)return;
  const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
- if(!c||!stage||!res){window.GB_ACTION_BUSY=false;return}
+ if(!c||!stage||!res)return;
  window.GB_ACTION_BUSY=true;
  const result=Math.random()<.5?"heads":"tails",win=result===pick;
  const epoch=window.GB_RUNTIME?.epoch;
+ let cancelled=false;
+ const timers=new Set();
+ const wait=ms=>new Promise(resolve=>{const t=setTimeout(()=>{timers.delete(t);resolve()},ms);timers.add(t)});
+ const setFace=face=>{
+   c.dataset.face=face;
+   const mark=c.querySelector(".coin-mark"),label=c.querySelector(".coin-label");
+   if(mark)mark.textContent=face==="tails"?"T":"H";
+   if(label)label.textContent=face.toUpperCase();
+ };
  const reset=()=>{
+   cancelled=true;
+   timers.forEach(clearTimeout);timers.clear();
    c.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});
    stage.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});
-   c.dataset.face="heads";
-   c.style.transform="rotateY(0deg) rotateZ(0deg)";
+   setFace("heads");
+   c.style.transform="perspective(700px) rotateX(8deg) rotateZ(0deg) scaleX(1)";
    stage.style.transform="none";
    window.GB_ACTION_BUSY=false;
    window.GB_CANCEL_COIN_FLIP=null;
  };
  window.GB_CANCEL_COIN_FLIP=reset;
- c.dataset.face="flipping";
- c.style.transform="rotateY(0deg) rotateZ(0deg)";
- stage.style.transform="translate3d(0,34px,0) scale(.92)";
- void stage.offsetWidth;
+ setFace("heads");
+ c.style.transform="perspective(700px) rotateX(8deg) rotateZ(0deg) scaleX(1)";
+ stage.style.transform="translate3d(0,28px,0) scale(.92)";
  res.textContent="FLIPPING…";
- const finalAngle=result==="tails"?1260:1080;
- const motion=stage.animate([
-  {transform:"translate3d(0,34px,0) scale(.92)"},
-  {transform:"translate3d(-24px,-34px,0) scale(1.02)"},
-  {transform:"translate3d(18px,-104px,0) scale(1.1)"},
-  {transform:"translate3d(-14px,-124px,0) scale(1.12)"},
-  {transform:"translate3d(12px,-62px,0) scale(1.06)"},
-  {transform:"translate3d(0,0,0) scale(1)"}
- ],{duration:2400,easing:"cubic-bezier(.18,.78,.17,1)",fill:"forwards"});
- const spin=c.animate([
-  {transform:"rotateY(0deg) rotateZ(-5deg)"},
-  {transform:"rotateY(360deg) rotateZ(5deg)"},
-  {transform:"rotateY(720deg) rotateZ(-4deg)"},
-  {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
- ],{duration:2400,easing:"cubic-bezier(.18,.78,.17,1)",fill:"forwards"});
+ const stageMotion=stage.animate([
+   {transform:"translate3d(0,28px,0) scale(.92)"},
+   {transform:"translate3d(-16px,-48px,0) scale(1.04)"},
+   {transform:"translate3d(12px,-82px,0) scale(1.08)"},
+   {transform:"translate3d(-8px,-48px,0) scale(1.04)"},
+   {transform:"translate3d(0,0,0) scale(1)"}
+ ],{duration:2350,easing:"cubic-bezier(.18,.78,.17,1)",fill:"forwards"});
  sfx("flip");
- Promise.all([motion.finished,spin.finished]).then(()=>{
-   if(!window.GB_RUNTIME?.active||window.GB_RUNTIME.epoch!==epoch||!c.isConnected){reset();return}
-   motion.cancel();spin.cancel();
-   stage.style.transform="none";
-   c.dataset.face=result;
-   c.style.transform=result==="tails"?"rotateY(180deg) rotateZ(0deg)":"rotateY(0deg) rotateZ(0deg)";
+ const doHalfFlip=async(next,sign)=>{
+   const collapse=c.animate([
+     {transform:`perspective(700px) rotateX(8deg) rotateZ(${sign*3}deg) scaleX(1)`},
+     {transform:`perspective(700px) rotateX(8deg) rotateZ(${sign}deg) scaleX(.07)`}
+   ],{duration:155,easing:"cubic-bezier(.45,0,.8,.2)",fill:"forwards"});
+   await wait(155);
+   if(cancelled)return false;
+   collapse.cancel();
+   setFace(next);
+   const expand=c.animate([
+     {transform:`perspective(700px) rotateX(8deg) rotateZ(${-sign*1}deg) scaleX(.07)`},
+     {transform:`perspective(700px) rotateX(8deg) rotateZ(${-sign*3}deg) scaleX(1)`}
+   ],{duration:165,easing:"cubic-bezier(.15,.8,.17,1)",fill:"forwards"});
+   await wait(165);
+   if(cancelled)return false;
+   expand.cancel();
+   c.style.transform="perspective(700px) rotateX(8deg) rotateZ(0deg) scaleX(1)";
+   return true;
+ };
+ (async()=>{
+   let face="heads";
+   for(let i=0;i<7;i++){
+     const next=face==="heads"?"tails":"heads";
+     if(!(await doHalfFlip(next,i%2?1:-1)))return;
+     face=next;
+   }
+   if(face!==result){
+     if(!(await doHalfFlip(result,-1)))return;
+     face=result;
+   }
+   await wait(80);
+   if(cancelled||!window.GB_RUNTIME?.active||window.GB_RUNTIME.epoch!==epoch||!c.isConnected){reset();return;}
+   stageMotion.cancel();stage.style.transform="none";
+   setFace(result);
+   c.style.transform="perspective(700px) rotateX(8deg) rotateZ(0deg) scaleX(1)";
    res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
    writeCoinHistory({side:result,win});
    renderCoinHistory();
@@ -391,7 +422,7 @@ function coinFlip(pick){
    sfx(win?"win":"lose");
    window.GB_ACTION_BUSY=false;
    window.GB_CANCEL_COIN_FLIP=null;
- }).catch(()=>{reset()});
+ })().catch(()=>reset());
 }
 
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
@@ -718,7 +749,7 @@ chohan(){
 coin(){
  $("gameBody").innerHTML=betbox()+`<div class="anim-game coin-game">
   <div class="anim-title">COIN TOSS</div>
-  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads"><div class="coin-face coin-head" aria-label="HEADS"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail" aria-label="TAILS"><b>T</b><small>TAILS</small></div></div></div></div>
+  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads" aria-live="polite"><div class="coin-surface"><b class="coin-mark">H</b><small class="coin-label">HEADS</small></div></div></div></div>
   <div class="coin-choices"><button onclick="coinFlip('heads')"><b>HEADS</b><small>GOLD SIDE</small></button><div class="coin-vs">VS</div><button onclick="coinFlip('tails')"><b>TAILS</b><small>BLACK SIDE</small></button></div>
   <div id="res" class="result coin-result">CHOOSE YOUR SIDE</div>
   <div class="coin-history"><div class="coin-history-head"><b>COIN FLIP HISTORY</b><small>LAST 5</small></div><div id="coinHistory"></div></div>
@@ -736,7 +767,7 @@ lottery(){
    <div id="lotteryResult" class="lottery-result">PRESS DRAW TO START</div>
   </div>
   <div class="lottery-prize-board">
-   <div class="lottery-board-title">当選確率</div>
+   <div class="lottery-board-title">当選確率 / PRIZE</div>
    <div class="lottery-prize-row jp"><b>JACKPOT</b><em>0.05%</em><strong>100,000</strong></div>
    <div class="lottery-prize-row gold"><b>GOLD</b><em>2.00%</em><strong>10,000</strong></div>
    <div class="lottery-prize-row silver"><b>SILVER</b><em>12.95%</em><strong>500</strong></div>
