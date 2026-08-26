@@ -188,47 +188,24 @@ function renderRouletteHistory(){
 let FN_PUCHUN_BUSY=false;
 function puchun(){
   if(FN_PUCHUN_BUSY)return;
-  const e=$("blackout"),v=$("puchunVideo");
+  const e=$("blackout");
   if(!e)return;
   FN_PUCHUN_BUSY=true;
-  e.classList.add("puchun-active");
-  e.style.display="flex";
-  let finished=false;
-  const cleanup=()=>{
-    if(finished)return;
-    finished=true;
-    try{if(v){v.pause();v.currentTime=0;v.removeAttribute("data-playing")}}catch(_){ }
-    e.classList.remove("puchun-active");
-    e.style.display="none";
-    FN_PUCHUN_BUSY=false;
-    window.FN_PUCHUN_STOP=null;
-  };
-  window.FN_PUCHUN_STOP=cleanup;
-  const fallback=()=>{
-    if(finished)return;
-    try{
-      const au=new Audio("puchun_notice.mp3?v=4.2");
-      au.volume=.9;au.currentTime=0;au.play().catch(()=>{});
-    }catch(_){ }
-    setTimeout(cleanup,2900);
-  };
-  if(!v){fallback();return;}
-  try{
-    v.pause();v.currentTime=0;v.muted=false;v.volume=.9;
-    v.setAttribute("data-playing","1");
-    v.onended=cleanup;
-    v.onerror=()=>{v.onerror=null;fallback()};
-    const play=()=>{
-      if(finished)return;
-      try{
-        const p=v.play();
-        if(p&&typeof p.catch==="function")p.catch(()=>{v.onerror=null;fallback()});
-      }catch(_){v.onerror=null;fallback()}
-    };
-    setTimeout(play,120);
-    setTimeout(()=>{if(!finished)cleanup()},5000);
-  }catch(_){fallback()}
-  debugLog&&debugLog("AUDIO","PUCHUN",{file:"puchun_effect.mp4",blackout:true,video:true});
+  e.classList.add("puchun-active");e.style.display="flex";
+  let v=e.querySelector("#puchunVideo");
+  if(!v){
+    v=document.createElement("video");
+    v.id="puchunVideo";v.src="puchun_effect.mp4";v.preload="auto";v.playsInline=true;v.muted=true;v.autoplay=false;
+    v.setAttribute("aria-hidden","true");e.appendChild(v);
+  }
+  let done=false,timer=0,start=0;
+  const finish=()=>{if(done)return;done=true;clearTimeout(timer);clearTimeout(start);try{v.pause();v.currentTime=0}catch(_){}e.classList.remove("puchun-active");e.style.display="none";FN_PUCHUN_BUSY=false};
+  const fallback=()=>{if(done)return;try{const au=new Audio("puchun_notice.mp3?v=4.2");au.volume=.9;au.currentTime=0;au.play().catch(()=>{})}catch(_){}timer=setTimeout(finish,2900)};
+  v.onended=finish;v.onerror=fallback;
+  v.onloadeddata=()=>{if(done)return;try{const r=v.play();if(r&&r.catch)r.catch(fallback)}catch(_){fallback()}};
+  start=setTimeout(()=>{if(!done)fallback()},2500);
+  try{v.load()}catch(_){fallback()}
+  debugLog&&debugLog("AUDIO","PUCHUN",{file:"puchun_effect.mp4",blackout:true});
 }
 
 const CRASH_HISTORY_KEY="gb_crash_history_v1";
@@ -331,63 +308,48 @@ function renderCoinHistory(){
  el.innerHTML=rows.length?rows.map((x,i)=>`<div class="coin-history-row"><span>#${i+1} <small>${x.t||""}</small></span><b class="${x.win?"win":"lose"}">${String(x.side||"").toUpperCase()} • ${x.win?"WIN":"LOSE"}</b></div>`).join(""):`<div class="coin-history-empty">NO HISTORY</div>`;
 }
 function coinFlip(pick){
-  if(window.GB_ACTION_BUSY)return;
-  const b=wager($("bet")?.value);if(!b)return;
-  const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
-  if(!c||!stage||!res)return;
-  const head=c.querySelector(".coin-head"),tail=c.querySelector(".coin-tail");
-  if(!head||!tail)return;
-  window.GB_ACTION_BUSY=true;
-  const result=Math.random()<.5?"heads":"tails",win=result===pick;
-  let settled=false;
-  const resetBusy=()=>{window.GB_ACTION_BUSY=false};
-  const settleCoin=()=>{
-    if(settled)return;settled=true;
-    c.dataset.face=result;
-    c.style.transform=result==="tails"?"rotateY(180deg)":"rotateY(0deg)";
-    head.style.transform="rotateY(0deg) translateZ(58px)";
-    tail.style.transform="rotateY(180deg) translateZ(58px)";
-    head.style.opacity="1";tail.style.opacity="1";
-    head.style.visibility="visible";tail.style.visibility="visible";
-    res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
-    writeCoinHistory({side:result,win});renderCoinHistory();
-    settle(b,win?b*2:0,"COIN TOSS");sfx(win?"win":"lose");resetBusy();
-  };
-  const failCoin=()=>{
-    if(settled)return;settled=true;
-    try{stage.getAnimations().forEach(x=>x.cancel());c.getAnimations().forEach(x=>x.cancel())}catch(_){ }
-    c.dataset.face="heads";c.style.transform="rotateY(0deg)";
-    head.style.transform="rotateY(0deg) translateZ(58px)";
-    tail.style.transform="rotateY(180deg) translateZ(58px)";
-    head.style.opacity="1";tail.style.opacity="1";
-    head.style.visibility="visible";tail.style.visibility="visible";
-    res.textContent="CHOOSE YOUR SIDE";resetBusy();
-  };
-  c.dataset.face="flipping";c.style.transform="rotateY(0deg)";
-  head.style.transform="rotateY(0deg) translateZ(58px)";
-  tail.style.transform="rotateY(180deg) translateZ(58px)";
-  head.style.opacity="1";tail.style.opacity="1";
-  head.style.visibility="visible";tail.style.visibility="visible";
-  stage.style.transform="translate3d(0,34px,0) scale(.92)";
-  void stage.offsetWidth;res.textContent="FLIPPING…";
-  const finalAngle=result==="tails"?1620:1440;
-  const motion=stage.animate([
-    {transform:"translate3d(0,34px,0) scale(.92)"},
-    {transform:"translate3d(-34px,-20px,0) scale(1.02)"},
-    {transform:"translate3d(28px,-104px,0) scale(1.12)"},
-    {transform:"translate3d(-20px,-126px,0) scale(1.16)"},
-    {transform:"translate3d(22px,-66px,0) scale(1.09)"},
-    {transform:"translate3d(0,0,0) scale(1)"}
-  ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
-  const spin=c.animate([
-    {transform:"rotateY(0deg) rotateZ(-8deg)"},
-    {transform:"rotateY(540deg) rotateZ(8deg)"},
-    {transform:"rotateY(1080deg) rotateZ(-6deg)"},
-    {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
-  ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
-  sfx("flip");
-  Promise.allSettled([motion.finished,spin.finished]).then(()=>settleCoin());
-  setTimeout(()=>{if(!settled)failCoin()},3600);
+ if(window.GB_ACTION_BUSY)return;
+ const b=wager($("bet")?.value);if(!b)return;
+ const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
+ if(!c||!stage||!res){window.GB_ACTION_BUSY=false;return}
+ const head=c.querySelector(".coin-head"),tail=c.querySelector(".coin-tail");
+ if(!head||!tail){window.GB_ACTION_BUSY=false;return}
+ window.GB_ACTION_BUSY=true;
+ const result=Math.random()<.5?"heads":"tails",win=result===pick;
+ c.dataset.face="flipping";
+ c.style.transform="rotateY(0deg)";
+ stage.style.transform="translate3d(0,34px,0) scale(.92)";
+ void stage.offsetWidth;res.textContent="FLIPPING…";
+ const finalAngle=result==="tails"?2340:2160;
+ const motion=stage.animate([
+  {transform:"translate3d(0,34px,0) scale(.92)"},
+  {transform:"translate3d(-34px,-20px,0) scale(1.02)"},
+  {transform:"translate3d(28px,-104px,0) scale(1.12)"},
+  {transform:"translate3d(-20px,-126px,0) scale(1.16)"},
+  {transform:"translate3d(22px,-66px,0) scale(1.09)"},
+  {transform:"translate3d(0,0,0) scale(1)"}
+ ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
+ const spin=c.animate([
+  {transform:"rotateY(0deg) rotateZ(-8deg)"},
+  {transform:"rotateY(720deg) rotateZ(8deg)"},
+  {transform:"rotateY(1440deg) rotateZ(-6deg)"},
+  {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
+ ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
+ sfx("flip");
+ Promise.all([motion.finished,spin.finished]).then(()=>{
+  motion.cancel();spin.cancel();
+  stage.style.transform="translate3d(0,0,0) scale(1)";
+  c.dataset.face=result;c.style.transform=result==="tails"?"rotateY(180deg)":"rotateY(0deg)";
+  res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
+  writeCoinHistory({side:result,win});renderCoinHistory();
+  settle(b,win?b*2:0,"COIN TOSS");sfx(win?"win":"lose");
+  window.GB_ACTION_BUSY=false;
+ }).catch(()=>{
+  try{motion.cancel();spin.cancel()}catch(_){}
+  stage.style.transform="translate3d(0,0,0) scale(1)";
+  c.dataset.face="heads";c.style.transform="rotateY(0deg)";res.textContent="READY";
+  window.GB_ACTION_BUSY=false;
+ });
 }
 
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
@@ -476,7 +438,7 @@ function openGame(g){
  try{if(typeof games[g]!=="function")throw new Error("Unknown game: "+g);games[g]();debugLog("GAME","Launch success",{game:g,token})}
  catch(e){debugLog("ERROR","Game launch failed",{game:g,error:String(e),stack:e.stack});$("modalContent").innerHTML=`<div class="game"><h2>GAME ERROR</h2><pre class="debug-error">${String(e.stack||e)}</pre></div>`}
 }
-function closeGame(){GB_GAME_TOKEN++;debugLog("RUNTIME","STOP",{game:GB_RUNTIME.game});window.GB_stopGameRuntime();if(window.FN_PUCHUN_BUSY&&typeof window.FN_PUCHUN_STOP==="function")window.FN_PUCHUN_STOP();$("modal").classList.add("hidden");const lobby=document.getElementById("appLobby");if(lobby)lobby.classList.remove("hidden");sfx("click")}
+function closeGame(){GB_GAME_TOKEN++;debugLog("RUNTIME","STOP",{game:GB_RUNTIME.game});window.GB_stopGameRuntime();$("modal").classList.add("hidden");const lobby=document.getElementById("appLobby");if(lobby)lobby.classList.remove("hidden");sfx("click")}
 function betbox(min=10,hideMax=false){
   const max=Math.max(min,S.coins||0);
   const step=max<=1000?10:max<=10000?100:500;
@@ -714,7 +676,7 @@ chohan(){
 coin(){
  $("gameBody").innerHTML=betbox()+`<div class="anim-game coin-game">
   <div class="anim-title">COIN TOSS</div>
-  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads"><div class="coin-edge" aria-hidden="true"></div><div class="coin-face coin-head" aria-label="HEADS"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail" aria-label="TAILS"><b>T</b><small>TAILS</small></div></div></div></div>
+  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads"><div class="coin-face coin-head" aria-label="HEADS"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail" aria-label="TAILS"><b>T</b><small>TAILS</small></div></div></div></div>
   <div class="coin-choices"><button onclick="coinFlip('heads')"><b>HEADS</b><small>GOLD SIDE</small></button><div class="coin-vs">VS</div><button onclick="coinFlip('tails')"><b>TAILS</b><small>BLACK SIDE</small></button></div>
   <div id="res" class="result coin-result">CHOOSE YOUR SIDE</div>
   <div class="coin-history"><div class="coin-history-head"><b>COIN FLIP HISTORY</b><small>LAST 5</small></div><div id="coinHistory"></div></div>
@@ -732,12 +694,11 @@ lottery(){
    <div id="lotteryResult" class="lottery-result">PRESS DRAW TO START</div>
   </div>
   <div class="lottery-prize-board">
-   <div class="lottery-board-title">当選確率の説明 <small>1回の抽選ごとの確率</small></div>
-   <div class="lottery-prize-row jp"><span><b>JACKPOT</b><small>2,000回に1回の割合</small></span><strong>100,000 COIN</strong><em>0.05%</em></div>
-   <div class="lottery-prize-row gold"><span><b>GOLD</b><small>1回の抽選で当たる確率</small></span><strong>10,000 COIN</strong><em>2.00%</em></div>
-   <div class="lottery-prize-row silver"><span><b>SILVER</b><small>1回の抽選で当たる確率</small></span><strong>500 COIN</strong><em>12.95%</em></div>
-   <div class="lottery-prize-row lose"><span><b>MISS</b><small>賞金なしになる確率</small></span><strong>0 COIN</strong><em>85.00%</em></div>
-   <div class="lottery-odds-note">※各数値は1回の抽選で、その結果になる確率です。累積確率ではありません。4つの結果を合計すると100.00%です。</div>
+   <div class="lottery-board-title">当選確率 <small>1回の抽選で各賞が当たる確率</small></div>
+   <div class="lottery-prize-row jp"><span><b>JACKPOT</b></span><strong>100,000</strong><em>0.05%</em></div>
+   <div class="lottery-prize-row gold"><span><b>GOLD</b></span><strong>10,000</strong><em>2.00%</em></div>
+   <div class="lottery-prize-row silver"><span><b>SILVER</b></span><strong>500</strong><em>12.95%</em></div>
+   <div class="lottery-prize-row lose"><span><b>MISS</b></span><strong>0</strong><em>85.00%</em></div>
   </div>
   <div class="lottery-history"><div class="lottery-history-head"><b>RECENT DRAWS</b><small>LAST 5</small></div><div id="lotteryHistory"></div></div>
   <button class="lottery-draw" onclick="lottery()">DRAW LOTTERY</button>
@@ -1630,7 +1591,9 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     try{const d=await window.FN_API_REQUEST('/profile/settings',{},tok); if(d.settings){const x=Object.assign({},prof(),d.settings);saveProf(x);renderProfile();}}catch(_){}
   }
   function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();syncProfileSettings()}
-  function renderProfile(){const p=prof();const frame=p.frame||'classic';const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}const af=document.getElementById('avatarFrame');if(af){const src=frame==='early_access'?'early_access_frame.png':frame==='admin'?'admin_frame.png':'';af.hidden=!src;if(src)af.src=src;af.className='avatar-frame'+(src?' frame-'+frame:'');}if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
+  function frameOwned(p,frame){if(frame==='classic')return true;return Array.isArray(p.ownedFrames)&&p.ownedFrames.includes(frame)}
+  function frameSrc(frame){return frame==='admin'?'admin_frame.png':frame==='early_access'?'early_access_frame.png':''}
+  function renderProfile(){const p=prof(),frame=frameOwned(p,p.frame)?(p.frame||'classic'):'classic';const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}const af=document.getElementById('avatarFrame');if(af){const src=frameSrc(frame);af.hidden=!src;if(src)af.src=src;}if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   async function fnApi(path,opts={}){
     if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
@@ -1653,9 +1616,9 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     o.classList.remove('hidden');
     if(type==='profile'){
       const x=prof();
-      p.innerHTML='<h2>PROFILE & SETTINGS</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+esc(x.name)+'" readonly><div class="fn-setting-grid"><label>ICON<select id="picon"><option>♠</option><option>♦</option><option>♣</option><option>♥</option><option>★</option><option>◆</option><option>●</option><option>♛</option></select></label><label>FRAME<select id="pframe"><option value="classic">CLASSIC</option></select></label><label>LANGUAGE<select id="plang"><option value="ja">日本語</option><option value="en">English</option></select></label></div><label class="fn-check"><input id="psound" type="checkbox"> SOUND</label><label class="fn-check"><input id="pnotify" type="checkbox"> NOTIFICATIONS</label><label class="fn-check"><input id="ponline" type="checkbox"> SHOW ONLINE STATUS</label><label class="fn-check"><input id="pmotion" type="checkbox"> REDUCED MOTION</label><div class="socialActions"><button class="primary" id="saveP">SAVE SETTINGS</button><button id="closeP">CLOSE</button></div><div id="profileStatus"></div>';
-      const ownedFrames=Array.isArray(x.ownedFrames)?x.ownedFrames:[];const frameLabels={gold:'GOLD',silver:'SILVER',neon:'NEON',royal:'ROYAL',early_access:'EARLY ACCESS',admin:'ADMIN'};['gold','silver','neon','royal','early_access','admin'].forEach(frame=>{if(ownedFrames.includes(frame)){const sel=document.getElementById('pframe'),o=document.createElement('option');o.value=frame;o.textContent=frameLabels[frame];sel.appendChild(o);}});document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
-      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
+      p.innerHTML='<h2>PROFILE & SETTINGS</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+esc(x.name)+'" readonly><div class="fn-setting-grid"><label>ICON<select id="picon"><option>♠</option><option>♦</option><option>♣</option><option>♥</option><option>★</option><option>◆</option><option>●</option><option>♛</option></select></label><label>FRAME<select id="pframe"><option value="classic">CLASSIC</option><option value="gold">GOLD</option><option value="silver">SILVER</option><option value="neon">NEON</option><option value="royal">ROYAL</option></select></label><label>LANGUAGE<select id="plang"><option value="ja">日本語</option><option value="en">English</option></select></label></div><label class="fn-check"><input id="psound" type="checkbox"> SOUND</label><label class="fn-check"><input id="pnotify" type="checkbox"> NOTIFICATIONS</label><label class="fn-check"><input id="ponline" type="checkbox"> SHOW ONLINE STATUS</label><label class="fn-check"><input id="pmotion" type="checkbox"> REDUCED MOTION</label><div class="socialActions"><button class="primary" id="saveP">SAVE SETTINGS</button><button id="closeP">CLOSE</button></div><div id="profileStatus"></div>';
+      const ownedFrames=Array.isArray(x.ownedFrames)?x.ownedFrames:[],sel=document.getElementById('pframe');['gold','silver','neon','royal','early_access','admin'].forEach(frame=>{if(ownedFrames.includes(frame)){const o=document.createElement('option');o.value=frame;o.textContent=frame==='early_access'?'EARLY ACCESS':frame.toUpperCase()+' FRAME';sel.appendChild(o);}});document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=frameOwned(x,x.frame)?(x.frame||'classic'):'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
+      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;const requestedFrame=document.getElementById('pframe').value;x.frame=frameOwned(x,requestedFrame)?requestedFrame:'classic';document.getElementById('pframe').value=x.frame;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
       document.getElementById('closeP').onclick=()=>o.classList.add('hidden');
     }else if(type==='friends'){
       let friends=[],requests={incoming:[],outgoing:[]};
