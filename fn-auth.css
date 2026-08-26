@@ -66,3 +66,5 @@ html.fn-nonadmin #lobbyAdminBtn{display:none!important;visibility:hidden!importa
 #socialOverlay .socialPanel button,#socialOverlay .socialPanel input{pointer-events:auto!important;touch-action:manipulation!important;}
 .fn-auth-invalid{border-color:#d44a4a!important;box-shadow:0 0 0 1px #d44a4a,0 0 14px rgba(212,74,74,.18)!important;}
 #fnLoginStatus.fn-auth-error{color:#ff7474!important;}
+
+.fn-presence-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle}.fn-presence-dot.online{background:#d9b45b;box-shadow:0 0 8px rgba(217,180,91,.7)}.fn-presence-dot.offline{background:#555}.friend-row button{margin-left:6px}

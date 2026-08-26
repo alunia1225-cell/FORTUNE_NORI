@@ -102,12 +102,15 @@
       localStorage.setItem(K.player,d.token); localStorage.removeItem(K.admin); localStorage.setItem(K.role,'player'); localStorage.setItem(K.name,d.name||name); localStorage.setItem(K.pid,String(d.playerId||''));
       setRole('player',name); hideLogin(); status.textContent='PLAYER AUTHENTICATED'; return true;
     }catch(e){
-      if(name.toLowerCase()!==ADMIN_ID.toLowerCase() && e.status===400 && String(e.message||'').toUpperCase()==='INVALID_PLAYER_NAME'){
+      if(name.toLowerCase()!==ADMIN_ID.toLowerCase() && (String(e.message||'').toUpperCase()==='PLAYER_NAME_ALREADY_USED' || String(e.message||'').toUpperCase()==='INVALID_PLAYER_NAME')){
         status.textContent='このプレイヤー名は既に使用されています';
         nameInput?.classList.add('fn-auth-invalid');
         nameInput?.focus();
       }else if(name.toLowerCase()===ADMIN_ID.toLowerCase()){
         status.textContent='LOGIN FAILED ['+(e.status||'NETWORK')+'] '+(e.message||'UNKNOWN_ERROR')+' — RAW PASSWORD LENGTH '+pass.length;
+      }else if(String(e.message||'').toUpperCase()==='RESERVED_PLAYER_NAME'){
+        status.textContent='このプレイヤー名は使用できません';
+        nameInput?.classList.add('fn-auth-invalid');
       }else{
         status.textContent='LOGIN FAILED ['+(e.status||'NETWORK')+'] '+(e.message||'UNKNOWN_ERROR');
         nameInput?.classList.remove('fn-auth-invalid');
