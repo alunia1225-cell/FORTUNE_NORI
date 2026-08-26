@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+<head><meta name="FN-build" content="1.20.1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>FORTUNE NOIR 1.20.1</title><link rel="stylesheet" href="style.css?v=1.20.1"><link rel="stylesheet" href="fn-auth.css?v=8.1.0">
+<link rel="preload" as="video" href="puchun_effect.mp4" type="video/mp4"></head>
+<body>
+<div id="blackout" aria-hidden="true"></div>
+<div id="modal" class="modal hidden"><div class="tabletop"><button class="close" onclick="closeGame()">×</button><div id="modalContent"></div></div></div> 
+<div id="debugToggle" role="button" aria-label="System diagnostics">
+  <span class="dbg-led"></span><span class="dbg-label">SYSTEM</span><span class="dbg-num" id="debugCount">0</span>
+</div>
+<button id="debugEmergency" type="button" aria-label="Open diagnostics">DEBUG</button>
+<div id="debugEmergencyPanel" class="hidden"><div class="de-head"><b>SYSTEM DIAGNOSTICS / PERSISTENT LOG</b><button type="button" onclick="document.getElementById('debugEmergencyPanel').classList.add('hidden')">×</button></div><pre id="debugEmergencyBody"></pre><button type="button" onclick="copyDebug()">COPY LOG</button><button type="button" onclick="clearDebug()">CLEAR</button></div>
+<div id="debugPanel" class="debug-panel hidden">
+  <div class="dbg-header">
+    <div class="dbg-brand"><span class="dbg-led big"></span><div><strong>SYSTEM DIAGNOSTICS</strong><small>FORTUNE NOIR / LIVE RUNTIME</small></div></div>
+    <div class="dbg-actions"><button type="button" onclick="copyDebug()">COPY</button><button type="button" onclick="clearDebug()">CLEAR</button><button type="button" onclick="toggleDebug()">×</button></div>
+  </div>
+  <div class="dbg-metrics">
+    <div><span>EVENTS</span><b id="dbgEvents">0</b></div>
+    <div><span>ERRORS</span><b id="dbgErrors">0</b></div>
+    <div><span>GAME OPS</span><b id="dbgGames">0</b></div>
+    <div class="dbg-live"><i></i> LIVE</div>
+  </div>
+  <pre id="debugBody"></pre>
+  <div class="dbg-footer"><span>WEB RUNTIME</span><span id="debugClock">--:--:--</span></div>
+</div>
+<script>window.FN_ADMIN_API_URL="https://fortune-noir-admin-api.alunia1225.workers.dev";</script><script src="fn-auth.js?v=8.4.0"></script><script src="app.js?v=1.20.1"></script>
+<script>
+(function(){
+  function tick(){var e=document.getElementById("debugClock");if(e)e.textContent=new Date().toLocaleTimeString();requestAnimationFrame(tick)}
+  tick();
+})();
+</script>
+
+<div id="appSplash" class="appSplash">
+  <div class="splashGlow"></div>
+  <div class="splashLogo"><span>FN</span></div>
+  <div class="splashKicker">FORTUNE NOIR</div>
+  <h1>VIRTUAL<br><em>CASINO</em></h1>
+  <p>MOBILE GAME PLATFORM</p>
+  <button id="tapStart">TAP TO ENTER</button>
+  <div id="loadBox" class="loadBox hidden"><div><b id="loadText">INITIALIZING</b><strong id="loadPct">0%</strong></div><div class="loadTrack"><i id="loadFill"></i></div><small id="loadDetail">Preparing game runtime...</small></div>
+  <footer>VIRTUAL COINS ONLY</footer>
+</div>
+<div id="appLobby" class="appLobby hidden">
+  <div class="lobbyBar"><b>FORTUNE <span>NORI</span><small>FORTUNE NOIR • FN</small></b></div>
+  <section class="welcome"><div><small>WELCOME BACK</small><h2>CHOOSE YOUR<br><em>TABLE.</em></h2><p>Touch-first casino experience.</p></div><div class="welcomeBalance"><small>BALANCE</small><b><img class="balance-icon welcome-balance-icon" src="balance_icon.png" alt=""> <span id="welcomeCoins">0</span></b><em>COIN</em></div><div class="avatar" id="avatar" role="button" tabindex="0" aria-label="Edit profile"><img id="avatarFrame" class="avatar-frame" src="early_access_frame.png" alt="" hidden><span id="avatarText">FN</span><b id="playerName">PLAYER</b><small>READY</small></div></section>
+  <nav id="lobbyTabs"><button class="active" data-cat="all">ALL</button><button data-cat="casino">CASINO</button><button data-cat="table">TABLE</button><button data-cat="classic">CLASSIC</button><button data-cat="reward">REWARDS</button></nav>
+  <section class="lobbyGrid">
+   <button data-game="holdem" data-cat="table"><i class="gameEmoji"><img src="poker.png" alt=""></i><b>TEXAS HOLD'EM</b><small>4 PLAYER • AI TABLE</small><em>PLAY →</em></button>
+   <button data-game="blackjack" data-cat="table"><i class="gameEmoji"><img src="blackjack.png" alt=""></i><b>BLACKJACK</b><small>HIT • STAND • DOUBLE</small><em>PLAY →</em></button>
+   <button data-game="slot" data-cat="casino"><i class="gameEmoji"><img src="slot.png" alt=""></i><b>ULTIMATE SLOTS</b><small>3 REELS • PAYLINES</small><em>PLAY →</em></button>
+   <button data-game="roulette" data-cat="casino"><i class="gameEmoji"><img src="roulette.png" alt=""></i><b>ROULETTE</b><small>RED • BLACK • ZERO</small><em>PLAY →</em></button>
+   <button data-game="multiplier" data-cat="casino"><i class="gameEmoji"><img src="crash.png" alt=""></i><b>CRASH</b><small>RIDE THE CURVE</small><em>PLAY →</em></button>
+   <button data-game="highlow" data-cat="classic"><i class="gameEmoji"><img src="highlow.png" alt=""></i><b>HIGH & LOW</b><small>LIVE MARKET PATH</small><em>PLAY →</em></button>
+   <button data-game="chohan" data-cat="classic"><i class="gameEmoji"><img src="chohan.png" alt=""></i><b>CHO-HAN</b><small>ODD / EVEN • DICE TABLE</small><em>PLAY →</em></button>
+   <button data-game="coin" data-cat="classic"><i class="gameEmoji"><img src="coin.png" alt=""></i><b>COIN FLIP</b><small>HEADS • TAILS</small><em>PLAY →</em></button>
+   <button data-game="dice" data-cat="table"><i class="gameEmoji"><img src="highdice.png" alt=""></i><b>HIGH DICE</b><small>HIGH • LOW • EXACT</small><em>PLAY →</em></button>
+   <button data-game="lottery" data-cat="reward"><i class="gameEmoji"><img src="lottery.png" alt=""></i><b>LOTTERY</b><small>JACKPOT</small><em>PLAY →</em></button>
+  </section>
+  <section class="lobbyTools"><button id="roomBtn"><small>PRIVATE ROOM</small><b>PLAY WITH FRIENDS</b><span id="roomCode">CREATE INVITE →</span></button><div class="profile-tool"><button type="button" id="lobbyAdminBtn" class="profile-admin-btn" aria-label="Open admin menu"><span>ADMIN</span><b>CONTROL</b></button><button type="button" id="lobbyDebugBtn" class="profile-system-btn"><span class="dbg-led"></span><span>SYSTEM</span><b id="debugCountLobby">0</b></button></div></section>
+  <section class="friendsBottom"><button id="friendsCard" type="button"><small>SOCIAL</small><b>FRIENDS</b><span>SEARCH • REQUESTS • ONLINE →</span></button></section>
+</div>
+<div id="socialOverlay" class="socialOverlay hidden"><div id="socialPanel"></div></div>
+
+</body>
+</html>
