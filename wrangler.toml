@@ -1,8 +1,0 @@
-name = "fortune-noir-admin-api"
-main = "worker.js"
-compatibility_date = "2026-08-24"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "fortune-noir"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
