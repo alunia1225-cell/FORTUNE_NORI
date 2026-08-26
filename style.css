@@ -3903,8 +3903,11 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 #modal .lottery-draw:disabled{opacity:.45!important;cursor:not-allowed!important}
 /* PROFILE FRAME — align to the existing small inner avatar circle */
 #avatar{position:relative;overflow:hidden}
-#avatar #avatarFrame{position:absolute!important;left:50%!important;top:calc(50% - 41px)!important;width:56px!important;height:56px!important;max-width:none!important;max-height:none!important;margin:0!important;transform:translateX(-50%)!important;object-fit:contain!important;object-position:center!important;display:block!important;z-index:3!important;pointer-events:none!important;border:0!important;border-radius:0!important}
+#avatar #avatarFrame{position:absolute!important;left:50%!important;top:calc(50% - 41px)!important;width:58px!important;height:58px!important;max-width:none!important;max-height:none!important;margin:0!important;transform:translateX(-50%)!important;object-fit:contain!important;object-position:center!important;display:block!important;z-index:3!important;pointer-events:none!important;border:0!important;border-radius:0!important}
 #avatar #avatarText,#avatar #playerName,#avatar>small{position:relative!important;z-index:4!important}
+/* Special reward frames already contain their own inner circular border.
+   Keep the player's icon, but remove only the old 40px avatar ring. */
+#avatar[data-frame="early_access"] #avatarText,#avatar[data-frame="admin"] #avatarText{width:auto!important;height:auto!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
 #avatar #avatarText{flex:0 0 auto!important}
 #avatar #playerName{display:block!important}
 /* PUCHUN VIDEO OVERLAY */
