@@ -3874,7 +3874,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 .fn-admin-grant{width:100%;margin:7px 0 12px;padding:12px;background:linear-gradient(180deg,#c8a54e,#725720);border:1px solid #e0c875;border-radius:6px;color:#080705;font:900 10px Orbitron;letter-spacing:1px;cursor:pointer}.fn-admin-balance{padding:11px;background:#0c0d0e;border:1px solid #302c22;color:#e0c36a;font:800 10px Orbitron;text-align:center}.fn-admin-card pre{height:150px;overflow:auto;margin:12px 0;padding:10px;background:#050607;border:1px solid #27282a;color:#899096;font:8px/1.5 ui-monospace,monospace;white-space:pre-wrap}.fn-admin-card>#fnAdminLogout{width:100%;padding:9px;background:#111314;border:1px solid #493e27;color:#a9abad;border-radius:5px;font:800 8px Orbitron;cursor:pointer}.fn-profile-admin-login{width:100%;margin-bottom:12px}
 @media(max-width:600px){.fn-admin-panel{padding:8px;align-items:flex-end}.fn-admin-card{width:100%;max-height:88vh}.fn-admin-presets{grid-template-columns:repeat(2,1fr)}}
 
-/* v1.20.4 lottery + coin redesign */
+/* v1.20.5 lottery + coin redesign */
 #modal .coin3d{transform-style:preserve-3d!important}
 #modal .coin-face{backface-visibility:hidden!important;transform-style:preserve-3d!important;transition:none!important}
 #modal .coin-head{transform:rotateY(0deg) translateZ(2px)!important}
@@ -3925,7 +3925,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 @media(max-width:600px){#modal .lottery-digit{height:58px;font-size:24px}}
 
 
-/* v1.20.4 FINAL: Early Access frame alignment */
+/* v1.20.5 FINAL: Early Access frame alignment */
 .avatar-frame,
 .profile-frame,
 .early-access-frame,
@@ -3944,37 +3944,23 @@ img[src*="early_access_frame"]{
   object-fit:contain;
 }
 
-/* v1.20.4: Early Access frame visual alignment */
-.avatar-frame{
-  left:50%!important;
-  top:46%!important;
-  width:150px!important;
-  height:150px!important;
-  transform:translate(-50%,-50%)!important;
-  z-index:0!important;
-  pointer-events:none!important;
-}
 
-/* v1.20.4: Early Access frame visual alignment */
-.avatar-frame{
-  left:50%!important;
-  top:46%!important;
-  width:150px!important;
-  height:150px!important;
-  transform:translate(-50%,-50%)!important;
-  z-index:0!important;
-  pointer-events:none!important;
-}
 
 /* ADMIN frame */
+
+
+/* v1.20.5: identical frame geometry for Early Access and ADMIN */
+.avatar-frame,
 .admin-frame-overlay{
   position:absolute!important;
   left:50%!important;
   top:50%!important;
-  width:100%!important;
-  height:100%!important;
+  width:142px!important;
+  height:142px!important;
+  max-width:none!important;
+  max-height:none!important;
   transform:translate(-50%,-50%)!important;
   object-fit:contain!important;
-  pointer-events:none!important;
   z-index:0!important;
+  pointer-events:none!important;
 }
