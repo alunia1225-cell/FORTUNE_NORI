@@ -28,10 +28,10 @@
       let p={name:'PLAYER',avatar:'FN',games:0,wins:0};
       try{p=JSON.parse(localStorage.getItem(key)||'null')||p}catch(_){ }
       p.name=String(name||'PLAYER').trim()||'PLAYER';
-      p.avatar=p.name===ADMIN_ID?'391':'FN';
+      p.icon=p.name===ADMIN_ID?'♠':(p.icon||'♠');p.frame=p.name===ADMIN_ID?'gold':(p.frame||'classic');
       localStorage.setItem(key,JSON.stringify(p));
       const n=$('playerName'),a=$('avatarText'),m=$('profileMeta');
-      if(n)n.textContent=p.name; if(a)a.textContent=p.avatar; if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1);
+      if(n)n.textContent=p.name; if(a)a.textContent=p.icon||'♠'; if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1);
     }catch(_){ }
   }
 

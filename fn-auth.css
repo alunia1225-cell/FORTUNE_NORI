@@ -68,3 +68,7 @@ html.fn-nonadmin #lobbyAdminBtn{display:none!important;visibility:hidden!importa
 #fnLoginStatus.fn-auth-error{color:#ff7474!important;}
 
 .fn-presence-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle}.fn-presence-dot.online{background:#d9b45b;box-shadow:0 0 8px rgba(217,180,91,.7)}.fn-presence-dot.offline{background:#555}.friend-row button{margin-left:6px}
+
+.fn-setting-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}.fn-setting-grid label{display:flex;flex-direction:column;gap:5px}.fn-setting-grid select,.fn-check{font-size:12px}.fn-check{display:flex;align-items:center;gap:8px;margin:8px 0}.fn-check input{accent-color:#d4af37}.fn-setting-grid select{background:#111;color:#fff;border:1px solid #444;border-radius:8px;padding:9px}.fn-admin-row input{min-width:0}.fn-admin-row{display:flex;gap:8px}
+
+#avatarText[data-frame=gold]{box-shadow:0 0 0 2px #d4af37,0 0 14px rgba(212,175,55,.35)}#avatarText[data-frame=silver]{box-shadow:0 0 0 2px #bfc5cc}#avatarText[data-frame=neon]{box-shadow:0 0 0 2px #39f,0 0 14px rgba(51,153,255,.45)}#avatarText[data-frame=royal]{box-shadow:0 0 0 2px #8d5cff,0 0 14px rgba(141,92,255,.35)}#avatarText[data-frame=classic]{box-shadow:none}
