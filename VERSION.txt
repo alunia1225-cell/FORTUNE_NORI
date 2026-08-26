@@ -1,4 +1,0 @@
-name=FORTUNE NOIR
-version=1.10.0
-abbreviation=FN
-FORTUNE NOIR 1.10.0 - BLACK GOLD READABLE ICONS
