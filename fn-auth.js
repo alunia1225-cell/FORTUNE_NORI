@@ -140,6 +140,19 @@
     b.addEventListener('click',e=>{ if(window.__FN_AUTHENTICATED)return; e.preventDefault(); e.stopImmediatePropagation(); showLogin(); },true);
     b.addEventListener('touchend',e=>{ if(window.__FN_AUTHENTICATED)return; e.preventDefault(); e.stopImmediatePropagation(); showLogin(); },true);
   }
+  async function refreshPlayerSession(name){
+    const clean=String(name||'').trim();
+    if(!clean || clean.toLowerCase()===ADMIN_ID.toLowerCase())throw new Error('INVALID_PLAYER_SESSION');
+    const d=await api('/player/session',{method:'POST',body:JSON.stringify({name:clean})});
+    if(!d.token)throw new Error('INVALID_PLAYER_RESPONSE');
+    localStorage.setItem(K.player,d.token);
+    localStorage.setItem(K.pid,String(d.playerId||''));
+    localStorage.setItem(K.name,d.name||clean);
+    localStorage.setItem(K.role,'player');
+    window.__FN_AUTH_ROLE='player'; window.__FN_AUTHENTICATED=true;
+    return d;
+  }
+  window.FN_REFRESH_PLAYER_SESSION=refreshPlayerSession;
   window.FN_API_REQUEST=api; window.FN_AUTH_LOGIN=login; window.FN_AUTH_RESTORE=restore; window.FN_AUTH_LOGOUT=async()=>{const pt=localStorage.getItem(K.player)||'';try{if(pt)await api('/auth/logout',{method:'POST'},pt)}catch(_){} [K.player,K.admin,K.role,K.name,K.pid].forEach(k=>localStorage.removeItem(k));window.FN_ADMIN_TOKEN='';window.__FN_AUTH_ROLE='';window.__FN_AUTHENTICATED=false;enforceDebug();showLogin();}; window.FN_AUTH_ROLE=()=>window.__FN_AUTH_ROLE; window.FN_AUTHENTICATED=()=>window.__FN_AUTHENTICATED===true;
 
   document.addEventListener('DOMContentLoaded',async()=>{

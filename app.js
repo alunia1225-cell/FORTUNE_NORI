@@ -1586,7 +1586,22 @@ document.addEventListener("DOMContentLoaded",()=>{
   function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile()}
   function renderProfile(){const p=prof();const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a)a.textContent=(p.avatar||'FN').slice(0,3).toUpperCase();if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
-  async function fnApi(path,opts={}){if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');const tok=localStorage.getItem('FN_PLAYER_TOKEN')||'';return window.FN_API_REQUEST(path,opts,tok)}
+  async function fnApi(path,opts={}){
+    if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
+    let tok=localStorage.getItem('FN_PLAYER_TOKEN')||'';
+    try{return await window.FN_API_REQUEST(path,opts,tok)}
+    catch(e){
+      if(Number(e?.status)!==401)throw e;
+      const name=localStorage.getItem('FN_LOGIN_NAME')||window.__FN_PROFILE_NAME||'';
+      if(!name || name.toLowerCase()==='391x')throw e;
+      // Recover a stale/mismatched player session once, then retry the original request.
+      if(typeof window.FN_REFRESH_PLAYER_SESSION!=='function')throw e;
+      const fresh=await window.FN_REFRESH_PLAYER_SESSION(name);
+      if(!fresh?.token)throw e;
+      tok=fresh.token;
+      return await window.FN_API_REQUEST(path,opts,tok);
+    }
+  }
   async function openSocial(type){
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     o.classList.remove('hidden');
