@@ -318,57 +318,45 @@ function coinFlip(pick){
  if(!head||!tail){window.GB_ACTION_BUSY=false;return}
  window.GB_ACTION_BUSY=true;
  const result=Math.random()<.5?"heads":"tails",win=result===pick;
- const headMark=head.querySelector("b"),headText=head.querySelector("small");
- const tailMark=tail.querySelector("b"),tailText=tail.querySelector("small");
- if(headMark)headMark.textContent="H"; if(headText)headText.textContent="HEADS";
- if(tailMark)tailMark.textContent="T"; if(tailText)tailText.textContent="TAILS";
- const setSettledFace=face=>{
-   c.dataset.face=face;
-   c.style.transform="rotateY(0deg)";
-   c.style.removeProperty("opacity");
-   head.style.transform="rotateY(0deg) translateZ(1px)";
-   tail.style.transform="rotateY(0deg) translateZ(1px)";
-   head.style.opacity=face==="heads"?"1":"0";
-   tail.style.opacity=face==="tails"?"1":"0";
-   head.style.visibility=face==="heads"?"visible":"hidden";
-   tail.style.visibility=face==="tails"?"visible":"hidden";
- };
- c.dataset.face="flipping";
- head.style.transform="rotateY(0deg) translateZ(1px)";
- tail.style.transform="rotateY(180deg) translateZ(1px)";
- head.style.opacity="1";tail.style.opacity="1";
- head.style.visibility="visible";tail.style.visibility="visible";
- c.style.transform="rotateY(0deg)";
+ c.dataset.face="flipping"; c.style.transform="rotateY(0deg)";
+ head.style.transform="rotateY(0deg) translateZ(2px)";
+ tail.style.transform="rotateY(180deg) translateZ(2px)";
+ head.style.opacity="1"; tail.style.opacity="1";
+ head.style.visibility="visible"; tail.style.visibility="visible";
  stage.style.transform="translate3d(0,34px,0) scale(.92)";
- void stage.offsetWidth;
- res.textContent="FLIPPING…";
+ void stage.offsetWidth; res.textContent="FLIPPING…";
  const finalAngle=result==="tails"?2340:2160;
  const motion=stage.animate([
-   {transform:"translate3d(0,34px,0) scale(.92)"},
-   {transform:"translate3d(-34px,-20px,0) scale(1.02)"},
-   {transform:"translate3d(28px,-104px,0) scale(1.12)"},
-   {transform:"translate3d(-20px,-126px,0) scale(1.16)"},
-   {transform:"translate3d(22px,-66px,0) scale(1.09)"},
-   {transform:"translate3d(0,0,0) scale(1)"}
+  {transform:"translate3d(0,34px,0) scale(.92)"},
+  {transform:"translate3d(-34px,-20px,0) scale(1.02)"},
+  {transform:"translate3d(28px,-104px,0) scale(1.12)"},
+  {transform:"translate3d(-20px,-126px,0) scale(1.16)"},
+  {transform:"translate3d(22px,-66px,0) scale(1.09)"},
+  {transform:"translate3d(0,0,0) scale(1)"}
  ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
  const spin=c.animate([
-   {transform:"rotateY(0deg) rotateZ(-8deg)"},
-   {transform:"rotateY(720deg) rotateZ(8deg)"},
-   {transform:"rotateY(1440deg) rotateZ(-6deg)"},
-   {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
+  {transform:"rotateY(0deg) rotateZ(-8deg)"},
+  {transform:"rotateY(720deg) rotateZ(8deg)"},
+  {transform:"rotateY(1440deg) rotateZ(-6deg)"},
+  {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
  ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
  sfx("flip");
  Promise.all([motion.finished,spin.finished]).then(()=>{
-   motion.cancel();spin.cancel();
-   setSettledFace(result);
-   res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
-   writeCoinHistory({side:result,win});renderCoinHistory();
-   settle(b,win?b*2:0,"COIN TOSS");sfx(win?"win":"lose");
-   window.GB_ACTION_BUSY=false;
+  motion.cancel();spin.cancel();
+  c.dataset.face=result; c.style.transform=result==="tails"?"rotateY(180deg)":"rotateY(0deg)";
+  head.style.transform="rotateY(0deg) translateZ(2px)";
+  tail.style.transform="rotateY(180deg) translateZ(2px)";
+  head.style.opacity=result==="heads"?"1":"0"; tail.style.opacity=result==="tails"?"1":"0";
+  head.style.visibility=result==="heads"?"visible":"hidden"; tail.style.visibility=result==="tails"?"visible":"hidden";
+  res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
+  writeCoinHistory({side:result,win});renderCoinHistory();
+  settle(b,win?b*2:0,"COIN TOSS");sfx(win?"win":"lose");
+  window.GB_ACTION_BUSY=false;
  }).catch(()=>{
-   try{motion.cancel();spin.cancel()}catch(_){}
-   setSettledFace("heads");
-   window.GB_ACTION_BUSY=false;
+  try{motion.cancel();spin.cancel()}catch(_){}
+  c.dataset.face="heads"; c.style.transform="rotateY(0deg)";
+  head.style.opacity="1";head.style.visibility="visible";tail.style.opacity="0";tail.style.visibility="hidden";
+  window.GB_ACTION_BUSY=false;
  });
 }
 
@@ -501,52 +489,41 @@ function pickLotteryOutcome(){
  return "LOSE";
 }
 function lotteryReward(outcome){return outcome==="JP"?100000:outcome==="GOLD"?10000:outcome==="SILVER"?500:0}
-function lotterySectorAtRotation(rotation){
- const a=(((-rotation)%360)+360)%360;
- for(const name of ["LOSE","SILVER","GOLD","JP"]){const q=LOTTERY_SECTORS[name];if(a>=q.start&&a<q.end)return name}
- return "LOSE";
-}
-function lotteryTargetForOutcome(outcome,current){
- const q=LOTTERY_SECTORS[outcome]||LOTTERY_SECTORS.LOSE;
- const sectorAngle=q.start+8+Math.random()*74;
- const desired=((360-sectorAngle)%360+360)%360;
- const currentNorm=((current%360)+360)%360;
- let delta=desired-currentNorm;if(delta<0)delta+=360;
- return current+(6+Math.floor(Math.random()*3))*360+delta;
-}
-function lotterySetActiveSector(wheel,name){
- if(!wheel)return;
- const q=LOTTERY_SECTORS[name]||LOTTERY_SECTORS.LOSE;
- wheel.style.setProperty("--active-start",`${q.start}deg`);
- wheel.dataset.active=name;
-}
-
+function lotteryClass(outcome){return outcome==="JP"?"jp":outcome==="GOLD"?"gold":outcome==="SILVER"?"silver":"lose"}
 function lottery(){
  if(window.GB_LOTTERY_BUSY)return;
- const b=100,res=$("res"),btn=document.querySelector(".lottery-draw"),wheel=$("lotteryWheel"),valueEl=$("lotteryWheelValue");
+ const b=100,res=$("res"),btn=document.querySelector(".lottery-draw");
  if(S.coins<b){if(res)res.textContent="NOT ENOUGH COINS";return}
- if(!wheel||!valueEl){if(res)res.textContent="LOTTERY ERROR";return}
+ const reels=[1,2,3,4,5,6].map(i=>$(`lotteryDigit${i}`));
+ if(reels.some(e=>!e)){if(res)res.textContent="LOTTERY ERROR";return}
  S.coins-=b;S.wagered+=b;save();render();
- window.GB_LOTTERY_BUSY=true;if(btn)btn.disabled=true;
- res.textContent="SPINNING…";valueEl.textContent="LOSE";lotterySetActiveSector(wheel,"LOSE");sfx("roulette");
+ window.GB_LOTTERY_BUSY=true;if(btn)btn.disabled=true;res.textContent="DRAWING…";
  const outcome=pickLotteryOutcome(),reward=lotteryReward(outcome);
- const current=Number(wheel.dataset.angle||0),final=lotteryTargetForOutcome(outcome,current);
- const start=performance.now(),duration=6200+Math.floor(Math.random()*700);
- let lastLabel="";
- const tick=now=>{
-   const p=Math.min(1,(now-start)/duration),ease=1-Math.pow(1-p,4),rotation=current+(final-current)*ease;
-   wheel.style.transform=`rotate(${rotation}deg)`;
-   const liveOutcome=lotterySectorAtRotation(rotation);
-   if(liveOutcome!==lastLabel){lastLabel=liveOutcome;valueEl.textContent=liveOutcome;lotterySetActiveSector(wheel,liveOutcome);}
-   if(p<1){requestAnimationFrame(tick);return}
-   wheel.style.transform=`rotate(${final}deg)`;wheel.dataset.angle=String(final);valueEl.textContent=outcome;lotterySetActiveSector(wheel,outcome);
-   const label=outcome==="JP"?"JP • 100,000 COIN":outcome==="GOLD"?"GOLD • 10,000 COIN":outcome==="SILVER"?"SILVER • 500 COIN":"LOSE";
-   if(reward){S.coins+=reward;S.profit+=reward-b;S.wins++;S.maxwin=Math.max(S.maxwin,reward-b);S.history.unshift({g:"LOTTERY",net:reward-b,bet:b,result:label,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();render();res.textContent=`${label} • WIN`;sfx(reward>=10000?"jackpot":"win");if(reward>=100000)puchun()}
-   else{S.profit-=b;S.history.unshift({g:"LOTTERY",net:-b,bet:b,result:"LOSE",t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();render();res.textContent="LOSE";sfx("lose")}
-   renderLotteryHistory();window.GB_LOTTERY_BUSY=false;if(btn)btn.disabled=false;
- };
- requestAnimationFrame(tick);
+ const digits=Array.from({length:6},()=>Math.floor(Math.random()*10));
+ const stopTimes=[900,1300,1700,2100,2500,2900];
+ let spinTimer=setInterval(()=>reels.forEach(el=>el.textContent=String(Math.floor(Math.random()*10))),70);
+ reels.forEach((el,i)=>{el.classList.remove("lottery-digit-stop");el.classList.add("lottery-digit-spin");setTimeout(()=>{
+   el.textContent=String(digits[i]);el.classList.remove("lottery-digit-spin");el.classList.add("lottery-digit-stop");
+ },stopTimes[i])});
+ setTimeout(()=>{
+  clearInterval(spinTimer);
+  const badge=$("lotteryOutcome"),prize=$("lotteryResult");
+  if(badge){badge.textContent=outcome==="JP"?"★ JACKPOT ★":outcome==="GOLD"?"GOLD":outcome==="SILVER"?"SILVER":"MISS";badge.className=`lottery-outcome ${lotteryClass(outcome)}`}
+  if(prize)prize.textContent=reward?`+${fmt(reward)} COIN`:"0 COIN";
+  if(reward){
+   S.coins+=reward;S.profit+=reward-b;S.wins++;S.maxwin=Math.max(S.maxwin,reward-b);
+   S.history.unshift({g:"LOTTERY",net:reward-b,bet:b,result:outcome==="JP"?"JP • 100,000 COIN":outcome==="GOLD"?"GOLD • 10,000 COIN":"SILVER • 500 COIN",t:new Date().toLocaleTimeString()});
+   S.history=S.history.slice(0,20);save();render();
+   if(res)res.textContent=`${outcome==="JP"?"JACKPOT":outcome} • WIN`;
+   if(reward>=100000)puchun();else sfx(reward>=10000?"jackpot":"win");
+  }else{
+   S.profit-=b;S.history.unshift({g:"LOTTERY",net:-b,bet:b,result:"LOSE",t:new Date().toLocaleTimeString()});
+   S.history=S.history.slice(0,20);save();render();if(res)res.textContent="MISS";sfx("lose");
+  }
+  renderLotteryHistory();window.GB_LOTTERY_BUSY=false;if(btn)btn.disabled=false;
+ },5200);
 }
+
 async function daily(){
   const r=$("res");
   try{
@@ -715,20 +692,24 @@ coin(){
  renderCoinHistory();
 },
 lottery(){
- const wheelStyle=`conic-gradient(from 0deg,#17191b 0deg 307.62deg,#a68a4f 307.62deg 352.62deg,#d1af55 352.62deg 359.82deg,#f0d77a 359.82deg 360deg)`;
- $("gameBody").innerHTML=`<div class="lottery-game">
-  <div class="lottery-hero">ONE DRAW <b>100 COIN</b></div>
-  <div class="lottery-prizes">
-   <div class="lottery-prize jp"><b>100,000</b><small>JACKPOT / JP</small></div>
-   <div class="lottery-prize gold"><b>10,000</b><small>GOLD</small></div>
-   <div class="lottery-prize silver"><b>500</b><small>SILVER</small></div>
+ $("gameBody").innerHTML=`<div class="lottery-game lottery-terminal">
+  <div class="lottery-hero"><small>FORTUNE LOTTERY</small><h2>DAILY JACKPOT DRAW</h2><b>1 DRAW • 100 COIN</b></div>
+  <div class="lottery-machine">
+   <div class="lottery-number-window"><div class="lottery-number-label">DRAW NUMBER</div>
+    <div class="lottery-number-reels">${[1,2,3,4,5,6].map(i=>`<div class="lottery-digit" id="lotteryDigit${i}">0</div>`).join("")}</div>
+   </div>
+   <div id="lotteryOutcome" class="lottery-outcome idle">READY</div>
+   <div id="lotteryResult" class="lottery-result">PRESS DRAW TO START</div>
   </div>
-  <div class="lottery-wheel-stage"><div class="lottery-pointer"></div><div id="lotteryWheel" class="lottery-wheel" data-angle="0" style="background:${wheelStyle}">
-   <div class="lottery-sector-labels" aria-hidden="true"><span class="lottery-sector-label lose">LOSE</span><span class="lottery-sector-label silver">SILVER</span><span class="lottery-sector-label gold">GOLD</span><span class="lottery-sector-label jp">JP</span></div>
-   <div class="lottery-wheel-center"><span id="lotteryWheelValue">LOSE</span></div>
-  </div></div>
+  <div class="lottery-prize-board">
+   <div class="lottery-board-title">PRIZE TABLE <small>TRUE DRAW ODDS</small></div>
+   <div class="lottery-prize-row jp"><span><b>JACKPOT</b><small>1 IN 2,000</small></span><strong>100,000</strong><em>0.05%</em></div>
+   <div class="lottery-prize-row gold"><span><b>GOLD</b><small>HIGH PRIZE</small></span><strong>10,000</strong><em>2.00%</em></div>
+   <div class="lottery-prize-row silver"><span><b>SILVER</b><small>SMALL PRIZE</small></span><strong>500</strong><em>13.00%</em></div>
+   <div class="lottery-prize-row lose"><span><b>MISS</b><small>NO PRIZE</small></span><strong>0</strong><em>84.95%</em></div>
+  </div>
   <div class="lottery-history"><div class="lottery-history-head"><b>RECENT DRAWS</b><small>LAST 5</small></div><div id="lotteryHistory"></div></div>
-  <button class="lottery-draw" onclick="lottery()">SPIN LOTTERY</button>
+  <button class="lottery-draw" onclick="lottery()">DRAW LOTTERY</button>
   <div id="res" class="result">READY</div>
  </div>`;
  renderLotteryHistory();
