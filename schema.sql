@@ -1,24 +1,35 @@
-CREATE TABLE IF NOT EXISTS players (player_id TEXT PRIMARY KEY, name TEXT NOT NULL, balance INTEGER NOT NULL DEFAULT 10000, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, player_id TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('player','admin')), expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS players (
+  player_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  balance INTEGER NOT NULL DEFAULT 9999,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,
+  player_id TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('admin','player')),
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_sessions_player ON sessions(player_id);
-CREATE TABLE IF NOT EXISTS balance_ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, tx_id TEXT NOT NULL UNIQUE, player_id TEXT NOT NULL, delta INTEGER NOT NULL, balance_after INTEGER NOT NULL, reason TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL);
-CREATE INDEX IF NOT EXISTS idx_balance_ledger_player ON balance_ledger(player_id,created_at DESC);
-CREATE TABLE IF NOT EXISTS admin_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, admin_player_id TEXT NOT NULL, target_player_id TEXT NOT NULL, amount INTEGER NOT NULL, note TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS admin_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_player_id TEXT NOT NULL,
+  target_player_id TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_admin_logs_created ON admin_logs(created_at DESC);
-CREATE TABLE IF NOT EXISTS player_names (name_key TEXT PRIMARY KEY, player_id TEXT NOT NULL UNIQUE, name TEXT NOT NULL, created_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS player_controls (player_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','frozen')), note TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS friend_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, requester_id TEXT NOT NULL, target_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','rejected')), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_friend_requests_pending ON friend_requests(requester_id,target_id,status);
-CREATE TABLE IF NOT EXISTS friendships (player_id TEXT NOT NULL, friend_id TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY(player_id,friend_id));
-CREATE TABLE IF NOT EXISTS rooms (room_id TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE, host_player_id TEXT NOT NULL, game_type TEXT NOT NULL CHECK(game_type IN ('poker','mahjong')), status TEXT NOT NULL DEFAULT 'waiting' CHECK(status IN ('waiting','playing','finished')), max_players INTEGER NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS room_members (room_id TEXT NOT NULL, player_id TEXT NOT NULL, ready INTEGER NOT NULL DEFAULT 0, joined_at INTEGER NOT NULL, PRIMARY KEY(room_id,player_id));
-CREATE TABLE IF NOT EXISTS admin_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS player_presence (player_id TEXT PRIMARY KEY, last_seen INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS player_settings (player_id TEXT PRIMARY KEY, icon TEXT NOT NULL DEFAULT '♠', frame TEXT NOT NULL DEFAULT 'classic', language TEXT NOT NULL DEFAULT 'ja', sound INTEGER NOT NULL DEFAULT 1, notifications INTEGER NOT NULL DEFAULT 1, online_status INTEGER NOT NULL DEFAULT 1, reduced_motion INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS player_items (player_id TEXT NOT NULL, item_id TEXT NOT NULL, granted_by TEXT NOT NULL DEFAULT '', granted_at INTEGER NOT NULL, PRIMARY KEY(player_id,item_id));
-CREATE TABLE IF NOT EXISTS room_invites (id INTEGER PRIMARY KEY AUTOINCREMENT, room_id TEXT NOT NULL, inviter_id TEXT NOT NULL, target_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','rejected')), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_room_invites_pending ON room_invites(room_id,target_id,status);
-CREATE TABLE IF NOT EXISTS game_settings (game_type TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, maintenance INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS reward_claims (player_id TEXT PRIMARY KEY, last_claim_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS poker_games (game_id TEXT PRIMARY KEY, room_id TEXT NOT NULL UNIQUE, status TEXT NOT NULL CHECK(status IN ('waiting','playing','finished')), dealer_index INTEGER NOT NULL DEFAULT 0, turn_index INTEGER NOT NULL DEFAULT 0, pot INTEGER NOT NULL DEFAULT 0, current_bet INTEGER NOT NULL DEFAULT 0, street TEXT NOT NULL DEFAULT 'preflop', board_json TEXT NOT NULL DEFAULT '[]', deck_json TEXT NOT NULL DEFAULT '[]', players_json TEXT NOT NULL DEFAULT '[]', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS poker_actions (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id TEXT NOT NULL, player_id TEXT NOT NULL, action TEXT NOT NULL, amount INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
+
+CREATE TABLE IF NOT EXISTS balance_ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tx_id TEXT NOT NULL UNIQUE,
+  player_id TEXT NOT NULL,
+  delta INTEGER NOT NULL,
+  balance_after INTEGER NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_balance_ledger_player ON balance_ledger(player_id,created_at DESC);
