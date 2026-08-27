@@ -341,68 +341,57 @@ function renderCoinHistory(){
 }
 function coinFlip(pick){
  if(window.GB_ACTION_BUSY)return;
- const b=wager($('bet')?.value);if(!b)return;
- const c=$('coin3d'),stage=$('coinFlipMotion'),res=$('res');
+ const b=wager($("bet")?.value);if(!b)return;
+ const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
  if(!c||!stage||!res){window.GB_ACTION_BUSY=false;return}
  window.GB_ACTION_BUSY=true;
- const result=Math.random()<.5?'heads':'tails',win=result===pick;
+ const result=Math.random()<.5?"heads":"tails",win=result===pick;
  const epoch=window.GB_RUNTIME?.epoch;
  const reset=()=>{
    c.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});
    stage.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});
-   c.dataset.face='heads';
-   c.style.transform='';
-   stage.style.transform='';
+   c.dataset.face="heads";
+   c.style.transform="rotateY(0deg) rotateZ(0deg)";
+   stage.style.transform="none";
    window.GB_ACTION_BUSY=false;
    window.GB_CANCEL_COIN_FLIP=null;
  };
  window.GB_CANCEL_COIN_FLIP=reset;
- c.dataset.face='heads';
- c.style.transform='scaleX(1) rotateZ(-4deg)';
- stage.style.transform='translate3d(0,34px,0) scale(.92)';
+ c.dataset.face="flipping";
+ c.style.transform="rotateY(0deg) rotateZ(0deg)";
+ stage.style.transform="translate3d(0,34px,0) scale(.92)";
  void stage.offsetWidth;
- res.textContent='FLIPPING…';
- const total=2400;
- const halfTurns=result==='tails'?7:8;
- const per=total/halfTurns;
+ res.textContent="FLIPPING…";
+ const finalAngle=result==="tails"?1260:1080;
  const motion=stage.animate([
-  {transform:'translate3d(0,34px,0) scale(.92)'},
-  {transform:'translate3d(-24px,-34px,0) scale(1.02)'},
-  {transform:'translate3d(18px,-104px,0) scale(1.1)'},
-  {transform:'translate3d(-14px,-124px,0) scale(1.12)'},
-  {transform:'translate3d(12px,-62px,0) scale(1.06)'},
-  {transform:'translate3d(0,0,0) scale(1)'}
- ],{duration:total,easing:'cubic-bezier(.18,.78,.17,1)',fill:'forwards'});
- const flip=c.animate([
-  {transform:'scaleX(1) rotateZ(-4deg)'},
-  {transform:'scaleX(.055) rotateZ(3deg)'},
-  {transform:'scaleX(1) rotateZ(-2deg)'}
- ],{duration:per,easing:'cubic-bezier(.2,.8,.2,1)',iterations:halfTurns,fill:'forwards'});
- let faceTimer=null,i=0;
- const tick=()=>{
-   if(!c.isConnected||window.GB_RUNTIME?.epoch!==epoch)return;
-   i++;
-   c.dataset.face=(c.dataset.face==='heads'?'tails':'heads');
-   if(i<halfTurns)faceTimer=setTimeout(tick,per);
- };
- faceTimer=setTimeout(tick,per/2);
- sfx('flip');
- Promise.all([motion.finished,flip.finished]).then(()=>{
-   if(faceTimer)clearTimeout(faceTimer);
+  {transform:"translate3d(0,34px,0) scale(.92)"},
+  {transform:"translate3d(-24px,-34px,0) scale(1.02)"},
+  {transform:"translate3d(18px,-104px,0) scale(1.1)"},
+  {transform:"translate3d(-14px,-124px,0) scale(1.12)"},
+  {transform:"translate3d(12px,-62px,0) scale(1.06)"},
+  {transform:"translate3d(0,0,0) scale(1)"}
+ ],{duration:2400,easing:"cubic-bezier(.18,.78,.17,1)",fill:"forwards"});
+ const spin=c.animate([
+  {transform:"rotateY(0deg) rotateZ(-5deg)"},
+  {transform:"rotateY(360deg) rotateZ(5deg)"},
+  {transform:"rotateY(720deg) rotateZ(-4deg)"},
+  {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
+ ],{duration:2400,easing:"cubic-bezier(.18,.78,.17,1)",fill:"forwards"});
+ sfx("flip");
+ Promise.all([motion.finished,spin.finished]).then(()=>{
    if(!window.GB_RUNTIME?.active||window.GB_RUNTIME.epoch!==epoch||!c.isConnected){reset();return}
-   motion.cancel();flip.cancel();
-   stage.style.transform='';
+   motion.cancel();spin.cancel();
+   stage.style.transform="none";
    c.dataset.face=result;
-   c.style.transform='scaleX(1) rotateZ(0deg)';
-   res.textContent=`${result.toUpperCase()} — ${win?'WIN':'LOSE'}`;
+   c.style.transform=result==="tails"?"rotateY(180deg) rotateZ(0deg)":"rotateY(0deg) rotateZ(0deg)";
+   res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
    writeCoinHistory({side:result,win});
    renderCoinHistory();
-   settle(b,win?b*2:0,'COIN TOSS');
-   sfx(win?'win':'lose');
+   settle(b,win?b*2:0,"COIN TOSS");
+   sfx(win?"win":"lose");
    window.GB_ACTION_BUSY=false;
    window.GB_CANCEL_COIN_FLIP=null;
- }).catch(()=>{if(faceTimer)clearTimeout(faceTimer);reset();});
- setTimeout(()=>{if(window.GB_ACTION_BUSY&&window.GB_RUNTIME?.epoch===epoch){if(faceTimer)clearTimeout(faceTimer);reset();}},total+1000);
+ }).catch(()=>{reset()});
 }
 
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
@@ -1635,16 +1624,24 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
 (function(){
   const profileKey='gb_profile_v2';
   const defaultProfile={name:'PLAYER',icon:'♠',frame:'classic',language:'ja',sound:true,notifications:true,onlineStatus:true,reducedMotion:false,games:0,wins:0};
+  let serverOwnedFrames=[];
   function prof(){try{return Object.assign({},defaultProfile,JSON.parse(localStorage.getItem(profileKey)||'{}'))}catch(e){return Object.assign({},defaultProfile)}}
   function saveProf(x){localStorage.setItem(profileKey,JSON.stringify(x))}
+  function specialFrameOwned(frame){return frame==='early_access'?serverOwnedFrames.includes('early_access'):frame==='admin'?serverOwnedFrames.includes('admin'):true}
   async function syncProfileSettings(){
-    if(typeof window.FN_API_REQUEST!=='function')return;
-    const role=window.__FN_AUTH_ROLE||''; if(!role)return;
+    serverOwnedFrames=[];
+    if(typeof window.FN_API_REQUEST!=='function'){renderProfile();return}
+    const role=window.__FN_AUTH_ROLE||''; if(!role){renderProfile();return}
     const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');
-    try{const d=await window.FN_API_REQUEST('/profile/settings',{},tok); if(d.settings){const x=Object.assign({},prof(),d.settings);saveProf(x);renderProfile();}}catch(_){}
+    try{
+      const d=await window.FN_API_REQUEST('/profile/settings',{},tok),s=d?.settings;
+      serverOwnedFrames=Array.isArray(s?.ownedFrames)?[...new Set(s.ownedFrames.map(String))]:[];
+      if(s){const x=Object.assign({},prof(),s);delete x.ownedFrames;if(!specialFrameOwned(x.frame))x.frame='classic';saveProf(x);}
+    }catch(_){serverOwnedFrames=[];}
+    renderProfile();
   }
-  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();syncProfileSettings()}
-  function renderProfile(){const p=prof(),frame=p.frame||'classic';const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}const af=document.getElementById('avatarFrame');if(af){const owned=Array.isArray(p.ownedFrames)?p.ownedFrames:[];const allowed=frame==='early_access'?owned.includes('early_access'):frame==='admin'?owned.includes('admin'):['classic','gold','silver','neon','royal'].includes(frame);const visible=allowed&&['early_access','admin'].includes(frame);af.hidden=!visible;af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visible?frame:'';}if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
+  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');serverOwnedFrames=[];renderProfile();syncProfileSettings()}
+  function renderProfile(){const p=prof(),frame=specialFrameOwned(p.frame)?(p.frame||'classic'):'classic';if(frame!==p.frame){p.frame=frame;saveProf(p)}const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}const af=document.getElementById('avatarFrame');if(af){const visible=['early_access','admin'].includes(frame)&&specialFrameOwned(frame);af.hidden=!visible;af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visible?frame:'';}if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   async function fnApi(path,opts={}){
     if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
@@ -1666,10 +1663,12 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     o.classList.remove('hidden');
     if(type==='profile'){
-      const x=prof();
+      let x=prof();
+      try{const role=window.__FN_AUTH_ROLE||'';const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');const d=await window.FN_API_REQUEST('/profile/settings',{},tok),s=d?.settings;if(s){serverOwnedFrames=Array.isArray(s.ownedFrames)?[...new Set(s.ownedFrames.map(String))]:[];x=Object.assign({},x,s);delete x.ownedFrames;}}catch(_){serverOwnedFrames=[];}
+      if(!specialFrameOwned(x.frame))x.frame='classic';
       p.innerHTML='<h2>PROFILE & SETTINGS</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+esc(x.name)+'" readonly><div class="fn-setting-grid"><label>ICON<select id="picon"><option>♠</option><option>♦</option><option>♣</option><option>♥</option><option>★</option><option>◆</option><option>●</option><option>♛</option></select></label><label>FRAME<select id="pframe"><option value="classic">CLASSIC</option><option value="gold">GOLD</option><option value="silver">SILVER</option><option value="neon">NEON</option><option value="royal">ROYAL</option></select></label><label>LANGUAGE<select id="plang"><option value="ja">日本語</option><option value="en">English</option></select></label></div><label class="fn-check"><input id="psound" type="checkbox"> SOUND</label><label class="fn-check"><input id="pnotify" type="checkbox"> NOTIFICATIONS</label><label class="fn-check"><input id="ponline" type="checkbox"> SHOW ONLINE STATUS</label><label class="fn-check"><input id="pmotion" type="checkbox"> REDUCED MOTION</label><div class="socialActions"><button class="primary" id="saveP">SAVE SETTINGS</button><button id="closeP">CLOSE</button></div><div id="profileStatus"></div>';
-      const ownedFrames=Array.isArray(x.ownedFrames)?x.ownedFrames:[];const sel=document.getElementById('pframe');if(ownedFrames.includes('early_access')&&!sel.querySelector('option[value="early_access"]')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(ownedFrames.includes('admin')&&!sel.querySelector('option[value="admin"]')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!['classic','gold','silver','neon','royal'].includes(x.frame)&&!ownedFrames.includes(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
-      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
+      const sel=document.getElementById('pframe');if(serverOwnedFrames.includes('early_access')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(serverOwnedFrames.includes('admin')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
+      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;if(!specialFrameOwned(x.frame))x.frame='classic';x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
       document.getElementById('closeP').onclick=()=>o.classList.add('hidden');
     }else if(type==='friends'){
       let friends=[],requests={incoming:[],outgoing:[]};
