@@ -201,6 +201,10 @@ function puchun(){
     window.__FN_PUCHUN_BUSY=false;
     window.FN_CANCEL_PUCHUN=null;
   };
+  const failSafe=()=>{
+    if(done)return;
+    finish();
+  };
   window.FN_CANCEL_PUCHUN=finish;
   e.classList.add("puchun-active");
   e.style.display="flex";
@@ -209,20 +213,18 @@ function puchun(){
   video.playsInline=true;
   video.setAttribute("muted","");
   video.setAttribute("playsinline","");
+  video.setAttribute("webkit-playsinline","");
   video.controls=false;
-  try{video.currentTime=0;}catch(_){}
+  video.preload="auto";
   video.onended=finish;
-  video.onerror=finish;
-  timer=setTimeout(finish,5000);
-  const play=()=>{
-    if(done)return;
-    try{
-      const promise=video.play();
-      if(promise&&typeof promise.catch==="function")promise.catch(finish);
-    }catch(_){finish()}
-  };
-  video.addEventListener("canplay",play,{once:true});
-  requestAnimationFrame(play);
+  video.onerror=failSafe;
+  try{video.pause();video.currentTime=0;}catch(_){}
+  timer=setTimeout(failSafe,4500);
+  try{
+    const playPromise=video.play();
+    if(playPromise&&typeof playPromise.catch==="function")playPromise.catch(failSafe);
+  }catch(_){failSafe()}
+  debugLog&&debugLog("VIDEO","PUCHUN",{file:"puchun_effect.mp4",blackout:true});
 }
 
 const CRASH_HISTORY_KEY="gb_crash_history_v1";
@@ -824,7 +826,8 @@ function spinSlot(){
        if(winLines){mult*=winLines>1?1.5:1;mult=Math.floor(mult);}
        SLOT_BUSY=false;if(btn)btn.disabled=false;
        if(res)res.textContent=winLines?`${hitName} • ${winLines} LINE${winLines>1?"S":""} • ×${mult}`:"";
-       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(mult>=15?"jackpot":"win");if(hitName==="SEVEN")puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
+       const redSevenWin=lines.some(li=>paths[li].every((row,col)=>final[col][row]==="seven"));
+       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(mult>=15?"jackpot":"win");if(redSevenWin)puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
      }
    },1000+i*700);
  },
@@ -1519,7 +1522,7 @@ function rouletteSpin(choice){
    renderRouletteHistory();
    settle(b,win?b*payout:0,'ROULETTE');
    sfx(win?'win':'lose');
-   if(win&&color==='green')puchun();
+   if(win&&color==='green')sfx('jackpot');
    GB_ROULETTE_BUSY=false;
    const spinAgain=$('rouletteNumberSpin');if(spinAgain&&window.ROULETTE_BET)spinAgain.disabled=false;
   };
@@ -1609,40 +1612,31 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
 (function(){
   const profileKey='gb_profile_v2';
   const defaultProfile={name:'PLAYER',icon:'♠',frame:'classic',language:'ja',sound:true,notifications:true,onlineStatus:true,reducedMotion:false,games:0,wins:0};
+  let FN_SERVER_OWNED_FRAMES=null;
   function prof(){try{return Object.assign({},defaultProfile,JSON.parse(localStorage.getItem(profileKey)||'{}'))}catch(e){return Object.assign({},defaultProfile)}}
-  function saveProf(x){localStorage.setItem(profileKey,JSON.stringify(x))}
-  let serverOwnedFrames=null;
+  function saveProf(x){const copy=Object.assign({},x);delete copy.ownedFrames;localStorage.setItem(profileKey,JSON.stringify(copy))}
+  function specialFrameOwned(frame){return Array.isArray(FN_SERVER_OWNED_FRAMES)&&((frame==='early_access'&&FN_SERVER_OWNED_FRAMES.includes('early_access'))||(frame==='admin'&&FN_SERVER_OWNED_FRAMES.includes('admin')))}
+  function resetSpecialFrameState(){FN_SERVER_OWNED_FRAMES=null;const p=prof();if(p.frame==='early_access'||p.frame==='admin'){p.frame='classic';saveProf(p)}}
   async function syncProfileSettings(){
-    serverOwnedFrames=null;
+    resetSpecialFrameState();
     renderProfile();
-    if(typeof window.FN_API_REQUEST!=='function'){serverOwnedFrames=[];renderProfile();return;}
-    const role=window.__FN_AUTH_ROLE||''; if(!role){serverOwnedFrames=[];renderProfile();return;}
+    if(typeof window.FN_API_REQUEST!=='function')return;
+    const role=window.__FN_AUTH_ROLE||''; if(!role)return;
     const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');
     try{
       const d=await window.FN_API_REQUEST('/profile/settings',{},tok);
       if(d.settings){
+        FN_SERVER_OWNED_FRAMES=Array.isArray(d.settings.ownedFrames)?d.settings.ownedFrames.filter(x=>x==='early_access'||x==='admin'):[];
         const x=Object.assign({},prof(),d.settings);
-        serverOwnedFrames=Array.isArray(d.settings.ownedFrames)?d.settings.ownedFrames:[];
-        saveProf(x);renderProfile();
-      }else{serverOwnedFrames=[];renderProfile()}
-    }catch(_){serverOwnedFrames=[];renderProfile()}
+        delete x.ownedFrames;
+        if((x.frame==='early_access'||x.frame==='admin')&&!specialFrameOwned(x.frame))x.frame='classic';
+        saveProf(x);
+      }else{FN_SERVER_OWNED_FRAMES=[]}
+    }catch(_){FN_SERVER_OWNED_FRAMES=[]}
+    renderProfile();
   }
-  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();syncProfileSettings()}
-  function renderProfile(){
-    const p=prof(),rawFrame=p.frame||'classic';
-    const special=rawFrame==='early_access'||rawFrame==='admin';
-    const owned=Array.isArray(serverOwnedFrames)?serverOwnedFrames:[];
-    const frame=special?(serverOwnedFrames!==null&&owned.includes(rawFrame)?rawFrame:'classic'):rawFrame;
-    const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');
-    if(n)n.textContent=p.name;
-    if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}
-    const af=document.getElementById('avatarFrame');
-    if(af){
-      const visible=(serverOwnedFrames!==null)&&((frame==='early_access'&&owned.includes('early_access'))||(frame==='admin'&&owned.includes('admin')));
-      af.hidden=!visible;af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visible?frame:'';
-    }
-    if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)
-  }
+  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');syncProfileSettings()}
+  function renderProfile(){const p=prof(),frame=p.frame||'classic',safeFrame=['classic','gold','silver','neon','royal'].includes(frame)||specialFrameOwned(frame)?frame:'classic';const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=safeFrame;}const af=document.getElementById('avatarFrame');if(af){const visible=safeFrame==='early_access'||safeFrame==='admin';af.hidden=!visible;af.src=safeFrame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visible?safeFrame:'';}if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   async function fnApi(path,opts={}){
     if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
@@ -1664,10 +1658,11 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     o.classList.remove('hidden');
     if(type==='profile'){
-      const x=prof();
+      let x=prof();
+      if(FN_SERVER_OWNED_FRAMES===null){await syncProfileSettings();x=prof()}
       p.innerHTML='<h2>PROFILE & SETTINGS</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+esc(x.name)+'" readonly><div class="fn-setting-grid"><label>ICON<select id="picon"><option>♠</option><option>♦</option><option>♣</option><option>♥</option><option>★</option><option>◆</option><option>●</option><option>♛</option></select></label><label>FRAME<select id="pframe"><option value="classic">CLASSIC</option><option value="gold">GOLD</option><option value="silver">SILVER</option><option value="neon">NEON</option><option value="royal">ROYAL</option></select></label><label>LANGUAGE<select id="plang"><option value="ja">日本語</option><option value="en">English</option></select></label></div><label class="fn-check"><input id="psound" type="checkbox"> SOUND</label><label class="fn-check"><input id="pnotify" type="checkbox"> NOTIFICATIONS</label><label class="fn-check"><input id="ponline" type="checkbox"> SHOW ONLINE STATUS</label><label class="fn-check"><input id="pmotion" type="checkbox"> REDUCED MOTION</label><div class="socialActions"><button class="primary" id="saveP">SAVE SETTINGS</button><button id="closeP">CLOSE</button></div><div id="profileStatus"></div>';
-      const ownedFrames=Array.isArray(x.ownedFrames)?x.ownedFrames:[];const sel=document.getElementById('pframe');if(ownedFrames.includes('early_access')&&!sel.querySelector('option[value="early_access"]')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(ownedFrames.includes('admin')&&!sel.querySelector('option[value="admin"]')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!['classic','gold','silver','neon','royal'].includes(x.frame)&&!ownedFrames.includes(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
-      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
+      const ownedFrames=Array.isArray(FN_SERVER_OWNED_FRAMES)?FN_SERVER_OWNED_FRAMES:[];const sel=document.getElementById('pframe');if(ownedFrames.includes('early_access')&&!sel.querySelector('option[value="early_access"]')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(ownedFrames.includes('admin')&&!sel.querySelector('option[value="admin"]')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!['classic','gold','silver','neon','royal'].includes(x.frame)&&!ownedFrames.includes(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
+      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;if((x.frame==='early_access'||x.frame==='admin')&&!specialFrameOwned(x.frame)){x.frame='classic';}x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
       document.getElementById('closeP').onclick=()=>o.classList.add('hidden');
     }else if(type==='friends'){
       let friends=[],requests={incoming:[],outgoing:[]};
