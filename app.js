@@ -187,44 +187,57 @@ function renderRouletteHistory(){
 
 function puchun(){
   if(window.__FN_PUCHUN_BUSY)return;
-  const e=$("blackout"),video=$("puchunVideo");
-  if(!e||!video)return;
+  const e=$("blackout");
+  if(!e)return;
   window.__FN_PUCHUN_BUSY=true;
-  let done=false,timer=null;
+  let done=false, fallbackTimer=null, startTimer=null, video=null;
   const finish=()=>{
     if(done)return;
     done=true;
-    if(timer)clearTimeout(timer);
-    try{video.pause();video.currentTime=0;}catch(_){}
+    if(startTimer)clearTimeout(startTimer);
+    if(fallbackTimer)clearTimeout(fallbackTimer);
+    try{video?.pause(); if(video){video.removeAttribute("src");video.load();video.remove();}}catch(_){}
     e.classList.remove("puchun-active");
     e.style.display="none";
     window.__FN_PUCHUN_BUSY=false;
     window.FN_CANCEL_PUCHUN=null;
   };
-  const failSafe=()=>{
-    if(done)return;
-    finish();
+  const fallback=()=>{
+    try{
+      const au=new Audio("puchun_notice.mp3?v=4.2");
+      au.volume=.9;au.currentTime=0;au.play().catch(()=>{});
+    }catch(_){}
+    fallbackTimer=setTimeout(finish,3000);
   };
   window.FN_CANCEL_PUCHUN=finish;
   e.classList.add("puchun-active");
   e.style.display="flex";
-  video.muted=true;
-  video.defaultMuted=true;
-  video.playsInline=true;
-  video.setAttribute("muted","");
-  video.setAttribute("playsinline","");
-  video.setAttribute("webkit-playsinline","");
-  video.controls=false;
+  e.innerHTML="";
+  video=document.createElement("video");
+  video.className="puchun-video";
+  video.src="puchun_effect.mp4";
   video.preload="auto";
-  video.onended=finish;
-  video.onerror=failSafe;
-  try{video.pause();video.currentTime=0;}catch(_){}
-  timer=setTimeout(failSafe,4500);
-  try{
-    const playPromise=video.play();
-    if(playPromise&&typeof playPromise.catch==="function")playPromise.catch(failSafe);
-  }catch(_){failSafe()}
-  debugLog&&debugLog("VIDEO","PUCHUN",{file:"puchun_effect.mp4",blackout:true});
+  video.playsInline=true;
+  video.controls=false;
+  video.autoplay=false;
+  video.setAttribute("aria-hidden","true");
+  e.appendChild(video);
+  video.addEventListener("ended",finish,{once:true});
+  video.addEventListener("error",fallback,{once:true});
+  video.addEventListener("loadedmetadata",()=>{
+    const ms=Math.max(2200,Math.ceil((Number(video.duration)||1.6)*1000)+900);
+    fallbackTimer=setTimeout(finish,ms);
+  },{once:true});
+  startTimer=setTimeout(()=>{
+    if(done)return;
+    try{
+      const p=video.play();
+      if(p&&typeof p.catch==="function")p.catch(fallback);
+    }catch(_){fallback()}
+  },140);
+  // Hard safety timeout if metadata/playback events fail on mobile Safari.
+  fallbackTimer=setTimeout(finish,4200);
+  debugLog&&debugLog("AUDIO","PUCHUN",{file:"puchun_effect.mp4",video:true,blackout:true});
 }
 
 const CRASH_HISTORY_KEY="gb_crash_history_v1";
@@ -328,57 +341,68 @@ function renderCoinHistory(){
 }
 function coinFlip(pick){
  if(window.GB_ACTION_BUSY)return;
- const b=wager($("bet")?.value);if(!b)return;
- const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
+ const b=wager($('bet')?.value);if(!b)return;
+ const c=$('coin3d'),stage=$('coinFlipMotion'),res=$('res');
  if(!c||!stage||!res){window.GB_ACTION_BUSY=false;return}
  window.GB_ACTION_BUSY=true;
- const result=Math.random()<.5?"heads":"tails",win=result===pick;
+ const result=Math.random()<.5?'heads':'tails',win=result===pick;
  const epoch=window.GB_RUNTIME?.epoch;
  const reset=()=>{
    c.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});
    stage.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});
-   c.dataset.face="heads";
-   c.style.transform="rotateY(0deg) rotateZ(0deg)";
-   stage.style.transform="none";
+   c.dataset.face='heads';
+   c.style.transform='';
+   stage.style.transform='';
    window.GB_ACTION_BUSY=false;
    window.GB_CANCEL_COIN_FLIP=null;
  };
  window.GB_CANCEL_COIN_FLIP=reset;
- c.dataset.face="flipping";
- c.style.transform="rotateY(0deg) rotateZ(0deg)";
- stage.style.transform="translate3d(0,34px,0) scale(.92)";
+ c.dataset.face='heads';
+ c.style.transform='scaleX(1) rotateZ(-4deg)';
+ stage.style.transform='translate3d(0,34px,0) scale(.92)';
  void stage.offsetWidth;
- res.textContent="FLIPPING…";
- const finalAngle=result==="tails"?1260:1080;
+ res.textContent='FLIPPING…';
+ const total=2400;
+ const halfTurns=result==='tails'?7:8;
+ const per=total/halfTurns;
  const motion=stage.animate([
-  {transform:"translate3d(0,34px,0) scale(.92)"},
-  {transform:"translate3d(-24px,-34px,0) scale(1.02)"},
-  {transform:"translate3d(18px,-104px,0) scale(1.1)"},
-  {transform:"translate3d(-14px,-124px,0) scale(1.12)"},
-  {transform:"translate3d(12px,-62px,0) scale(1.06)"},
-  {transform:"translate3d(0,0,0) scale(1)"}
- ],{duration:2400,easing:"cubic-bezier(.18,.78,.17,1)",fill:"forwards"});
- const spin=c.animate([
-  {transform:"rotateY(0deg) rotateZ(-5deg)"},
-  {transform:"rotateY(360deg) rotateZ(5deg)"},
-  {transform:"rotateY(720deg) rotateZ(-4deg)"},
-  {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
- ],{duration:2400,easing:"cubic-bezier(.18,.78,.17,1)",fill:"forwards"});
- sfx("flip");
- Promise.all([motion.finished,spin.finished]).then(()=>{
+  {transform:'translate3d(0,34px,0) scale(.92)'},
+  {transform:'translate3d(-24px,-34px,0) scale(1.02)'},
+  {transform:'translate3d(18px,-104px,0) scale(1.1)'},
+  {transform:'translate3d(-14px,-124px,0) scale(1.12)'},
+  {transform:'translate3d(12px,-62px,0) scale(1.06)'},
+  {transform:'translate3d(0,0,0) scale(1)'}
+ ],{duration:total,easing:'cubic-bezier(.18,.78,.17,1)',fill:'forwards'});
+ const flip=c.animate([
+  {transform:'scaleX(1) rotateZ(-4deg)'},
+  {transform:'scaleX(.055) rotateZ(3deg)'},
+  {transform:'scaleX(1) rotateZ(-2deg)'}
+ ],{duration:per,easing:'cubic-bezier(.2,.8,.2,1)',iterations:halfTurns,fill:'forwards'});
+ let faceTimer=null,i=0;
+ const tick=()=>{
+   if(!c.isConnected||window.GB_RUNTIME?.epoch!==epoch)return;
+   i++;
+   c.dataset.face=(c.dataset.face==='heads'?'tails':'heads');
+   if(i<halfTurns)faceTimer=setTimeout(tick,per);
+ };
+ faceTimer=setTimeout(tick,per/2);
+ sfx('flip');
+ Promise.all([motion.finished,flip.finished]).then(()=>{
+   if(faceTimer)clearTimeout(faceTimer);
    if(!window.GB_RUNTIME?.active||window.GB_RUNTIME.epoch!==epoch||!c.isConnected){reset();return}
-   motion.cancel();spin.cancel();
-   stage.style.transform="none";
+   motion.cancel();flip.cancel();
+   stage.style.transform='';
    c.dataset.face=result;
-   c.style.transform=result==="tails"?"rotateY(180deg) rotateZ(0deg)":"rotateY(0deg) rotateZ(0deg)";
-   res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
+   c.style.transform='scaleX(1) rotateZ(0deg)';
+   res.textContent=`${result.toUpperCase()} — ${win?'WIN':'LOSE'}`;
    writeCoinHistory({side:result,win});
    renderCoinHistory();
-   settle(b,win?b*2:0,"COIN TOSS");
-   sfx(win?"win":"lose");
+   settle(b,win?b*2:0,'COIN TOSS');
+   sfx(win?'win':'lose');
    window.GB_ACTION_BUSY=false;
    window.GB_CANCEL_COIN_FLIP=null;
- }).catch(()=>{reset()});
+ }).catch(()=>{if(faceTimer)clearTimeout(faceTimer);reset();});
+ setTimeout(()=>{if(window.GB_ACTION_BUSY&&window.GB_RUNTIME?.epoch===epoch){if(faceTimer)clearTimeout(faceTimer);reset();}},total+1000);
 }
 
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
@@ -826,8 +850,7 @@ function spinSlot(){
        if(winLines){mult*=winLines>1?1.5:1;mult=Math.floor(mult);}
        SLOT_BUSY=false;if(btn)btn.disabled=false;
        if(res)res.textContent=winLines?`${hitName} • ${winLines} LINE${winLines>1?"S":""} • ×${mult}`:"";
-       const redSevenWin=lines.some(li=>paths[li].every((row,col)=>final[col][row]==="seven"));
-       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(mult>=15?"jackpot":"win");if(redSevenWin)puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
+       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(mult>=15?"jackpot":"win");if(mult>=15)puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
      }
    },1000+i*700);
  },
@@ -1522,7 +1545,7 @@ function rouletteSpin(choice){
    renderRouletteHistory();
    settle(b,win?b*payout:0,'ROULETTE');
    sfx(win?'win':'lose');
-   if(win&&color==='green')sfx('jackpot');
+   if(win&&color==='green')puchun();
    GB_ROULETTE_BUSY=false;
    const spinAgain=$('rouletteNumberSpin');if(spinAgain&&window.ROULETTE_BET)spinAgain.disabled=false;
   };
@@ -1612,31 +1635,16 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
 (function(){
   const profileKey='gb_profile_v2';
   const defaultProfile={name:'PLAYER',icon:'♠',frame:'classic',language:'ja',sound:true,notifications:true,onlineStatus:true,reducedMotion:false,games:0,wins:0};
-  let FN_SERVER_OWNED_FRAMES=null;
   function prof(){try{return Object.assign({},defaultProfile,JSON.parse(localStorage.getItem(profileKey)||'{}'))}catch(e){return Object.assign({},defaultProfile)}}
-  function saveProf(x){const copy=Object.assign({},x);delete copy.ownedFrames;localStorage.setItem(profileKey,JSON.stringify(copy))}
-  function specialFrameOwned(frame){return Array.isArray(FN_SERVER_OWNED_FRAMES)&&((frame==='early_access'&&FN_SERVER_OWNED_FRAMES.includes('early_access'))||(frame==='admin'&&FN_SERVER_OWNED_FRAMES.includes('admin')))}
-  function resetSpecialFrameState(){FN_SERVER_OWNED_FRAMES=null;const p=prof();if(p.frame==='early_access'||p.frame==='admin'){p.frame='classic';saveProf(p)}}
+  function saveProf(x){localStorage.setItem(profileKey,JSON.stringify(x))}
   async function syncProfileSettings(){
-    resetSpecialFrameState();
-    renderProfile();
     if(typeof window.FN_API_REQUEST!=='function')return;
     const role=window.__FN_AUTH_ROLE||''; if(!role)return;
     const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');
-    try{
-      const d=await window.FN_API_REQUEST('/profile/settings',{},tok);
-      if(d.settings){
-        FN_SERVER_OWNED_FRAMES=Array.isArray(d.settings.ownedFrames)?d.settings.ownedFrames.filter(x=>x==='early_access'||x==='admin'):[];
-        const x=Object.assign({},prof(),d.settings);
-        delete x.ownedFrames;
-        if((x.frame==='early_access'||x.frame==='admin')&&!specialFrameOwned(x.frame))x.frame='classic';
-        saveProf(x);
-      }else{FN_SERVER_OWNED_FRAMES=[]}
-    }catch(_){FN_SERVER_OWNED_FRAMES=[]}
-    renderProfile();
+    try{const d=await window.FN_API_REQUEST('/profile/settings',{},tok); if(d.settings){const x=Object.assign({},prof(),d.settings);saveProf(x);renderProfile();}}catch(_){}
   }
-  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');syncProfileSettings()}
-  function renderProfile(){const p=prof(),frame=p.frame||'classic',safeFrame=['classic','gold','silver','neon','royal'].includes(frame)||specialFrameOwned(frame)?frame:'classic';const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=safeFrame;}const af=document.getElementById('avatarFrame');if(af){const visible=safeFrame==='early_access'||safeFrame==='admin';af.hidden=!visible;af.src=safeFrame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visible?safeFrame:'';}if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
+  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();syncProfileSettings()}
+  function renderProfile(){const p=prof(),frame=p.frame||'classic';const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}const af=document.getElementById('avatarFrame');if(af){const owned=Array.isArray(p.ownedFrames)?p.ownedFrames:[];const allowed=frame==='early_access'?owned.includes('early_access'):frame==='admin'?owned.includes('admin'):['classic','gold','silver','neon','royal'].includes(frame);const visible=allowed&&['early_access','admin'].includes(frame);af.hidden=!visible;af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visible?frame:'';}if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   async function fnApi(path,opts={}){
     if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
@@ -1658,11 +1666,10 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     o.classList.remove('hidden');
     if(type==='profile'){
-      let x=prof();
-      if(FN_SERVER_OWNED_FRAMES===null){await syncProfileSettings();x=prof()}
+      const x=prof();
       p.innerHTML='<h2>PROFILE & SETTINGS</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+esc(x.name)+'" readonly><div class="fn-setting-grid"><label>ICON<select id="picon"><option>♠</option><option>♦</option><option>♣</option><option>♥</option><option>★</option><option>◆</option><option>●</option><option>♛</option></select></label><label>FRAME<select id="pframe"><option value="classic">CLASSIC</option><option value="gold">GOLD</option><option value="silver">SILVER</option><option value="neon">NEON</option><option value="royal">ROYAL</option></select></label><label>LANGUAGE<select id="plang"><option value="ja">日本語</option><option value="en">English</option></select></label></div><label class="fn-check"><input id="psound" type="checkbox"> SOUND</label><label class="fn-check"><input id="pnotify" type="checkbox"> NOTIFICATIONS</label><label class="fn-check"><input id="ponline" type="checkbox"> SHOW ONLINE STATUS</label><label class="fn-check"><input id="pmotion" type="checkbox"> REDUCED MOTION</label><div class="socialActions"><button class="primary" id="saveP">SAVE SETTINGS</button><button id="closeP">CLOSE</button></div><div id="profileStatus"></div>';
-      const ownedFrames=Array.isArray(FN_SERVER_OWNED_FRAMES)?FN_SERVER_OWNED_FRAMES:[];const sel=document.getElementById('pframe');if(ownedFrames.includes('early_access')&&!sel.querySelector('option[value="early_access"]')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(ownedFrames.includes('admin')&&!sel.querySelector('option[value="admin"]')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!['classic','gold','silver','neon','royal'].includes(x.frame)&&!ownedFrames.includes(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
-      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;if((x.frame==='early_access'||x.frame==='admin')&&!specialFrameOwned(x.frame)){x.frame='classic';}x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
+      const ownedFrames=Array.isArray(x.ownedFrames)?x.ownedFrames:[];const sel=document.getElementById('pframe');if(ownedFrames.includes('early_access')&&!sel.querySelector('option[value="early_access"]')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(ownedFrames.includes('admin')&&!sel.querySelector('option[value="admin"]')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!['classic','gold','silver','neon','royal'].includes(x.frame)&&!ownedFrames.includes(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
+      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
       document.getElementById('closeP').onclick=()=>o.classList.add('hidden');
     }else if(type==='friends'){
       let friends=[],requests={incoming:[],outgoing:[]};
