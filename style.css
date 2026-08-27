@@ -3712,16 +3712,20 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 #modal .coin-stage{height:255px!important;position:relative!important;display:grid!important;place-items:center!important;perspective:1200px!important;overflow:visible!important}
 #modal .coin-flip-motion{display:grid!important;place-items:center!important;will-change:transform!important}
 #modal .coin3d{width:116px!important;height:116px!important;position:relative!important;transform-style:preserve-3d!important;transform-origin:center!important;will-change:transform!important;filter:drop-shadow(0 18px 18px rgba(0,0,0,.65))!important}
-#modal .coin3d::before{content:""!important;position:absolute!important;inset:4px!important;border:5px solid #92712a!important;border-radius:50%!important;background:#121416!important;transform:translateZ(0)!important;box-shadow:inset 0 0 12px rgba(0,0,0,.8),0 0 0 2px rgba(239,211,122,.16)!important}
-#modal .coin-face{position:absolute!important;inset:0!important;width:116px!important;height:116px!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;border:5px solid #e7ca6b!important;border-radius:50%!important;backface-visibility:hidden!important;-webkit-backface-visibility:hidden!important;overflow:hidden!important;box-shadow:inset 0 0 0 3px rgba(255,241,172,.28),inset 0 -16px 24px rgba(0,0,0,.3),0 0 22px rgba(212,171,76,.15)!important}
-#modal .coin-head{transform:translateZ(6px)!important;background:radial-gradient(circle at 32% 28%,#fff3ad,#e8c663 35%,#a77d2a 65%,#4b3310)!important;color:#251703!important}
-#modal .coin-tail{transform:rotateY(180deg) translateZ(6px)!important;background:radial-gradient(circle at 24% 20%,#555b63 0,#2b2e34 28%,#111318 60%,#050506 100%)!important;border-color:#d4ad51!important;color:#f4d67c!important;box-shadow:inset 0 0 0 3px rgba(244,214,124,.18),inset 0 -18px 26px rgba(0,0,0,.72),0 0 22px rgba(0,0,0,.42)!important}
-#modal .coin-face .coin-symbol{display:block!important;font:900 16px/1 serif!important;letter-spacing:0!important}
+#modal .coin-face{position:absolute!important;inset:0!important;width:116px!important;height:116px!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:5px!important;border:5px solid #e7ca6b!important;border-radius:50%!important;backface-visibility:hidden!important;-webkit-backface-visibility:hidden!important;overflow:hidden!important;box-shadow:inset 0 0 0 3px rgba(255,241,172,.28),inset 0 -16px 24px rgba(0,0,0,.3),0 0 22px rgba(212,171,76,.15)!important}
+#modal .coin-head{transform:rotateY(0deg) translateZ(2px)!important;background:radial-gradient(circle at 32% 28%,#fff3ad 0,#e8c663 35%,#a77d2a 65%,#4b3310 100%)!important;color:#251703!important}
+#modal .coin-tail{transform:rotateY(180deg) translateZ(2px)!important;background:radial-gradient(circle at 30% 25%,#575b61 0,#2b2e33 32%,#111316 68%,#030405 100%)!important;border-color:#d4ad51!important;color:#f4d67c!important}
+#modal .coin-head:before{content:"♛"!important;display:block!important;color:#6a4a0b!important;font:900 17px/1 Georgia,serif!important;margin-bottom:1px!important;text-shadow:0 1px 2px rgba(255,247,195,.35)!important}
+#modal .coin-tail:before{content:"◆"!important;display:block!important;color:#e7c767!important;font:900 22px/1 Georgia,serif!important;margin-bottom:2px!important;text-shadow:0 1px 3px #000!important}
 #modal .coin-face b{font:950 42px/1 Orbitron,sans-serif!important;text-shadow:0 2px 2px rgba(0,0,0,.4)!important}
-#modal .coin-face small{font:900 7px/1 Orbitron,sans-serif!important;letter-spacing:.18em!important}
-#modal .coin-face em{display:block!important;font:900 5px/1 Orbitron,sans-serif!important;letter-spacing:.15em!important;font-style:normal!important;opacity:.9!important}
-#modal .coin-tail .coin-symbol{color:#dcb65c!important;text-shadow:0 0 8px rgba(220,182,92,.35)!important}
-#modal .coin-tail em{color:#9d927e!important}
+#modal .coin-tail b{color:#f4d67c!important}
+#modal .coin-face small{font:900 8px/1 Orbitron,sans-serif!important;letter-spacing:.2em!important}
+#modal .coin-tail small{color:#e0c269!important}
+#modal .coin3d[data-face="flipping"] .coin-face{opacity:1!important;visibility:visible!important}
+#modal .coin3d[data-face="heads"] .coin-head{opacity:1!important;visibility:visible!important}
+#modal .coin3d[data-face="heads"] .coin-tail{opacity:0!important;visibility:hidden!important}
+#modal .coin3d[data-face="tails"] .coin-head{opacity:0!important;visibility:hidden!important}
+#modal .coin3d[data-face="tails"] .coin-tail{opacity:1!important;visibility:visible!important}
 #modal .coin-choices{display:grid!important;grid-template-columns:1fr 44px 1fr!important;align-items:center!important;gap:8px!important;max-width:430px!important;margin:8px auto 12px!important}
 #modal .coin-choices button{min-height:60px!important;border:1px solid #b99036!important;border-radius:9px!important;background:linear-gradient(180deg,#2a2418,#0b0b0a)!important;color:#efcf74!important;font:900 13px/1 Orbitron,sans-serif!important;letter-spacing:.09em!important;box-shadow:inset 0 1px rgba(255,245,193,.16),0 7px 18px rgba(0,0,0,.58)!important;cursor:pointer!important}
 #modal .coin-choices button:last-child{background:linear-gradient(180deg,#171716,#050505)!important;color:#e4c66c!important}
@@ -3906,22 +3910,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 #modal .lottery-prize-row.lose b,#modal .lottery-prize-row.lose strong{color:#d17a82}
 #modal .lottery-draw{padding:12px 30px!important;border-radius:6px!important;background:linear-gradient(180deg,#2a2418,#0b0b0a)!important;border:1px solid #b99036!important;color:#e0c36b!important;font:900 10px Orbitron!important;cursor:pointer!important;box-shadow:inset 0 1px rgba(255,245,193,.14),0 7px 18px rgba(0,0,0,.55)!important}
 #modal .lottery-draw:disabled{opacity:.45!important;cursor:not-allowed!important}
-/* PROFILE FRAME — inner avatar only */
-#avatar{position:relative;overflow:hidden}
-#avatar #avatarFrame{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;object-fit:contain!important;object-position:center!important;display:block!important;z-index:1!important;pointer-events:none!important;border:0!important;border-radius:50%!important}
-#avatar #avatarText,#avatar #playerName,#avatar>small{position:relative!important;z-index:2!important}
-#avatar #avatarText{flex:0 0 auto!important}
-#avatar #playerName{display:block!important}
-@media(max-width:600px){#avatar{width:86px!important;height:86px!important}#avatar #avatarFrame{width:86px!important;height:86px!important}}
 /* PUCHUN VIDEO OVERLAY */
+#blackout{z-index:2147483003!important;background:#000!important;display:none;align-items:center;justify-content:center;overflow:hidden}
 #blackout.puchun-active{display:flex!important}
 #blackout .puchun-video{display:block!important;width:100vw!important;height:100vh!important;max-width:100vw!important;max-height:100vh!important;object-fit:contain!important;object-position:center center!important;background:#000!important}
-
-/* Special profile frames: confined to the inner avatar frame slot. */
-#avatar#avatar.special-frame #avatarFrame{position:absolute!important;left:50%!important;top:-13px!important;width:58px!important;height:58px!important;transform:translateX(-50%)!important;object-fit:contain!important;object-position:center!important;pointer-events:none!important;z-index:0!important;border-radius:0!important}
-#avatar#avatar.special-frame[data-profile-frame="admin"] #avatarFrame{width:60px!important;height:60px!important}
-#avatar.special-frame #avatarText{border-color:transparent!important;background:transparent!important;box-shadow:none!important}
-#avatar.special-frame #playerName,#avatar.special-frame small{position:relative!important;z-index:2!important}
-.fn-frame-host{position:relative!important;overflow:visible!important}
-.fn-profile-frame{position:absolute!important;left:50%!important;top:-13px!important;width:58px!important;height:58px!important;transform:translateX(-50%)!important;object-fit:contain!important;object-position:center!important;pointer-events:none!important;z-index:0!important}
-.fn-frame-host > *:not(.fn-profile-frame){position:relative;z-index:1}

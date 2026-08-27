@@ -187,61 +187,41 @@ function renderRouletteHistory(){
 
 function puchun(){
   if(window.__FN_PUCHUN_BUSY)return;
-  const e=$("blackout");
-  if(!e)return;
+  const blackout=$("blackout"),video=$("puchunVideo");
+  if(!blackout||!video)return;
   window.__FN_PUCHUN_BUSY=true;
-  let done=false, fallbackTimer=null, video=null;
+  let finished=false,safety=null;
   const finish=()=>{
-    if(done)return;
-    done=true;
-    if(fallbackTimer)clearTimeout(fallbackTimer);
-    try{video?.pause();if(video){video.removeAttribute("src");video.load();video.remove();}}catch(_){}
-    e.classList.remove("puchun-active");
-    e.style.display="none";
-    e.innerHTML="";
+    if(finished)return;
+    finished=true;
+    if(safety)clearTimeout(safety);
+    try{video.pause();video.currentTime=0;}catch(_){}
+    video.onended=null;video.onerror=null;
+    blackout.classList.remove("puchun-active");
+    blackout.style.display="none";
     window.__FN_PUCHUN_BUSY=false;
     window.FN_CANCEL_PUCHUN=null;
   };
-  const failSafe=()=>{if(!done)fallbackTimer=setTimeout(finish,1500)};
   window.FN_CANCEL_PUCHUN=finish;
-  e.classList.add("puchun-active");
-  e.style.display="flex";
-  e.innerHTML="";
-  video=document.createElement("video");
-  video.className="puchun-video";
-  video.src="puchun_effect.mp4";
-  video.preload="auto";
-  video.playsInline=true;
+  blackout.classList.add("puchun-active");
+  blackout.style.display="flex";
   video.muted=true;
   video.defaultMuted=true;
-  video.volume=0;
-  video.controls=false;
-  video.autoplay=false;
+  video.playsInline=true;
   video.setAttribute("playsinline","");
-  video.setAttribute("muted","");
-  video.setAttribute("aria-hidden","true");
-  e.appendChild(video);
-  video.addEventListener("ended",finish,{once:true});
-  video.addEventListener("error",failSafe,{once:true});
-  video.addEventListener("loadedmetadata",()=>{
-    if(done)return;
-    const ms=Math.max(1900,Math.ceil((Number(video.duration)||1.6)*1000)+350);
-    fallbackTimer=setTimeout(finish,ms);
-  },{once:true});
-  const start=()=>{
-    if(done)return;
-    try{
-      const p=video.play();
-      if(p&&typeof p.catch==="function")p.catch(failSafe);
-    }catch(_){failSafe()}
-  };
-  if(video.readyState>=2)start();
-  else video.addEventListener("canplay",start,{once:true});
-  // iOS Safari blocks audible autoplay. The effect is intentionally muted so the
-  // blackout/video sequence is deterministic even when triggered after animation timers.
-  debugLog&&debugLog("VIDEO","PUCHUN",{file:"puchun_effect.mp4",muted:true,blackout:true});
+  video.setAttribute("webkit-playsinline","");
+  video.controls=false;
+  video.preload="auto";
+  video.onended=finish;
+  video.onerror=()=>{if(safety)clearTimeout(safety);safety=setTimeout(finish,1000);};
+  try{video.pause();video.currentTime=0;video.load();}catch(_){}
+  safety=setTimeout(finish,3600);
+  requestAnimationFrame(()=>{
+    if(finished)return;
+    try{const playResult=video.play();if(playResult&&typeof playResult.catch==="function")playResult.catch(()=>{if(safety)clearTimeout(safety);safety=setTimeout(finish,1000);});}
+    catch(_){if(safety)clearTimeout(safety);safety=setTimeout(finish,1000);}
+  });
 }
-
 
 const CRASH_HISTORY_KEY="gb_crash_history_v1";
 let CRASH_HISTORY=[];
@@ -347,54 +327,56 @@ function coinFlip(pick){
  const b=wager($("bet")?.value);if(!b)return;
  const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
  if(!c||!stage||!res){window.GB_ACTION_BUSY=false;return}
+ const head=c.querySelector(".coin-head"),tail=c.querySelector(".coin-tail");
+ if(!head||!tail){window.GB_ACTION_BUSY=false;return}
  window.GB_ACTION_BUSY=true;
  const result=Math.random()<.5?"heads":"tails",win=result===pick;
- const epoch=window.GB_RUNTIME?.epoch;
- const reset=()=>{
-   c.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});
-   stage.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});
-   c.dataset.face="heads";
-   c.style.transform="rotateY(0deg) rotateZ(0deg)";
-   stage.style.transform="none";
-   window.GB_ACTION_BUSY=false;
-   window.GB_CANCEL_COIN_FLIP=null;
+ let cancelled=false;
+ const cancel=()=>{
+  cancelled=true;
+  try{c.getAnimations().forEach(a=>a.cancel());stage.getAnimations().forEach(a=>a.cancel())}catch(_){}
+  c.dataset.face="heads";c.style.transform="rotateY(0deg) rotateZ(0deg)";
+  head.style.transform="rotateY(0deg) translateZ(2px)";tail.style.transform="rotateY(180deg) translateZ(2px)";
+  head.style.opacity="1";tail.style.opacity="0";head.style.visibility="visible";tail.style.visibility="hidden";
+  stage.style.transform="none";
+  window.GB_ACTION_BUSY=false;window.GB_CANCEL_COIN_FLIP=null;
  };
- window.GB_CANCEL_COIN_FLIP=reset;
- c.dataset.face="flipping";
- c.style.transform="rotateY(0deg) rotateZ(0deg)";
+ window.GB_CANCEL_COIN_FLIP=cancel;
+ c.dataset.face="flipping";c.style.transform="rotateY(0deg) rotateZ(0deg)";
+ head.style.transform="rotateY(0deg) translateZ(2px)";
+ tail.style.transform="rotateY(180deg) translateZ(2px)";
+ head.style.opacity="1";tail.style.opacity="1";
+ head.style.visibility="visible";tail.style.visibility="visible";
  stage.style.transform="translate3d(0,34px,0) scale(.92)";
- void stage.offsetWidth;
- res.textContent="FLIPPING…";
- const finalAngle=result==="tails"?1260:1080;
+ void stage.offsetWidth;res.textContent="FLIPPING…";
+ const finalAngle=result==="tails"?2340:2160;
  const motion=stage.animate([
   {transform:"translate3d(0,34px,0) scale(.92)"},
-  {transform:"translate3d(-24px,-34px,0) scale(1.02)"},
-  {transform:"translate3d(18px,-104px,0) scale(1.1)"},
-  {transform:"translate3d(-14px,-124px,0) scale(1.12)"},
-  {transform:"translate3d(12px,-62px,0) scale(1.06)"},
+  {transform:"translate3d(-34px,-20px,0) scale(1.02)"},
+  {transform:"translate3d(28px,-104px,0) scale(1.12)"},
+  {transform:"translate3d(-20px,-126px,0) scale(1.16)"},
+  {transform:"translate3d(22px,-66px,0) scale(1.09)"},
   {transform:"translate3d(0,0,0) scale(1)"}
- ],{duration:2400,easing:"cubic-bezier(.18,.78,.17,1)",fill:"forwards"});
+ ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
  const spin=c.animate([
-  {transform:"rotateY(0deg) rotateZ(-5deg)"},
-  {transform:"rotateY(360deg) rotateZ(5deg)"},
-  {transform:"rotateY(720deg) rotateZ(-4deg)"},
+  {transform:"rotateY(0deg) rotateZ(-8deg)"},
+  {transform:"rotateY(720deg) rotateZ(8deg)"},
+  {transform:"rotateY(1440deg) rotateZ(-6deg)"},
   {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
- ],{duration:2400,easing:"cubic-bezier(.18,.78,.17,1)",fill:"forwards"});
+ ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
  sfx("flip");
  Promise.all([motion.finished,spin.finished]).then(()=>{
-   if(!window.GB_RUNTIME?.active||window.GB_RUNTIME.epoch!==epoch||!c.isConnected){reset();return}
-   motion.cancel();spin.cancel();
-   stage.style.transform="none";
-   c.dataset.face=result;
-   c.style.transform=result==="tails"?"rotateY(180deg) rotateZ(0deg)":"rotateY(0deg) rotateZ(0deg)";
-   res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
-   writeCoinHistory({side:result,win});
-   renderCoinHistory();
-   settle(b,win?b*2:0,"COIN TOSS");
-   sfx(win?"win":"lose");
-   window.GB_ACTION_BUSY=false;
-   window.GB_CANCEL_COIN_FLIP=null;
- }).catch(()=>{reset()});
+  if(cancelled){return}
+  motion.cancel();spin.cancel();stage.style.transform="none";
+  c.dataset.face=result;c.style.transform=result==="tails"?"rotateY(180deg)":"rotateY(0deg)";
+  head.style.transform="rotateY(0deg) translateZ(2px)";tail.style.transform="rotateY(180deg) translateZ(2px)";
+  head.style.opacity=result==="heads"?"1":"0";tail.style.opacity=result==="tails"?"1":"0";
+  head.style.visibility=result==="heads"?"visible":"hidden";tail.style.visibility=result==="tails"?"visible":"hidden";
+  res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
+  writeCoinHistory({side:result,win});renderCoinHistory();
+  settle(b,win?b*2:0,"COIN TOSS");sfx(win?"win":"lose");
+  window.GB_ACTION_BUSY=false;window.GB_CANCEL_COIN_FLIP=null;
+ }).catch(()=>{cancelled=true;cancel()});
 }
 
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
@@ -721,7 +703,7 @@ chohan(){
 coin(){
  $("gameBody").innerHTML=betbox()+`<div class="anim-game coin-game">
   <div class="anim-title">COIN TOSS</div>
-  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads"><div class="coin-face coin-head" aria-label="HEADS"><span class="coin-symbol">♛</span><b>H</b><small>HEADS</small><em>GOLD SIDE</em></div><div class="coin-face coin-tail" aria-label="TAILS"><span class="coin-symbol">◆</span><b>T</b><small>TAILS</small><em>BLACK SIDE</em></div></div></div></div>
+  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads"><div class="coin-face coin-head" aria-label="HEADS"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail" aria-label="TAILS"><b>T</b><small>TAILS</small></div></div></div></div>
   <div class="coin-choices"><button onclick="coinFlip('heads')"><b>HEADS</b><small>GOLD SIDE</small></button><div class="coin-vs">VS</div><button onclick="coinFlip('tails')"><b>TAILS</b><small>BLACK SIDE</small></button></div>
   <div id="res" class="result coin-result">CHOOSE YOUR SIDE</div>
   <div class="coin-history"><div class="coin-history-head"><b>COIN FLIP HISTORY</b><small>LAST 5</small></div><div id="coinHistory"></div></div>
@@ -842,7 +824,7 @@ function spinSlot(){
        if(winLines){mult*=winLines>1?1.5:1;mult=Math.floor(mult);}
        SLOT_BUSY=false;if(btn)btn.disabled=false;
        if(res)res.textContent=winLines?`${hitName} • ${winLines} LINE${winLines>1?"S":""} • ×${mult}`:"";
-       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(mult>=15?"jackpot":"win");if(mult>=15)puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
+       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(mult>=15?"jackpot":"win");if(hitName==="SEVEN")puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
      }
    },1000+i*700);
  },
@@ -1537,7 +1519,7 @@ function rouletteSpin(choice){
    renderRouletteHistory();
    settle(b,win?b*payout:0,'ROULETTE');
    sfx(win?'win':'lose');
-   if(win&&color==='green')puchun();
+
    GB_ROULETTE_BUSY=false;
    const spinAgain=$('rouletteNumberSpin');if(spinAgain&&window.ROULETTE_BET)spinAgain.disabled=false;
   };
@@ -1574,7 +1556,7 @@ window.addEventListener('fn-auth-changed',e=>{if(e.detail?.role==='admin')setTim
     p.innerHTML='<div class="fn-admin-card fn-admin-center">'+
       '<div class="fn-admin-head"><div><small>FORTUNE NOIR / SECURE CONTROL</small><h2>ADMIN CENTER</h2></div><button id="fnAdminClose" type="button">×</button></div>'+ 
       '<div class="fn-admin-tabs">'+
-      '<button data-tab="overview">OVERVIEW</button><button data-tab="players">PLAYERS</button><button data-tab="balance">BALANCE</button><button data-tab="items">ITEMS</button><button data-tab="logs">LOGS</button><button data-tab="games">GAME CONTROL</button><button data-tab="friends">FRIENDS</button><button data-tab="debug">DEBUG</button></div>'+ 
+      '<button data-tab="overview">OVERVIEW</button><button data-tab="players">PLAYERS</button><button data-tab="balance">BALANCE</button><button data-tab="items">ITEMS</button><button data-tab="logs">LOGS</button><button data-tab="games">GAME CONTROL</button><button data-tab="debug">DEBUG</button></div>'+ 
       '<div id="fnAdminContent"></div><button id="fnAdminLogout" class="fn-admin-logout" type="button">LOGOUT</button></div>';
     document.body.appendChild(p);
     p.querySelector('#fnAdminClose').onclick=()=>p.classList.add('hidden');
@@ -1592,7 +1574,6 @@ window.addEventListener('fn-auth-changed',e=>{if(e.detail?.role==='admin')setTim
     if(currentTab==='items')return items();
     if(currentTab==='logs')return logs();
     if(currentTab==='games')return games();
-    if(currentTab==='friends')return adminFriends();
     if(currentTab==='debug')return debugTab();
   }
   async function overview(){
@@ -1614,23 +1595,6 @@ window.addEventListener('fn-auth-changed',e=>{if(e.detail?.role==='admin')setTim
   async function games(){try{const [g,m]=await Promise.all([apiAdmin('/admin/games'),apiAdmin('/admin/stats')]);content().innerHTML='<h3>GAME CONTROL</h3><div class="fn-admin-control danger"><span>GLOBAL MAINTENANCE / EMERGENCY</span><b>'+((m.maintenance)?'ON':'OFF')+'</b><button id="fnGlobalMaint">'+(m.maintenance?'RELEASE ALL':'STOP ALL')+'</button></div><div class="fn-admin-game-list">'+(g.games||[]).map(x=>'<div class="fn-admin-control"><span>'+String(x.game_type).toUpperCase()+'</span><small>ENABLED '+(x.enabled?'YES':'NO')+' • MAINT '+(x.maintenance?'ON':'OFF')+'</small><button data-game-toggle="'+x.game_type+'" data-enabled="'+(x.enabled?0:1)+'">'+(x.enabled?'DISABLE':'ENABLE')+'</button><button data-game-maint="'+x.game_type+'" data-maint="'+(x.maintenance?0:1)+'">'+(x.maintenance?'RELEASE':'MAINTENANCE')+'</button></div>').join('')+'</div><p class="fn-admin-note">Game state is server-authoritative. Poker online room base is Phase 1; the actual multiplayer poker engine is Phase 2.</p>';content().querySelector('#fnGlobalMaint').onclick=()=>toggleMaintenance(!m.maintenance);content().querySelectorAll('[data-game-toggle]').forEach(b=>b.onclick=()=>setGame(b.dataset.game,!!Number(b.dataset.enabled),null));content().querySelectorAll('[data-game-maint]').forEach(b=>b.onclick=()=>setGame(b.dataset.game,null,!!Number(b.dataset.maint)))}catch(e){content().textContent='FAILED: '+e.message}}
   async function setGame(gameType,enabled,maintenance){try{const cur=(await apiAdmin('/admin/games')).games.find(x=>x.game_type===gameType)||{};await apiAdmin('/admin/games',{method:'POST',body:JSON.stringify({gameType,enabled:enabled===null?!!cur.enabled:enabled,maintenance:maintenance===null?!!cur.maintenance:maintenance})});games()}catch(e){content().innerHTML='<div class="fn-admin-error">FAILED: '+(e.message||e)+'</div>'}}
   async function toggleMaintenance(enabled){try{await apiAdmin('/admin/maintenance',{method:'POST',body:JSON.stringify({enabled})});games()}catch(e){content().innerHTML='<div class="fn-admin-error">FAILED: '+e.message+'</div>'}}
-  async function adminFriends(){
-    const c=content();
-    c.innerHTML='<h3>FRIENDS</h3><label>SEARCH PLAYER</label><div class="fn-admin-row"><input id="fnAdminFriendSearch" maxlength="16" placeholder="PLAYER NAME"><button id="fnAdminFriendSearchBtn">SEARCH</button></div><div id="fnAdminFriendStatus"></div><div id="fnAdminFriendResults"></div><h4>INCOMING REQUESTS</h4><div id="fnAdminIncoming"></div><h4>SENT REQUESTS</h4><div id="fnAdminOutgoing"></div><h4>FRIEND LIST</h4><div id="fnAdminFriendList"></div>';
-    const render=async()=>{
-      const status=c.querySelector('#fnAdminFriendStatus'),res=c.querySelector('#fnAdminFriendResults');
-      try{
-        const [fr,req]=await Promise.all([apiAdmin('/friends/list'),apiAdmin('/friends/requests')]);
-        c.querySelector('#fnAdminIncoming').innerHTML=(req.incoming||[]).map(r=>'<div class="fn-player-row"><span>'+esc(r.name)+'</span><button data-afrid="'+Number(r.id)+'" data-afact="accept">ACCEPT</button><button data-afrid="'+Number(r.id)+'" data-afact="reject">REJECT</button></div>').join('')||'<div class="fn-admin-note">NO PENDING REQUESTS</div>';
-        c.querySelector('#fnAdminOutgoing').innerHTML=(req.outgoing||[]).map(r=>'<div class="fn-player-row"><span>'+esc(r.name)+'</span><small>SENT</small></div>').join('')||'<div class="fn-admin-note">NO SENT REQUESTS</div>';
-        c.querySelector('#fnAdminFriendList').innerHTML=(fr.friends||[]).map(f=>'<div class="fn-player-row"><span>'+esc(f.name)+'</span><small>'+(f.online?'ONLINE':'OFFLINE')+'</small><button data-afremove="'+esc(f.player_id)+'">REMOVE</button></div>').join('')||'<div class="fn-admin-note">NO FRIENDS YET</div>';
-        c.querySelectorAll('[data-afrid]').forEach(b=>b.onclick=async()=>{try{await apiAdmin('/friends/respond',{method:'POST',body:JSON.stringify({requestId:Number(b.dataset.afrid),action:b.dataset.afact})});render()}catch(e){status.textContent='FAILED: '+e.message}});
-        c.querySelectorAll('[data-afremove]').forEach(b=>b.onclick=async()=>{try{await apiAdmin('/friends/remove',{method:'POST',body:JSON.stringify({friendId:b.dataset.afremove})});render()}catch(e){status.textContent='FAILED: '+e.message}});
-      }catch(e){status.textContent='FAILED: '+(e.message||e)}
-    };
-    const search=async()=>{const q=c.querySelector('#fnAdminFriendSearch').value.trim(),status=c.querySelector('#fnAdminFriendStatus'),res=c.querySelector('#fnAdminFriendResults');res.innerHTML='';if(!q){status.textContent='PLAYER NAMEを入力してください';return}status.textContent='SEARCHING...';try{const d=await apiAdmin('/players/search?'+new URLSearchParams({q})),rows=d.players||[];if(!rows.length){status.textContent='PLAYER NOT FOUND';return}status.textContent=rows.length+' PLAYER FOUND';res.innerHTML=rows.map(x=>'<div class="fn-player-row"><span>'+esc(x.name)+'</span><button class="fn-admin-grant" data-afadd="'+esc(x.name)+'">ADD FRIEND</button></div>').join('');res.querySelectorAll('[data-afadd]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.afadd;btn.disabled=true;try{await apiAdmin('/friends/request',{method:'POST',body:JSON.stringify({targetName:name})});status.textContent='FRIEND REQUEST SENT: '+name;btn.textContent='SENT';render()}catch(e){status.textContent='FAILED: '+(e.message||e);btn.disabled=false}})}catch(e){status.textContent='SEARCH FAILED: '+(e.message||e)}};
-    c.querySelector('#fnAdminFriendSearchBtn').onclick=search;c.querySelector('#fnAdminFriendSearch').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();search()}};render();
-  }
   function debugTab(){content().innerHTML='<h3>DEBUG</h3><button id="fnOpenDebug">OPEN DEBUG PANEL</button><button id="fnClearDebug">CLEAR DEBUG LOG</button>';content().querySelector('#fnOpenDebug').onclick=()=>{if(window.__FN_AUTH_ROLE==='admin'&&typeof window.toggleDebug==='function')window.toggleDebug()};content().querySelector('#fnClearDebug').onclick=()=>window.clearDebug?.()}
   async function open(){if(window.__FN_AUTH_ROLE!=='admin'){window.FN_AUTH_LOGIN?.();return}const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';if(!token){window.FN_AUTH_LOGIN?.();return}try{const me=await fnApi('/auth/me',{},token);if(me.role!=='admin')throw new Error('FORBIDDEN');panel().classList.remove('hidden');renderTab()}catch(e){localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);window.FN_AUTH_LOGIN?.()}}
   async function logout(){const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';try{if(token)await fnApi('/auth/logout',{method:'POST'},token)}catch(_){}localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);document.getElementById('fnAdminPanel')?.classList.add('hidden');window.FN_AUTH_LOGOUT?.()}
@@ -1645,50 +1609,17 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
 (function(){
   const profileKey='gb_profile_v2';
   const defaultProfile={name:'PLAYER',icon:'♠',frame:'classic',language:'ja',sound:true,notifications:true,onlineStatus:true,reducedMotion:false,games:0,wins:0};
-  const BASE_FRAMES=['classic','gold','silver','neon','royal'];
-  const SPECIAL_FRAMES=['early_access','admin'];
-  let serverFrameState={ready:false,owned:[]};
-  function prof(){try{return Object.assign({},defaultProfile,JSON.parse(localStorage.getItem(profileKey)||'{}'))}catch(e){return Object.assign({},defaultProfile)}}
-  function saveProf(x){const clean=Object.assign({},x);delete clean.ownedFrames;localStorage.setItem(profileKey,JSON.stringify(clean))}
-  function isOwnedFrame(frame){return BASE_FRAMES.includes(frame)||(serverFrameState.ready&&serverFrameState.owned.includes(frame))}
-  function effectiveFrame(frame){return isOwnedFrame(frame)?frame:'classic'}
-  async function syncProfileSettings(){
-    if(typeof window.FN_API_REQUEST!=='function')return false;
-    const role=window.__FN_AUTH_ROLE||''; if(!role)return false;
-    const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');
-    serverFrameState={ready:false,owned:[]};
-    renderProfile();
-    try{
-      const d=await window.FN_API_REQUEST('/profile/settings',{},tok);
-      if(!d.settings)return false;
-      const owned=[...new Set((Array.isArray(d.settings.ownedFrames)?d.settings.ownedFrames:[]).filter(f=>SPECIAL_FRAMES.includes(f)))];
-      serverFrameState={ready:true,owned};
-      const x=Object.assign({},prof(),d.settings);delete x.ownedFrames;saveProf(x);renderProfile();return true;
-    }catch(_){serverFrameState={ready:false,owned:[]};renderProfile();return false}
-  }
-  function attachProfileFrame(host,frame,visible){
-    if(!host)return null;
-    let img=host.querySelector(':scope > .fn-profile-frame');
-    if(!visible){img?.remove();host.classList.remove('fn-frame-host');return null}
-    if(!img){img=document.createElement('img');img.className='fn-profile-frame';img.alt='';img.setAttribute('aria-hidden','true');host.appendChild(img)}
-    img.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';img.dataset.frame=frame;host.classList.add('fn-frame-host');return img;
-  }
-  window.FN_APPLY_PROFILE_FRAME=function(host,frameOverride=null){
-    const p=prof(),frame=effectiveFrame(frameOverride||p.frame||'classic');
-    const visible=SPECIAL_FRAMES.includes(frame)&&serverFrameState.ready&&serverFrameState.owned.includes(frame);
-    return attachProfileFrame(host,frame,visible);
-  };
-  async function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();await syncProfileSettings()}
-  function renderProfile(){
-    const p=prof(),frame=effectiveFrame(p.frame||'classic'),n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta'),avatar=document.getElementById('avatar');
-    if(n)n.textContent=p.name;
-    if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}
-    const visibleSpecial=SPECIAL_FRAMES.includes(frame)&&serverFrameState.ready&&serverFrameState.owned.includes(frame);
-    if(avatar){avatar.dataset.profileFrame=frame;avatar.classList.toggle('special-frame',visibleSpecial);window.FN_APPLY_PROFILE_FRAME?.(avatar,frame);}
-    const af=document.getElementById('avatarFrame');if(af){af.hidden=!visibleSpecial;af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visibleSpecial?frame:'';}
-    if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)
-  }
-  window.addEventListener('fn-auth-changed',()=>{serverFrameState={ready:false,owned:[]};renderProfile();setTimeout(()=>syncProfileSettings(),0)});
+  let FN_SPECIAL_FRAMES_READY=false;
+  let FN_SPECIAL_OWNED=new Set();
+  function prof(){try{const x=JSON.parse(localStorage.getItem(profileKey)||'{}');delete x.ownedFrames;return Object.assign({},defaultProfile,x)}catch(e){return Object.assign({},defaultProfile)}}
+  function saveProf(x){const y=Object.assign({},x);delete y.ownedFrames;localStorage.setItem(profileKey,JSON.stringify(y))}
+  function syncSpecialFrames(settings){const owned=Array.isArray(settings?.ownedFrames)?settings.ownedFrames:[];FN_SPECIAL_OWNED=new Set(owned.filter(x=>x==='early_access'||x==='admin'));FN_SPECIAL_FRAMES_READY=true}
+  function frameOwned(frame){return frame==='early_access'||frame==='admin'?FN_SPECIAL_FRAMES_READY&&FN_SPECIAL_OWNED.has(frame):['classic','gold','silver','neon','royal'].includes(frame)}
+  function applyProfileFrame(root,profile){const host=root&&root.nodeType?root:document.getElementById('avatar');if(!host)return;const p=profile||prof(),frame=p.frame||'classic',af=host.querySelector?.('.avatar-frame')||document.getElementById('avatarFrame');if(!af)return;const special=frame==='early_access'||frame==='admin',visible=special&&frameOwned(frame);af.hidden=!visible;af.dataset.frame=visible?frame:'';if(visible)af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';else af.removeAttribute('src');host.dataset.profileFrame=visible?frame:''}
+  window.FN_APPLY_PROFILE_FRAME=applyProfileFrame;
+  async function syncProfileSettings(){FN_SPECIAL_FRAMES_READY=false;FN_SPECIAL_OWNED.clear();applyProfileFrame(document.getElementById('avatar'),prof());if(typeof window.FN_API_REQUEST!=='function')return;const role=window.__FN_AUTH_ROLE||'';if(!role)return;const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');try{const d=await window.FN_API_REQUEST('/profile/settings',{},tok);if(d.settings){syncSpecialFrames(d.settings);const x=Object.assign({},prof(),d.settings);saveProf(x);renderProfile()}}catch(_){FN_SPECIAL_FRAMES_READY=true;FN_SPECIAL_OWNED.clear();renderProfile()}}
+  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');FN_SPECIAL_FRAMES_READY=false;FN_SPECIAL_OWNED.clear();renderProfile();syncProfileSettings()}
+  function renderProfile(){const p=prof(),frame=p.frame||'classic',n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}applyProfileFrame(document.getElementById('avatar'),p);if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   async function fnApi(path,opts={}){
     if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
@@ -1710,16 +1641,15 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     o.classList.remove('hidden');
     if(type==='profile'){
-      await syncProfileSettings();
       const x=prof();
       p.innerHTML='<h2>PROFILE & SETTINGS</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+esc(x.name)+'" readonly><div class="fn-setting-grid"><label>ICON<select id="picon"><option>♠</option><option>♦</option><option>♣</option><option>♥</option><option>★</option><option>◆</option><option>●</option><option>♛</option></select></label><label>FRAME<select id="pframe"><option value="classic">CLASSIC</option><option value="gold">GOLD</option><option value="silver">SILVER</option><option value="neon">NEON</option><option value="royal">ROYAL</option></select></label><label>LANGUAGE<select id="plang"><option value="ja">日本語</option><option value="en">English</option></select></label></div><label class="fn-check"><input id="psound" type="checkbox"> SOUND</label><label class="fn-check"><input id="pnotify" type="checkbox"> NOTIFICATIONS</label><label class="fn-check"><input id="ponline" type="checkbox"> SHOW ONLINE STATUS</label><label class="fn-check"><input id="pmotion" type="checkbox"> REDUCED MOTION</label><div class="socialActions"><button class="primary" id="saveP">SAVE SETTINGS</button><button id="closeP">CLOSE</button></div><div id="profileStatus"></div>';
-      const ownedFrames=serverFrameState.ready?serverFrameState.owned:[];const sel=document.getElementById('pframe');if(ownedFrames.includes('early_access')&&!sel.querySelector('option[value="early_access"]')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(ownedFrames.includes('admin')&&!sel.querySelector('option[value="admin"]')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!['classic','gold','silver','neon','royal'].includes(x.frame)&&!ownedFrames.includes(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
-      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
+      const sel=document.getElementById('pframe');if(FN_SPECIAL_FRAMES_READY&&FN_SPECIAL_OWNED.has('early_access')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(FN_SPECIAL_FRAMES_READY&&FN_SPECIAL_OWNED.has('admin')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!frameOwned(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
+      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;if(!frameOwned(x.frame))x.frame='classic';saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
       document.getElementById('closeP').onclick=()=>o.classList.add('hidden');
     }else if(type==='friends'){
       let friends=[],requests={incoming:[],outgoing:[]};
       try{friends=(await fnApi('/friends/list')).friends||[];requests=await fnApi('/friends/requests')}catch(e){p.innerHTML='<h2>FRIENDS</h2><p>FAILED: '+esc(e.message||e)+'</p><button id="closeF">CLOSE</button>';document.getElementById('closeF').onclick=()=>o.classList.add('hidden');return}
-      p.innerHTML='<h2>FRIENDS</h2><label>SEARCH PLAYER</label><div class="socialActions"><input id="friendSearch" maxlength="16" placeholder="PLAYER NAME"><button class="primary" id="searchFriend">SEARCH</button></div><div id="friendSearchStatus"></div><div id="friendSearchResults"></div><h3>FRIEND REQUESTS</h3><div id="friendRequests">'+(requests.incoming||[]).map(r=>'<div class="friend-row"><span>'+esc(r.name)+'</span><button data-rid="'+Number(r.id)+'" data-act="accept">ACCEPT</button><button data-rid="'+Number(r.id)+'" data-act="reject">REJECT</button></div>').join('')+(requests.incoming?.length?'':'<div class="fn-admin-note">NO PENDING REQUESTS</div>')+'</div><h3>SENT REQUESTS</h3><div id="friendOutgoing">'+(requests.outgoing||[]).map(r=>'<div class="friend-row"><span>'+esc(r.name)+'</span><small>SENT</small></div>').join('')+(requests.outgoing?.length?'':'<div class="fn-admin-note">NO SENT REQUESTS</div>')+'</div><h3>FRIEND LIST</h3><div id="friendList">'+(friends.length?friends.map(f=>'<div class="friend-row"><span><i class="fn-presence-dot '+(f.online?'online':'offline')+'"></i>'+esc(f.name)+'</span><small>'+(f.online?'ONLINE':'OFFLINE')+'</small><button data-friend-remove="'+esc(f.player_id)+'">REMOVE</button></div>').join(''):'<div class="fn-admin-note">NO FRIENDS YET</div>')+'</div><div class="socialActions"><button id="closeF">CLOSE</button></div>';
+      p.innerHTML='<h2>FRIENDS</h2><label>SEARCH PLAYER</label><div class="socialActions"><input id="friendSearch" maxlength="16" placeholder="PLAYER NAME"><button class="primary" id="searchFriend">SEARCH</button></div><div id="friendSearchStatus"></div><div id="friendSearchResults"></div><h3>FRIEND REQUESTS</h3><div id="friendRequests">'+(requests.incoming||[]).map(r=>'<div class="friend-row"><span>'+esc(r.name)+'</span><button data-rid="'+Number(r.id)+'" data-act="accept">ACCEPT</button><button data-rid="'+Number(r.id)+'" data-act="reject">REJECT</button></div>').join('')+(requests.incoming?.length?'':'<div class="fn-admin-note">NO PENDING REQUESTS</div>')+'</div><h3>FRIEND LIST</h3><div id="friendList">'+(friends.length?friends.map(f=>'<div class="friend-row"><span><i class="fn-presence-dot '+(f.online?'online':'offline')+'"></i>'+esc(f.name)+'</span><small>'+(f.online?'ONLINE':'OFFLINE')+'</small><button data-friend-remove="'+esc(f.player_id)+'">REMOVE</button></div>').join(''):'<div class="fn-admin-note">NO FRIENDS YET</div>')+'</div><div class="socialActions"><button id="closeF">CLOSE</button></div>';
       const search=async()=>{
         const q=document.getElementById('friendSearch').value.trim(),st=document.getElementById('friendSearchStatus'),res=document.getElementById('friendSearchResults');res.innerHTML='';
         if(!q){st.textContent='PLAYER NAMEを入力してください';return} st.textContent='SEARCHING...';
