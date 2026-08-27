@@ -187,56 +187,42 @@ function renderRouletteHistory(){
 
 function puchun(){
   if(window.__FN_PUCHUN_BUSY)return;
-  const blackout=$('blackout'),video=$('puchunVideo');
-  if(!blackout||!video)return;
+  const e=$("blackout"),video=$("puchunVideo");
+  if(!e||!video)return;
   window.__FN_PUCHUN_BUSY=true;
-  let done=false,safetyTimer=null,retryTimer=null;
+  let done=false,timer=null;
   const finish=()=>{
     if(done)return;
     done=true;
-    if(safetyTimer)clearTimeout(safetyTimer);
-    if(retryTimer)clearTimeout(retryTimer);
-    try{video.pause();video.currentTime=0;}catch(_){ }
-    blackout.classList.remove('puchun-active');
-    blackout.style.display='none';
+    if(timer)clearTimeout(timer);
+    try{video.pause();video.currentTime=0;}catch(_){}
+    e.classList.remove("puchun-active");
+    e.style.display="none";
     window.__FN_PUCHUN_BUSY=false;
     window.FN_CANCEL_PUCHUN=null;
   };
-  const failSafe=()=>setTimeout(finish,1200);
   window.FN_CANCEL_PUCHUN=finish;
-  blackout.classList.add('puchun-active');
-  blackout.style.display='flex';
-  video.pause();
-  try{video.currentTime=0;}catch(_){ }
+  e.classList.add("puchun-active");
+  e.style.display="flex";
   video.muted=true;
   video.defaultMuted=true;
-  video.setAttribute('muted','');
   video.playsInline=true;
-  video.setAttribute('playsinline','');
-  video.setAttribute('webkit-playsinline','');
+  video.setAttribute("muted","");
+  video.setAttribute("playsinline","");
   video.controls=false;
-  video.removeAttribute('controls');
-  video.load();
+  try{video.currentTime=0;}catch(_){}
   video.onended=finish;
-  video.onerror=failSafe;
-  safetyTimer=setTimeout(finish,5000);
-  const tryPlay=()=>{
+  video.onerror=finish;
+  timer=setTimeout(finish,5000);
+  const play=()=>{
     if(done)return;
     try{
-      const playPromise=video.play();
-      if(playPromise&&typeof playPromise.catch==='function'){
-        playPromise.catch(()=>{
-          if(done)return;
-          retryTimer=setTimeout(()=>{
-            try{const retry=video.play();if(retry&&typeof retry.catch==='function')retry.catch(failSafe)}catch(_){failSafe()}
-          },180);
-        });
-      }
-    }catch(_){failSafe()}
+      const promise=video.play();
+      if(promise&&typeof promise.catch==="function")promise.catch(finish);
+    }catch(_){finish()}
   };
-  if(video.readyState>=2)requestAnimationFrame(tryPlay);
-  else video.addEventListener('canplay',tryPlay,{once:true});
-  debugLog&&debugLog('AUDIO','PUCHUN',{file:'puchun_effect.mp4',video:true,blackout:true});
+  video.addEventListener("canplay",play,{once:true});
+  requestAnimationFrame(play);
 }
 
 const CRASH_HISTORY_KEY="gb_crash_history_v1";
@@ -838,7 +824,7 @@ function spinSlot(){
        if(winLines){mult*=winLines>1?1.5:1;mult=Math.floor(mult);}
        SLOT_BUSY=false;if(btn)btn.disabled=false;
        if(res)res.textContent=winLines?`${hitName} • ${winLines} LINE${winLines>1?"S":""} • ×${mult}`:"";
-       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(hitName==="SEVEN"?"jackpot":"win");if(hitName==="SEVEN")puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
+       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(mult>=15?"jackpot":"win");if(hitName==="SEVEN")puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
      }
    },1000+i*700);
  },
@@ -1533,7 +1519,7 @@ function rouletteSpin(choice){
    renderRouletteHistory();
    settle(b,win?b*payout:0,'ROULETTE');
    sfx(win?'win':'lose');
-   
+   if(win&&color==='green')puchun();
    GB_ROULETTE_BUSY=false;
    const spinAgain=$('rouletteNumberSpin');if(spinAgain&&window.ROULETTE_BET)spinAgain.disabled=false;
   };
@@ -1625,75 +1611,38 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
   const defaultProfile={name:'PLAYER',icon:'♠',frame:'classic',language:'ja',sound:true,notifications:true,onlineStatus:true,reducedMotion:false,games:0,wins:0};
   function prof(){try{return Object.assign({},defaultProfile,JSON.parse(localStorage.getItem(profileKey)||'{}'))}catch(e){return Object.assign({},defaultProfile)}}
   function saveProf(x){localStorage.setItem(profileKey,JSON.stringify(x))}
-  const SPECIAL_FRAMES=new Set(['early_access','admin']);
-  let profileServerReady=false;
-  let serverOwnedFrames=[];
-  function invalidateSpecialFrameState(){
-    profileServerReady=false;
-    serverOwnedFrames=[];
-    const x=prof();
-    let changed=false;
-    if(SPECIAL_FRAMES.has(x.frame)){x.frame='classic';changed=true;}
-    if(Object.prototype.hasOwnProperty.call(x,'ownedFrames')){delete x.ownedFrames;changed=true;}
-    if(changed)saveProf(x);
-  }
+  let serverOwnedFrames=null;
   async function syncProfileSettings(){
-    profileServerReady=false;
-    if(typeof window.FN_API_REQUEST!=='function'){
-      const x=prof();
-      if(SPECIAL_FRAMES.has(x.frame)){x.frame='classic';saveProf(x);}
-      renderProfile();
-      return x;
-    }
-    const role=window.__FN_AUTH_ROLE||''; if(!role){renderProfile();return prof();}
+    serverOwnedFrames=null;
+    renderProfile();
+    if(typeof window.FN_API_REQUEST!=='function'){serverOwnedFrames=[];renderProfile();return;}
+    const role=window.__FN_AUTH_ROLE||''; if(!role){serverOwnedFrames=[];renderProfile();return;}
     const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');
     try{
       const d=await window.FN_API_REQUEST('/profile/settings',{},tok);
       if(d.settings){
         const x=Object.assign({},prof(),d.settings);
-        serverOwnedFrames=Array.isArray(d.settings.ownedFrames)?[...new Set(d.settings.ownedFrames.map(String))]:[];
-        delete x.ownedFrames;
-        if(SPECIAL_FRAMES.has(x.frame)&&!serverOwnedFrames.includes(x.frame))x.frame='classic';
-        saveProf(x);
-        profileServerReady=true;
-        renderProfile();
-        return x;
-      }
-    }catch(_){ }
-    const x=prof();
-    serverOwnedFrames=[];
-    delete x.ownedFrames;
-    if(SPECIAL_FRAMES.has(x.frame))x.frame='classic';
-    saveProf(x);
-    renderProfile();
-    return x;
+        serverOwnedFrames=Array.isArray(d.settings.ownedFrames)?d.settings.ownedFrames:[];
+        saveProf(x);renderProfile();
+      }else{serverOwnedFrames=[];renderProfile()}
+    }catch(_){serverOwnedFrames=[];renderProfile()}
   }
-  function showLobby(){
-    invalidateSpecialFrameState();
-    document.getElementById('appSplash')?.classList.add('hide');
-    document.getElementById('appLobby')?.classList.remove('hidden');
-    renderProfile();
-    syncProfileSettings();
-  }
+  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();syncProfileSettings()}
   function renderProfile(){
-    const p=prof(),requestedFrame=p.frame||'classic';
-    const owned=profileServerReady?serverOwnedFrames:[];
-    const baseAllowed=['classic','gold','silver','neon','royal'].includes(requestedFrame);
-    const allowed=baseAllowed||((SPECIAL_FRAMES.has(requestedFrame))&&owned.includes(requestedFrame));
-    const frame=allowed?requestedFrame:'classic';
+    const p=prof(),rawFrame=p.frame||'classic';
+    const special=rawFrame==='early_access'||rawFrame==='admin';
+    const owned=Array.isArray(serverOwnedFrames)?serverOwnedFrames:[];
+    const frame=special?(serverOwnedFrames!==null&&owned.includes(rawFrame)?rawFrame:'classic'):rawFrame;
     const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');
     if(n)n.textContent=p.name;
     if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}
     const af=document.getElementById('avatarFrame');
     if(af){
-      const visible=profileServerReady&&SPECIAL_FRAMES.has(frame)&&owned.includes(frame);
-      af.hidden=!visible;
-      af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';
-      af.dataset.frame=visible?frame:'';
+      const visible=(serverOwnedFrames!==null)&&((frame==='early_access'&&owned.includes('early_access'))||(frame==='admin'&&owned.includes('admin')));
+      af.hidden=!visible;af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visible?frame:'';
     }
-    if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1);
+    if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)
   }
-  window.addEventListener('fn-auth-changed',()=>{try{invalidateSpecialFrameState();renderProfile()}catch(_){}});
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   async function fnApi(path,opts={}){
     if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
@@ -1715,11 +1664,10 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     o.classList.remove('hidden');
     if(type==='profile'){
-      await syncProfileSettings();
       const x=prof();
       p.innerHTML='<h2>PROFILE & SETTINGS</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+esc(x.name)+'" readonly><div class="fn-setting-grid"><label>ICON<select id="picon"><option>♠</option><option>♦</option><option>♣</option><option>♥</option><option>★</option><option>◆</option><option>●</option><option>♛</option></select></label><label>FRAME<select id="pframe"><option value="classic">CLASSIC</option><option value="gold">GOLD</option><option value="silver">SILVER</option><option value="neon">NEON</option><option value="royal">ROYAL</option></select></label><label>LANGUAGE<select id="plang"><option value="ja">日本語</option><option value="en">English</option></select></label></div><label class="fn-check"><input id="psound" type="checkbox"> SOUND</label><label class="fn-check"><input id="pnotify" type="checkbox"> NOTIFICATIONS</label><label class="fn-check"><input id="ponline" type="checkbox"> SHOW ONLINE STATUS</label><label class="fn-check"><input id="pmotion" type="checkbox"> REDUCED MOTION</label><div class="socialActions"><button class="primary" id="saveP">SAVE SETTINGS</button><button id="closeP">CLOSE</button></div><div id="profileStatus"></div>';
-      const ownedFrames=profileServerReady?serverOwnedFrames:[];const sel=document.getElementById('pframe');if(ownedFrames.includes('early_access')&&!sel.querySelector('option[value="early_access"]')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(ownedFrames.includes('admin')&&!sel.querySelector('option[value="admin"]')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!['classic','gold','silver','neon','royal'].includes(x.frame)&&!ownedFrames.includes(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
-      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;const owned=profileServerReady?serverOwnedFrames:[];if(SPECIAL_FRAMES.has(x.frame)&&(!profileServerReady||!owned.includes(x.frame)))x.frame='classic';saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);await syncProfileSettings();document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
+      const ownedFrames=Array.isArray(x.ownedFrames)?x.ownedFrames:[];const sel=document.getElementById('pframe');if(ownedFrames.includes('early_access')&&!sel.querySelector('option[value="early_access"]')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(ownedFrames.includes('admin')&&!sel.querySelector('option[value="admin"]')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!['classic','gold','silver','neon','royal'].includes(x.frame)&&!ownedFrames.includes(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
+      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
       document.getElementById('closeP').onclick=()=>o.classList.add('hidden');
     }else if(type==='friends'){
       let friends=[],requests={incoming:[],outgoing:[]};
