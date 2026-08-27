@@ -203,11 +203,8 @@ function puchun(){
     window.FN_CANCEL_PUCHUN=null;
   };
   const fallback=()=>{
-    try{
-      const au=new Audio("puchun_notice.mp3?v=4.2");
-      au.volume=.9;au.currentTime=0;au.play().catch(()=>{});
-    }catch(_){}
-    fallbackTimer=setTimeout(finish,3000);
+    if(done)return;
+    fallbackTimer=setTimeout(finish,1200);
   };
   window.FN_CANCEL_PUCHUN=finish;
   e.classList.add("puchun-active");
@@ -718,7 +715,7 @@ chohan(){
 coin(){
  $("gameBody").innerHTML=betbox()+`<div class="anim-game coin-game">
   <div class="anim-title">COIN TOSS</div>
-  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads"><div class="coin-face coin-head" aria-label="HEADS"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail" aria-label="TAILS"><b>T</b><small>TAILS</small></div></div></div></div>
+  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads"><div class="coin-face coin-head" aria-label="HEADS"><span class="coin-symbol">♛</span><b>H</b><small>HEADS</small><em>GOLD SIDE</em></div><div class="coin-face coin-tail" aria-label="TAILS"><span class="coin-symbol">◆</span><b>T</b><small>TAILS</small><em>BLACK SIDE</em></div></div></div></div>
   <div class="coin-choices"><button onclick="coinFlip('heads')"><b>HEADS</b><small>GOLD SIDE</small></button><div class="coin-vs">VS</div><button onclick="coinFlip('tails')"><b>TAILS</b><small>BLACK SIDE</small></button></div>
   <div id="res" class="result coin-result">CHOOSE YOUR SIDE</div>
   <div class="coin-history"><div class="coin-history-head"><b>COIN FLIP HISTORY</b><small>LAST 5</small></div><div id="coinHistory"></div></div>
@@ -1571,7 +1568,7 @@ window.addEventListener('fn-auth-changed',e=>{if(e.detail?.role==='admin')setTim
     p.innerHTML='<div class="fn-admin-card fn-admin-center">'+
       '<div class="fn-admin-head"><div><small>FORTUNE NOIR / SECURE CONTROL</small><h2>ADMIN CENTER</h2></div><button id="fnAdminClose" type="button">×</button></div>'+ 
       '<div class="fn-admin-tabs">'+
-      '<button data-tab="overview">OVERVIEW</button><button data-tab="players">PLAYERS</button><button data-tab="balance">BALANCE</button><button data-tab="items">ITEMS</button><button data-tab="logs">LOGS</button><button data-tab="games">GAME CONTROL</button><button data-tab="debug">DEBUG</button></div>'+ 
+      '<button data-tab="overview">OVERVIEW</button><button data-tab="players">PLAYERS</button><button data-tab="balance">BALANCE</button><button data-tab="items">ITEMS</button><button data-tab="logs">LOGS</button><button data-tab="games">GAME CONTROL</button><button data-tab="friends">FRIENDS</button><button data-tab="debug">DEBUG</button></div>'+ 
       '<div id="fnAdminContent"></div><button id="fnAdminLogout" class="fn-admin-logout" type="button">LOGOUT</button></div>';
     document.body.appendChild(p);
     p.querySelector('#fnAdminClose').onclick=()=>p.classList.add('hidden');
@@ -1589,6 +1586,7 @@ window.addEventListener('fn-auth-changed',e=>{if(e.detail?.role==='admin')setTim
     if(currentTab==='items')return items();
     if(currentTab==='logs')return logs();
     if(currentTab==='games')return games();
+    if(currentTab==='friends')return adminFriends();
     if(currentTab==='debug')return debugTab();
   }
   async function overview(){
@@ -1610,6 +1608,23 @@ window.addEventListener('fn-auth-changed',e=>{if(e.detail?.role==='admin')setTim
   async function games(){try{const [g,m]=await Promise.all([apiAdmin('/admin/games'),apiAdmin('/admin/stats')]);content().innerHTML='<h3>GAME CONTROL</h3><div class="fn-admin-control danger"><span>GLOBAL MAINTENANCE / EMERGENCY</span><b>'+((m.maintenance)?'ON':'OFF')+'</b><button id="fnGlobalMaint">'+(m.maintenance?'RELEASE ALL':'STOP ALL')+'</button></div><div class="fn-admin-game-list">'+(g.games||[]).map(x=>'<div class="fn-admin-control"><span>'+String(x.game_type).toUpperCase()+'</span><small>ENABLED '+(x.enabled?'YES':'NO')+' • MAINT '+(x.maintenance?'ON':'OFF')+'</small><button data-game-toggle="'+x.game_type+'" data-enabled="'+(x.enabled?0:1)+'">'+(x.enabled?'DISABLE':'ENABLE')+'</button><button data-game-maint="'+x.game_type+'" data-maint="'+(x.maintenance?0:1)+'">'+(x.maintenance?'RELEASE':'MAINTENANCE')+'</button></div>').join('')+'</div><p class="fn-admin-note">Game state is server-authoritative. Poker online room base is Phase 1; the actual multiplayer poker engine is Phase 2.</p>';content().querySelector('#fnGlobalMaint').onclick=()=>toggleMaintenance(!m.maintenance);content().querySelectorAll('[data-game-toggle]').forEach(b=>b.onclick=()=>setGame(b.dataset.game,!!Number(b.dataset.enabled),null));content().querySelectorAll('[data-game-maint]').forEach(b=>b.onclick=()=>setGame(b.dataset.game,null,!!Number(b.dataset.maint)))}catch(e){content().textContent='FAILED: '+e.message}}
   async function setGame(gameType,enabled,maintenance){try{const cur=(await apiAdmin('/admin/games')).games.find(x=>x.game_type===gameType)||{};await apiAdmin('/admin/games',{method:'POST',body:JSON.stringify({gameType,enabled:enabled===null?!!cur.enabled:enabled,maintenance:maintenance===null?!!cur.maintenance:maintenance})});games()}catch(e){content().innerHTML='<div class="fn-admin-error">FAILED: '+(e.message||e)+'</div>'}}
   async function toggleMaintenance(enabled){try{await apiAdmin('/admin/maintenance',{method:'POST',body:JSON.stringify({enabled})});games()}catch(e){content().innerHTML='<div class="fn-admin-error">FAILED: '+e.message+'</div>'}}
+  async function adminFriends(){
+    const c=content();
+    c.innerHTML='<h3>FRIENDS</h3><label>SEARCH PLAYER</label><div class="fn-admin-row"><input id="fnAdminFriendSearch" maxlength="16" placeholder="PLAYER NAME"><button id="fnAdminFriendSearchBtn">SEARCH</button></div><div id="fnAdminFriendStatus"></div><div id="fnAdminFriendResults"></div><h4>INCOMING REQUESTS</h4><div id="fnAdminIncoming"></div><h4>SENT REQUESTS</h4><div id="fnAdminOutgoing"></div><h4>FRIEND LIST</h4><div id="fnAdminFriendList"></div>';
+    const render=async()=>{
+      const status=c.querySelector('#fnAdminFriendStatus'),res=c.querySelector('#fnAdminFriendResults');
+      try{
+        const [fr,req]=await Promise.all([apiAdmin('/friends/list'),apiAdmin('/friends/requests')]);
+        c.querySelector('#fnAdminIncoming').innerHTML=(req.incoming||[]).map(r=>'<div class="fn-player-row"><span>'+esc(r.name)+'</span><button data-afrid="'+Number(r.id)+'" data-afact="accept">ACCEPT</button><button data-afrid="'+Number(r.id)+'" data-afact="reject">REJECT</button></div>').join('')||'<div class="fn-admin-note">NO PENDING REQUESTS</div>';
+        c.querySelector('#fnAdminOutgoing').innerHTML=(req.outgoing||[]).map(r=>'<div class="fn-player-row"><span>'+esc(r.name)+'</span><small>SENT</small></div>').join('')||'<div class="fn-admin-note">NO SENT REQUESTS</div>';
+        c.querySelector('#fnAdminFriendList').innerHTML=(fr.friends||[]).map(f=>'<div class="fn-player-row"><span>'+esc(f.name)+'</span><small>'+(f.online?'ONLINE':'OFFLINE')+'</small><button data-afremove="'+esc(f.player_id)+'">REMOVE</button></div>').join('')||'<div class="fn-admin-note">NO FRIENDS YET</div>';
+        c.querySelectorAll('[data-afrid]').forEach(b=>b.onclick=async()=>{try{await apiAdmin('/friends/respond',{method:'POST',body:JSON.stringify({requestId:Number(b.dataset.afrid),action:b.dataset.afact})});render()}catch(e){status.textContent='FAILED: '+e.message}});
+        c.querySelectorAll('[data-afremove]').forEach(b=>b.onclick=async()=>{try{await apiAdmin('/friends/remove',{method:'POST',body:JSON.stringify({friendId:b.dataset.afremove})});render()}catch(e){status.textContent='FAILED: '+e.message}});
+      }catch(e){status.textContent='FAILED: '+(e.message||e)}
+    };
+    const search=async()=>{const q=c.querySelector('#fnAdminFriendSearch').value.trim(),status=c.querySelector('#fnAdminFriendStatus'),res=c.querySelector('#fnAdminFriendResults');res.innerHTML='';if(!q){status.textContent='PLAYER NAMEを入力してください';return}status.textContent='SEARCHING...';try{const d=await apiAdmin('/players/search?'+new URLSearchParams({q})),rows=d.players||[];if(!rows.length){status.textContent='PLAYER NOT FOUND';return}status.textContent=rows.length+' PLAYER FOUND';res.innerHTML=rows.map(x=>'<div class="fn-player-row"><span>'+esc(x.name)+'</span><button class="fn-admin-grant" data-afadd="'+esc(x.name)+'">ADD FRIEND</button></div>').join('');res.querySelectorAll('[data-afadd]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.afadd;btn.disabled=true;try{await apiAdmin('/friends/request',{method:'POST',body:JSON.stringify({targetName:name})});status.textContent='FRIEND REQUEST SENT: '+name;btn.textContent='SENT';render()}catch(e){status.textContent='FAILED: '+(e.message||e);btn.disabled=false}})}catch(e){status.textContent='SEARCH FAILED: '+(e.message||e)}};
+    c.querySelector('#fnAdminFriendSearchBtn').onclick=search;c.querySelector('#fnAdminFriendSearch').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();search()}};render();
+  }
   function debugTab(){content().innerHTML='<h3>DEBUG</h3><button id="fnOpenDebug">OPEN DEBUG PANEL</button><button id="fnClearDebug">CLEAR DEBUG LOG</button>';content().querySelector('#fnOpenDebug').onclick=()=>{if(window.__FN_AUTH_ROLE==='admin'&&typeof window.toggleDebug==='function')window.toggleDebug()};content().querySelector('#fnClearDebug').onclick=()=>window.clearDebug?.()}
   async function open(){if(window.__FN_AUTH_ROLE!=='admin'){window.FN_AUTH_LOGIN?.();return}const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';if(!token){window.FN_AUTH_LOGIN?.();return}try{const me=await fnApi('/auth/me',{},token);if(me.role!=='admin')throw new Error('FORBIDDEN');panel().classList.remove('hidden');renderTab()}catch(e){localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);window.FN_AUTH_LOGIN?.()}}
   async function logout(){const token=localStorage.getItem('FN_ADMIN_TOKEN')||'';try{if(token)await fnApi('/auth/logout',{method:'POST'},token)}catch(_){}localStorage.removeItem('FN_ADMIN_TOKEN');window.FN_ADMIN_TOKEN='';setAdminButton(false);document.getElementById('fnAdminPanel')?.classList.add('hidden');window.FN_AUTH_LOGOUT?.()}
@@ -1624,24 +1639,50 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
 (function(){
   const profileKey='gb_profile_v2';
   const defaultProfile={name:'PLAYER',icon:'♠',frame:'classic',language:'ja',sound:true,notifications:true,onlineStatus:true,reducedMotion:false,games:0,wins:0};
-  let serverOwnedFrames=[];
+  const BASE_FRAMES=['classic','gold','silver','neon','royal'];
+  const SPECIAL_FRAMES=['early_access','admin'];
+  let serverFrameState={ready:false,owned:[]};
   function prof(){try{return Object.assign({},defaultProfile,JSON.parse(localStorage.getItem(profileKey)||'{}'))}catch(e){return Object.assign({},defaultProfile)}}
-  function saveProf(x){localStorage.setItem(profileKey,JSON.stringify(x))}
-  function specialFrameOwned(frame){return frame==='early_access'?serverOwnedFrames.includes('early_access'):frame==='admin'?serverOwnedFrames.includes('admin'):true}
+  function saveProf(x){const clean=Object.assign({},x);delete clean.ownedFrames;localStorage.setItem(profileKey,JSON.stringify(clean))}
+  function isOwnedFrame(frame){return BASE_FRAMES.includes(frame)||(serverFrameState.ready&&serverFrameState.owned.includes(frame))}
+  function effectiveFrame(frame){return isOwnedFrame(frame)?frame:'classic'}
   async function syncProfileSettings(){
-    serverOwnedFrames=[];
-    if(typeof window.FN_API_REQUEST!=='function'){renderProfile();return}
-    const role=window.__FN_AUTH_ROLE||''; if(!role){renderProfile();return}
+    if(typeof window.FN_API_REQUEST!=='function')return false;
+    const role=window.__FN_AUTH_ROLE||''; if(!role)return false;
     const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');
-    try{
-      const d=await window.FN_API_REQUEST('/profile/settings',{},tok),s=d?.settings;
-      serverOwnedFrames=Array.isArray(s?.ownedFrames)?[...new Set(s.ownedFrames.map(String))]:[];
-      if(s){const x=Object.assign({},prof(),s);delete x.ownedFrames;if(!specialFrameOwned(x.frame))x.frame='classic';saveProf(x);}
-    }catch(_){serverOwnedFrames=[];}
+    serverFrameState={ready:false,owned:[]};
     renderProfile();
+    try{
+      const d=await window.FN_API_REQUEST('/profile/settings',{},tok);
+      if(!d.settings)return false;
+      const owned=[...new Set((Array.isArray(d.settings.ownedFrames)?d.settings.ownedFrames:[]).filter(f=>SPECIAL_FRAMES.includes(f)))];
+      serverFrameState={ready:true,owned};
+      const x=Object.assign({},prof(),d.settings);delete x.ownedFrames;saveProf(x);renderProfile();return true;
+    }catch(_){serverFrameState={ready:false,owned:[]};renderProfile();return false}
   }
-  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');serverOwnedFrames=[];renderProfile();syncProfileSettings()}
-  function renderProfile(){const p=prof(),frame=specialFrameOwned(p.frame)?(p.frame||'classic'):'classic';if(frame!==p.frame){p.frame=frame;saveProf(p)}const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}const af=document.getElementById('avatarFrame');if(af){const visible=['early_access','admin'].includes(frame)&&specialFrameOwned(frame);af.hidden=!visible;af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visible?frame:'';}if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
+  function attachProfileFrame(host,frame,visible){
+    if(!host)return null;
+    let img=host.querySelector(':scope > .fn-profile-frame');
+    if(!visible){img?.remove();host.classList.remove('fn-frame-host');return null}
+    if(!img){img=document.createElement('img');img.className='fn-profile-frame';img.alt='';img.setAttribute('aria-hidden','true');host.appendChild(img)}
+    img.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';img.dataset.frame=frame;host.classList.add('fn-frame-host');return img;
+  }
+  window.FN_APPLY_PROFILE_FRAME=function(host,frameOverride=null){
+    const p=prof(),frame=effectiveFrame(frameOverride||p.frame||'classic');
+    const visible=SPECIAL_FRAMES.includes(frame)&&serverFrameState.ready&&serverFrameState.owned.includes(frame);
+    return attachProfileFrame(host,frame,visible);
+  };
+  async function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();await syncProfileSettings()}
+  function renderProfile(){
+    const p=prof(),frame=effectiveFrame(p.frame||'classic'),n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta'),avatar=document.getElementById('avatar');
+    if(n)n.textContent=p.name;
+    if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}
+    const visibleSpecial=SPECIAL_FRAMES.includes(frame)&&serverFrameState.ready&&serverFrameState.owned.includes(frame);
+    if(avatar){avatar.dataset.profileFrame=frame;avatar.classList.toggle('special-frame',visibleSpecial);window.FN_APPLY_PROFILE_FRAME?.(avatar,frame);}
+    const af=document.getElementById('avatarFrame');if(af){af.hidden=!visibleSpecial;af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';af.dataset.frame=visibleSpecial?frame:'';}
+    if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)
+  }
+  window.addEventListener('fn-auth-changed',()=>{serverFrameState={ready:false,owned:[]};renderProfile();setTimeout(()=>syncProfileSettings(),0)});
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   async function fnApi(path,opts={}){
     if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
@@ -1663,17 +1704,16 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     o.classList.remove('hidden');
     if(type==='profile'){
-      let x=prof();
-      try{const role=window.__FN_AUTH_ROLE||'';const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');const d=await window.FN_API_REQUEST('/profile/settings',{},tok),s=d?.settings;if(s){serverOwnedFrames=Array.isArray(s.ownedFrames)?[...new Set(s.ownedFrames.map(String))]:[];x=Object.assign({},x,s);delete x.ownedFrames;}}catch(_){serverOwnedFrames=[];}
-      if(!specialFrameOwned(x.frame))x.frame='classic';
+      await syncProfileSettings();
+      const x=prof();
       p.innerHTML='<h2>PROFILE & SETTINGS</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+esc(x.name)+'" readonly><div class="fn-setting-grid"><label>ICON<select id="picon"><option>♠</option><option>♦</option><option>♣</option><option>♥</option><option>★</option><option>◆</option><option>●</option><option>♛</option></select></label><label>FRAME<select id="pframe"><option value="classic">CLASSIC</option><option value="gold">GOLD</option><option value="silver">SILVER</option><option value="neon">NEON</option><option value="royal">ROYAL</option></select></label><label>LANGUAGE<select id="plang"><option value="ja">日本語</option><option value="en">English</option></select></label></div><label class="fn-check"><input id="psound" type="checkbox"> SOUND</label><label class="fn-check"><input id="pnotify" type="checkbox"> NOTIFICATIONS</label><label class="fn-check"><input id="ponline" type="checkbox"> SHOW ONLINE STATUS</label><label class="fn-check"><input id="pmotion" type="checkbox"> REDUCED MOTION</label><div class="socialActions"><button class="primary" id="saveP">SAVE SETTINGS</button><button id="closeP">CLOSE</button></div><div id="profileStatus"></div>';
-      const sel=document.getElementById('pframe');if(serverOwnedFrames.includes('early_access')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(serverOwnedFrames.includes('admin')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
-      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;if(!specialFrameOwned(x.frame))x.frame='classic';x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
+      const ownedFrames=serverFrameState.ready?serverFrameState.owned:[];const sel=document.getElementById('pframe');if(ownedFrames.includes('early_access')&&!sel.querySelector('option[value="early_access"]')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(ownedFrames.includes('admin')&&!sel.querySelector('option[value="admin"]')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!['classic','gold','silver','neon','royal'].includes(x.frame)&&!ownedFrames.includes(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
+      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
       document.getElementById('closeP').onclick=()=>o.classList.add('hidden');
     }else if(type==='friends'){
       let friends=[],requests={incoming:[],outgoing:[]};
       try{friends=(await fnApi('/friends/list')).friends||[];requests=await fnApi('/friends/requests')}catch(e){p.innerHTML='<h2>FRIENDS</h2><p>FAILED: '+esc(e.message||e)+'</p><button id="closeF">CLOSE</button>';document.getElementById('closeF').onclick=()=>o.classList.add('hidden');return}
-      p.innerHTML='<h2>FRIENDS</h2><label>SEARCH PLAYER</label><div class="socialActions"><input id="friendSearch" maxlength="16" placeholder="PLAYER NAME"><button class="primary" id="searchFriend">SEARCH</button></div><div id="friendSearchStatus"></div><div id="friendSearchResults"></div><h3>FRIEND REQUESTS</h3><div id="friendRequests">'+(requests.incoming||[]).map(r=>'<div class="friend-row"><span>'+esc(r.name)+'</span><button data-rid="'+Number(r.id)+'" data-act="accept">ACCEPT</button><button data-rid="'+Number(r.id)+'" data-act="reject">REJECT</button></div>').join('')+(requests.incoming?.length?'':'<div class="fn-admin-note">NO PENDING REQUESTS</div>')+'</div><h3>FRIEND LIST</h3><div id="friendList">'+(friends.length?friends.map(f=>'<div class="friend-row"><span><i class="fn-presence-dot '+(f.online?'online':'offline')+'"></i>'+esc(f.name)+'</span><small>'+(f.online?'ONLINE':'OFFLINE')+'</small><button data-friend-remove="'+esc(f.player_id)+'">REMOVE</button></div>').join(''):'<div class="fn-admin-note">NO FRIENDS YET</div>')+'</div><div class="socialActions"><button id="closeF">CLOSE</button></div>';
+      p.innerHTML='<h2>FRIENDS</h2><label>SEARCH PLAYER</label><div class="socialActions"><input id="friendSearch" maxlength="16" placeholder="PLAYER NAME"><button class="primary" id="searchFriend">SEARCH</button></div><div id="friendSearchStatus"></div><div id="friendSearchResults"></div><h3>FRIEND REQUESTS</h3><div id="friendRequests">'+(requests.incoming||[]).map(r=>'<div class="friend-row"><span>'+esc(r.name)+'</span><button data-rid="'+Number(r.id)+'" data-act="accept">ACCEPT</button><button data-rid="'+Number(r.id)+'" data-act="reject">REJECT</button></div>').join('')+(requests.incoming?.length?'':'<div class="fn-admin-note">NO PENDING REQUESTS</div>')+'</div><h3>SENT REQUESTS</h3><div id="friendOutgoing">'+(requests.outgoing||[]).map(r=>'<div class="friend-row"><span>'+esc(r.name)+'</span><small>SENT</small></div>').join('')+(requests.outgoing?.length?'':'<div class="fn-admin-note">NO SENT REQUESTS</div>')+'</div><h3>FRIEND LIST</h3><div id="friendList">'+(friends.length?friends.map(f=>'<div class="friend-row"><span><i class="fn-presence-dot '+(f.online?'online':'offline')+'"></i>'+esc(f.name)+'</span><small>'+(f.online?'ONLINE':'OFFLINE')+'</small><button data-friend-remove="'+esc(f.player_id)+'">REMOVE</button></div>').join(''):'<div class="fn-admin-note">NO FRIENDS YET</div>')+'</div><div class="socialActions"><button id="closeF">CLOSE</button></div>';
       const search=async()=>{
         const q=document.getElementById('friendSearch').value.trim(),st=document.getElementById('friendSearchStatus'),res=document.getElementById('friendSearchResults');res.innerHTML='';
         if(!q){st.textContent='PLAYER NAMEを入力してください';return} st.textContent='SEARCHING...';
