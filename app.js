@@ -517,9 +517,34 @@ async function loadReward5h(){
   try{return await fnApi('/rewards/5h',{method:'GET'})}catch(_){return null}
 }
 async function refreshShopRewardBadge(){const badge=document.getElementById('shopRewardBadge');if(!badge)return;if(window.__FN_AUTH_ROLE==='admin'){badge.hidden=true;return}try{const d=await loadReward5h();badge.hidden=!(d&&d.claimable)}catch(_){badge.hidden=true}}
-function buy(name,cost){
-  cost=Number(cost)||0;if(S.coins<cost){const r=$("res");if(r)r.textContent="NOT ENOUGH COINS";return false}
-  S.coins-=cost;S.items=S.items||[];S.items.push(name);S.history.unshift({g:"SHOP",net:-cost,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();const r=$("res");if(r)r.textContent=`PURCHASED ${name}`;sfx("chip");return true;
+async function buy(name,cost){
+  cost=Math.floor(Number(cost)||0);
+  if(!Number.isSafeInteger(cost)||cost<=0)return false;
+  if(S.coins<cost){const r=$("res");if(r)r.textContent="NOT ENOUGH COINS";return false}
+  const before=S.coins;
+  S.coins-=cost;
+  S.items=S.items||[];
+  S.items.push(name);
+  S.history.unshift({g:"SHOP",net:-cost,t:new Date().toLocaleTimeString()});
+  S.history=S.history.slice(0,20);
+  render();
+  try{
+    if(FN_API_URL&&FN_PLAYER_TOKEN){
+      const ok=await fnCommitBalanceDelta(-cost,"SHOP PURCHASE");
+      if(!ok)throw new Error("SERVER_BALANCE_COMMIT_FAILED");
+    }
+    localStorage.setItem(KEY,JSON.stringify(S));
+    const r=$("res");if(r)r.textContent=`PURCHASED ${name}`;
+    sfx("chip");
+    return true;
+  }catch(e){
+    S.coins=before;
+    S.items.pop();
+    S.history.shift();
+    render();
+    const r=$("res");if(r)r.textContent="PURCHASE FAILED • BALANCE RESTORED";
+    return false;
+  }
 }
 function exchangeMahjongPoints(points,coins){points=Math.floor(Number(points)||0);coins=Math.floor(Number(coins)||0);const current=getMahjongPoints(),res=$('res');if(!points||!coins)return false;if(current<points){if(res)res.textContent='NOT ENOUGH MAHJONG POINTS';return false}setMahjongPoints(current-points);S.coins+=coins;S.history.unshift({g:'MAHJONG EXCHANGE',net:coins,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();if(res)res.textContent=`EXCHANGED ${fmt(points)} PT → +${fmt(coins)} COIN`;sfx('win');const sp=$('shopPoints');if(sp)sp.textContent=fmt(getMahjongPoints());return true}
 const games={
@@ -1603,8 +1628,9 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
         const ar=avatar.getBoundingClientRect(),tr=targetEl.getBoundingClientRect();
         const acx=ar.left+ar.width/2,acy=ar.top+ar.height/2;
         const tcx=tr.left+tr.width/2,tcy=tr.top+tr.height/2;
+        const upward = f==='admin' ? -3 : -2;
         frameEl.style.setProperty('--fn-frame-dx',(tcx-acx).toFixed(2)+'px');
-        frameEl.style.setProperty('--fn-frame-dy',(tcy-acy).toFixed(2)+'px');
+        frameEl.style.setProperty('--fn-frame-dy',((tcy-acy)+upward).toFixed(2)+'px');
       }
     }else{frameEl.src='';frameEl.removeAttribute('data-frame-size');}
     return special;
