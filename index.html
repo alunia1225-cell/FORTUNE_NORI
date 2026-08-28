@@ -6,7 +6,7 @@
 </head>
 <body>
 
-<div id="blackout" aria-hidden="true"><video id="puchunVideo" preload="auto" playsinline webkit-playsinline disablepictureinpicture src="puchun_effect.mp4"></video></div>
+<div id="blackout" aria-hidden="true"></div>
 <header><div class="logo">FORTUNE <span>NORI</span><small>FN</small></div><div class="topstats"><span>● ONLINE</span><b>💎 <em id="coins">10000</em></b><button onclick="toggleSound()" id="sound">🔊</button></div></header>
 <div class="ticker"><span>LIVE</span><div>JACKPOT LIVE　•••　VIRTUAL COINS ONLY　•••　GOOD LUCK　•••　BIG WIN CHANCE　•••</div></div>
 <main>
@@ -70,7 +70,7 @@
 </div>
 <div id="appLobby" class="appLobby hidden">
   <div class="lobbyBar"><b>FORTUNE <span>NORI</span><small>FORTUNE NOIR • FN</small></b></div>
-  <section class="welcome"><div><small>WELCOME BACK</small><h2>CHOOSE YOUR<br><em>TABLE.</em></h2><p>Touch-first casino experience.</p></div><div class="welcomeBalance"><small>BALANCE</small><b><img class="balance-icon welcome-balance-icon" src="balance_icon.png" alt=""> <span id="welcomeCoins">0</span></b><em>COIN</em></div><div class="avatar" id="avatar" role="button" tabindex="0" aria-label="Edit profile"><img id="avatarFrame" class="avatar-frame" src="early_access_frame.png" alt="" hidden><span id="avatarText">FN</span><b id="playerName">PLAYER</b><small>READY</small></div></section>
+  <section class="welcome"><div><small>WELCOME BACK</small><h2>CHOOSE YOUR<br><em>TABLE.</em></h2><p>Touch-first casino experience.</p></div><div class="welcomeBalance"><small>BALANCE</small><b><img class="balance-icon welcome-balance-icon" src="balance_icon.png" alt=""> <span id="welcomeCoins">0</span></b><em>COIN</em></div><div class="welcomePoints"><small>MAHJONG POINTS</small><b><span id="welcomePoints">0</span></b><em>POINT</em></div><div class="avatar" id="avatar" role="button" tabindex="0" aria-label="Edit profile"><img id="avatarFrame" class="avatar-frame" src="early_access_frame.png" alt="" hidden><span id="avatarText">FN</span><b id="playerName">PLAYER</b><small>READY</small></div></section>
   <nav id="lobbyTabs"><button class="active" data-cat="all">ALL</button><button data-cat="casino">CASINO</button><button data-cat="table">TABLE</button><button data-cat="classic">CLASSIC</button><button data-cat="reward">REWARDS</button></nav>
   <section class="lobbyGrid">
    <button data-game="holdem" data-cat="table"><i class="gameEmoji"><img src="poker.png" alt=""></i><b>TEXAS HOLD'EM</b><small>4 PLAYER • AI TABLE</small><em>PLAY →</em></button>
@@ -84,6 +84,7 @@
    <button data-game="dice" data-cat="table"><i class="gameEmoji"><img src="highdice.png" alt=""></i><b>HIGH DICE</b><small>HIGH • LOW • EXACT</small><em>PLAY →</em></button>
    <button data-game="lottery" data-cat="reward"><i class="gameEmoji"><img src="lottery.png" alt=""></i><b>LOTTERY</b><small>JACKPOT</small><em>PLAY →</em></button>
   </section>
+  <section class="lobbyFriends"><button id="friendsCardLobby" type="button"><small>SOCIAL</small><b>FRIENDS</b><span>SEARCH • REQUESTS • ONLINE →</span></button></section>
   <section class="lobbyTools"><button id="roomBtn"><small>PRIVATE ROOM</small><b>PLAY WITH FRIENDS</b><span id="roomCode">CREATE INVITE →</span></button><div class="profile-tool"><button id="profileCard"><small>PROFILE</small><b id="profileMeta">PLAYER • LV.1</b><span>EDIT PROFILE →</span></button><button type="button" id="lobbyAdminBtn" class="profile-admin-btn" aria-label="Open admin menu"><span>ADMIN</span><b>CONTROL</b></button><button type="button" id="lobbyDebugBtn" class="profile-system-btn"><span class="dbg-led"></span><span>SYSTEM</span><b id="debugCountLobby">0</b></button></div></section>
 </div>
 <div id="socialOverlay" class="socialOverlay hidden"><div id="socialPanel"></div></div>
