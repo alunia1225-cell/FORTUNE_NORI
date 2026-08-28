@@ -505,7 +505,7 @@ function lottery(){
 async function daily(){
   const r=$("res");
   try{
-    const d=await fnApi('/rewards/12h',{method:'POST'});
+    const d=await fnApi('/rewards/5h',{method:'POST'});
     if(d.balance!==undefined){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render();}
     if(r)r.textContent='CLAIMED +5,000';
     sfx('win');
@@ -513,9 +513,10 @@ async function daily(){
     if(r)r.textContent=e.message==='REWARD_COOLDOWN'?'VAULT LOCKED':'FAILED: '+(e.message||e);
   }
 }
-async function loadReward12h(){
-  try{return await fnApi('/rewards/12h',{method:'GET'})}catch(_){return null}
+async function loadReward5h(){
+  try{return await fnApi('/rewards/5h',{method:'GET'})}catch(_){return null}
 }
+async function refreshShopRewardBadge(){const badge=document.getElementById('shopRewardBadge');if(!badge)return;if(window.__FN_AUTH_ROLE==='admin'){badge.hidden=true;return}try{const d=await loadReward5h();badge.hidden=!(d&&d.claimable)}catch(_){badge.hidden=true}}
 function buy(name,cost){
   cost=Number(cost)||0;if(S.coins<cost){const r=$("res");if(r)r.textContent="NOT ENOUGH COINS";return false}
   S.coins-=cost;S.items=S.items||[];S.items.push(name);S.history.unshift({g:"SHOP",net:-cost,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();const r=$("res");if(r)r.textContent=`PURCHASED ${name}`;sfx("chip");return true;
@@ -710,11 +711,11 @@ multiplier(){
  <div class="crash-controls"><button onclick="crashStart()">START</button><button onclick="crashCashout()">CASH OUT</button></div>
  </div>`;renderCrashHistory();
 },
-daily(){$("gameBody").innerHTML=`<p id="rewardStatus">CHECKING…</p><p>Every 12 hours: <b>+5,000 COIN</b></p><button id="claim12hBtn" onclick="daily()">CLAIM 5,000</button><div id="res" class="result"></div>`;loadReward12h().then(d=>{const st=$("rewardStatus"),btn=$("claim12hBtn");if(!d)return;if(d.claimable){st.textContent='VAULT READY';btn.disabled=false}else{st.textContent='VAULT LOCKED • NEXT CLAIM '+new Date(d.nextClaimAt).toLocaleString('ja-JP');btn.disabled=true}})} ,
+daily(){$("gameBody").innerHTML=`<p id="rewardStatus">CHECKING…</p><p>Every 5 hours: <b>+5,000 COIN</b></p><button id="claim5hBtn" onclick="daily()">CLAIM 5,000</button><div id="res" class="result"></div>`;loadReward5h().then(d=>{const st=$("rewardStatus"),btn=$("claim5hBtn");if(!d)return;if(d.claimable){st.textContent='VAULT READY';btn.disabled=false}else{st.textContent='VAULT LOCKED • NEXT CLAIM '+new Date(d.nextClaimAt).toLocaleString('ja-JP');btn.disabled=true}})} ,
 shop(){
  const points=getMahjongPoints(),isAdmin=window.__FN_AUTH_ROLE==='admin';
- $('gameBody').innerHTML=`<div class="shop-head"><small>FORTUNE NOIR / SHOP</small><h2>SHOP</h2><p>REWARDS • CHIPS • MAHJONG EXCHANGE</p></div><section class="shop-section shop-reward"><div class="shop-section-head"><span><b>12H VAULT</b><small>CLAIMABLE EVERY 12 HOURS</small></span><strong>+5,000</strong></div><div id="shopRewardStatus" class="shop-status">CHECKING…</div><button id="shopClaim12h" class="shop-gold-btn" ${isAdmin?'disabled':''}>CLAIM +5,000 COIN</button></section><section class="shop-section"><div class="shop-section-head"><span><b>CHIP BANK</b><small>VIRTUAL TABLE CHIPS</small></span><strong>${fmt(S.coins)}</strong></div><div class="chip-bank"><button onclick="buy('100 CHIP STACK',100)">+100</button><button onclick="buy('500 CHIP STACK',500)">+500</button><button onclick="buy('1,000 CHIP STACK',1000)">+1,000</button></div></section><section class="shop-section mahjong-exchange"><div class="shop-section-head"><span><b>MAHJONG POINT STICKS</b><small>EXCHANGE POINTS FOR BALANCE</small></span><strong><span id="shopPoints">${fmt(points)}</span> PT</strong></div><div class="exchange-grid"><button data-exchange-points="1000" data-exchange-coins="500"><span>1,000 PT</span><b>→ 500 COIN</b></button><button data-exchange-points="10000" data-exchange-coins="5000"><span>10,000 PT</span><b>→ 5,000 COIN</b></button></div><div class="shop-note">MAHJONG POINTS are separate from COIN balance.</div></section><div id="res" class="result">READY</div>`;
- const claim=$('shopClaim12h');if(claim){if(isAdmin){$('shopRewardStatus').textContent='ADMIN ACCOUNT • PLAYER REWARD ONLY'}else loadReward12h().then(d=>{const st=$('shopRewardStatus');if(!d){st.textContent='REWARD STATUS UNAVAILABLE';return}if(d.claimable){st.textContent='VAULT READY';claim.disabled=false}else{st.textContent='VAULT LOCKED • NEXT '+new Date(d.nextClaimAt).toLocaleString('ja-JP');claim.disabled=true}});claim.onclick=async()=>{claim.disabled=true;try{const d=await fnApi('/rewards/12h',{method:'POST'});if(d.balance!==undefined){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render()}$('shopRewardStatus').textContent='VAULT CLAIMED';$('res').textContent='CLAIMED +5,000';sfx('win')}catch(e){$('res').textContent=e.message==='REWARD_COOLDOWN'?'VAULT LOCKED':'FAILED: '+(e.message||e);if(e.data?.nextClaimAt)$('shopRewardStatus').textContent='VAULT LOCKED • NEXT '+new Date(e.data.nextClaimAt).toLocaleString('ja-JP')}}}
+ $('gameBody').innerHTML=`<div class="shop-head"><small>FORTUNE NOIR / SHOP</small><h2>SHOP</h2><p>REWARDS • CHIPS • MAHJONG EXCHANGE</p></div><section class="shop-section shop-reward"><div class="shop-section-head"><span><b>5H VAULT</b><small>CLAIMABLE EVERY 5 HOURS</small></span><strong>+5,000</strong></div><div id="shopRewardStatus" class="shop-status">CHECKING…</div><button id="shopClaim5h" class="shop-gold-btn" ${isAdmin?'disabled':''}>CLAIM +5,000 COIN</button></section><section class="shop-section"><div class="shop-section-head"><span><b>CHIP BANK</b><small>VIRTUAL TABLE CHIPS</small></span><strong>${fmt(S.coins)}</strong></div><div class="chip-bank"><button onclick="buy('100 CHIP STACK',100)">+100</button><button onclick="buy('500 CHIP STACK',500)">+500</button><button onclick="buy('1,000 CHIP STACK',1000)">+1,000</button></div></section><section class="shop-section mahjong-exchange"><div class="shop-section-head"><span><b>MAHJONG POINT STICKS</b><small>EXCHANGE POINTS FOR BALANCE</small></span><strong><span id="shopPoints">${fmt(points)}</span> PT</strong></div><div class="exchange-grid"><button data-exchange-points="1000" data-exchange-coins="500"><span>1,000 PT</span><b>→ 500 COIN</b></button><button data-exchange-points="10000" data-exchange-coins="5000"><span>10,000 PT</span><b>→ 5,000 COIN</b></button></div><div class="shop-note">MAHJONG POINTS are separate from COIN balance.</div></section><div id="res" class="result">READY</div>`;
+ const claim=$('shopClaim5h');if(claim){if(isAdmin){$('shopRewardStatus').textContent='ADMIN ACCOUNT • PLAYER REWARD ONLY'}else loadReward5h().then(d=>{const st=$('shopRewardStatus');if(!d){st.textContent='REWARD STATUS UNAVAILABLE';return}if(d.claimable){st.textContent='VAULT READY';claim.disabled=false}else{st.textContent='VAULT LOCKED • NEXT '+new Date(d.nextClaimAt).toLocaleString('ja-JP');claim.disabled=true}});claim.onclick=async()=>{claim.disabled=true;try{const d=await fnApi('/rewards/5h',{method:'POST'});if(d.balance!==undefined){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render()}$('shopRewardStatus').textContent='VAULT CLAIMED';$('res').textContent='CLAIMED +5,000';refreshShopRewardBadge();sfx('win')}catch(e){$('res').textContent=e.message==='REWARD_COOLDOWN'?'VAULT LOCKED':'FAILED: '+(e.message||e);if(e.data?.nextClaimAt)$('shopRewardStatus').textContent='VAULT LOCKED • NEXT '+new Date(e.data.nextClaimAt).toLocaleString('ja-JP')}}}
  document.querySelectorAll('[data-exchange-points]').forEach(btn=>btn.onclick=()=>exchangeMahjongPoints(Number(btn.dataset.exchangePoints),Number(btn.dataset.exchangeCoins)));
 }
 };
@@ -1587,14 +1588,30 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
   function isSpecialFrame(frame){return frame==='early_access'||frame==='admin'}
   function frameAllowed(frame){return BASE_FRAMES.includes(frame)||(FN_SERVER_PROFILE_READY&&FN_SERVER_OWNED_FRAMES.has(frame))}
   function frameAsset(frame){return frame==='early_access'?'early_access_frame.png':frame==='admin'?'admin_frame.png':''}
-  function applyProfileFrame(frameEl,frame){
+  function applyProfileFrame(frameEl,frame,targetEl=null){
     if(!frameEl)return false;
     const f=frameAllowed(frame)?frame:'classic';
-    frameEl.dataset.frame=f;frameEl.hidden=!isSpecialFrame(f);
-    if(isSpecialFrame(f)){frameEl.src=frameAsset(f);}else{frameEl.src='';}
-    return !frameEl.hidden;
+    const special=isSpecialFrame(f);
+    frameEl.dataset.frame=f;
+    frameEl.hidden=!special;
+    frameEl.style.setProperty('--fn-frame-dx','0px');
+    frameEl.style.setProperty('--fn-frame-dy','0px');
+    if(special){
+      frameEl.src=frameAsset(f);
+      const avatar=frameEl.closest('.avatar');
+      if(avatar && targetEl){
+        const ar=avatar.getBoundingClientRect(),tr=targetEl.getBoundingClientRect();
+        const acx=ar.left+ar.width/2,acy=ar.top+ar.height/2;
+        const tcx=tr.left+tr.width/2,tcy=tr.top+tr.height/2;
+        frameEl.style.setProperty('--fn-frame-dx',(tcx-acx).toFixed(2)+'px');
+        frameEl.style.setProperty('--fn-frame-dy',(tcy-acy).toFixed(2)+'px');
+      }
+    }else{frameEl.src='';frameEl.removeAttribute('data-frame-size');}
+    return special;
   }
   window.FN_APPLY_PROFILE_FRAME=applyProfileFrame;
+  function refreshLobbyFramePosition(){const af=document.getElementById('avatarFrame'),a=document.getElementById('avatarText');if(af&&a&&!af.hidden)applyProfileFrame(af,prof().frame,a)}
+  window.addEventListener('resize',()=>requestAnimationFrame(refreshLobbyFramePosition));
   async function syncProfileSettings(){
     if(typeof window.FN_API_REQUEST!=='function')return;
     const role=window.__FN_AUTH_ROLE||'';if(!role)return;
@@ -1606,12 +1623,12 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
         const x=Object.assign({},prof(),d.settings);if(!frameAllowed(x.frame))x.frame='classic';delete x.ownedFrames;saveProf(x);renderProfile();}
     }catch(_){FN_SERVER_PROFILE_READY=false;FN_SERVER_OWNED_FRAMES=new Set(BASE_FRAMES);renderProfile()}
   }
-  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();syncProfileSettings()}
+  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();syncProfileSettings();refreshShopRewardBadge()}
   function renderProfile(){
     const p=prof(),frame=frameAllowed(p.frame)?p.frame:'classic';
     const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');
     if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}
-    const af=document.getElementById('avatarFrame');applyProfileFrame(af,frame);const avatar=af?.closest('.avatar');if(avatar)avatar.dataset.specialFrame=isSpecialFrame(frame)?'1':'0';
+    const af=document.getElementById('avatarFrame');applyProfileFrame(af,frame,a);const avatar=af?.closest('.avatar');if(avatar)avatar.dataset.specialFrame=isSpecialFrame(frame)?'1':'0';
     if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1);
   }
   async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;try{const ac=audio();if(ac?.state==='suspended')await ac.resume()}catch(_){ }window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','puchun_effect.mp4','puchun.wav','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
@@ -1666,7 +1683,7 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
       }else renderRoom(room);
     }
   }
-  window.addEventListener('fn-auth-changed',()=>{FN_SERVER_PROFILE_READY=false;FN_SERVER_OWNED_FRAMES=new Set(BASE_FRAMES);renderProfile();if(document.getElementById('appLobby')&&!document.getElementById('appLobby').classList.contains('hidden'))syncProfileSettings()});
+  window.addEventListener('fn-auth-changed',()=>{FN_SERVER_PROFILE_READY=false;FN_SERVER_OWNED_FRAMES=new Set(BASE_FRAMES);renderProfile();refreshShopRewardBadge();if(document.getElementById('appLobby')&&!document.getElementById('appLobby').classList.contains('hidden'))syncProfileSettings()});
   async function renderRoom(room){
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     if(!room){openSocial('room');return}
@@ -1683,7 +1700,7 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     try{const d=await fnApi('/rooms/invites');const invites=d.invites||[];if(invites.length){const box=document.createElement('div');box.className='fn-room-invites';box.innerHTML='<h3>ROOM INVITES</h3>'+invites.map(x=>'<div class="friend-row"><span>'+esc(x.name)+' • '+esc(x.code)+'</span><button data-invite-accept="'+Number(x.id)+'">JOIN</button><button data-invite-reject="'+Number(x.id)+'">REJECT</button></div>').join('');p.appendChild(box);box.querySelectorAll('[data-invite-accept]').forEach(b=>b.onclick=async()=>{try{const d=await fnApi('/rooms/invite/respond',{method:'POST',body:JSON.stringify({inviteId:Number(b.dataset.inviteAccept),action:'accept'})});renderRoom(d.room)}catch(e){alert(e.message)}});box.querySelectorAll('[data-invite-reject]').forEach(b=>b.onclick=async()=>{try{await fnApi('/rooms/invite/respond',{method:'POST',body:JSON.stringify({inviteId:Number(b.dataset.inviteReject),action:'reject'})});openSocial('room')}catch(e){alert(e.message)}})}}catch(_){ }
     if(room.status==='playing'){const box=document.createElement('div');box.className='socialActions';const btn=document.createElement('button');btn.className='primary';btn.textContent='OPEN ONLINE POKER';btn.onclick=async()=>{try{const d=await fnApi('/poker/state');const g=d.game;box.insertAdjacentHTML('afterend','<div class="fn-poker-online"><h3>ONLINE POKER</h3><div>STREET: '+esc(g.street)+'</div><div>POT: '+Number(g.pot).toLocaleString('ja-JP')+'</div><div>TURN: '+Number(g.turnIndex+1)+' / '+g.players.length+'</div><div class="socialActions"><button data-pa="CHECK">CHECK</button><button data-pa="CALL">CALL</button><button data-pa="FOLD">FOLD</button></div><div id="pokerOnlineStatus">SERVER SYNCHRONIZED • RECONNECT READY</div></div>');const wrap=p.querySelector('.fn-poker-online');wrap.querySelectorAll('[data-pa]').forEach(b=>b.onclick=async()=>{try{const a=await fnApi('/poker/action',{method:'POST',body:JSON.stringify({action:b.dataset.pa})});wrap.querySelector('#pokerOnlineStatus').textContent='ACTION '+a.action+' • POT '+a.pot}catch(e){wrap.querySelector('#pokerOnlineStatus').textContent='FAILED: '+(e.message||e)}})}catch(e){alert(e.message||e)}};box.appendChild(btn);p.appendChild(box)}
   }
-  document.addEventListener('DOMContentLoaded',()=>{document.getElementById('tapStart')?.addEventListener('click',start);document.getElementById('profileBtn')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('profileCard')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatarText')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatar')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatar')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSocial('profile')}});document.getElementById('friendsBtn')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('friendsCard')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('friendsCardLobby')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('lobbyDebugBtn')?.addEventListener('click',toggleDebug);const rb=document.getElementById('roomBtn');if(rb&&!rb.__fnRoomBound){rb.__fnRoomBound=true;rb.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openSocial('room')},true);rb.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();openSocial('room')},{passive:false});}document.querySelectorAll('.lobbyGrid button').forEach(b=>b.addEventListener('click',()=>{const p=prof();p.games=(p.games||0)+1;saveProf(p);renderProfile();document.getElementById('appLobby').classList.add('hidden');openGame(b.dataset.game)}));document.querySelectorAll('#lobbyTabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#lobbyTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.lobbyGrid button').forEach(g=>g.style.display=b.dataset.cat==='all'||g.dataset.cat===b.dataset.cat?'flex':'none')}));});
+  document.addEventListener('DOMContentLoaded',()=>{refreshShopRewardBadge();if(!window.__FN_SHOP_BADGE_TIMER)window.__FN_SHOP_BADGE_TIMER=setInterval(refreshShopRewardBadge,60000);document.getElementById('tapStart')?.addEventListener('click',start);document.getElementById('profileBtn')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('profileCard')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatarText')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatar')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatar')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSocial('profile')}});document.getElementById('friendsBtn')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('friendsCard')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('friendsCardLobby')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('lobbyDebugBtn')?.addEventListener('click',toggleDebug);const rb=document.getElementById('roomBtn');if(rb&&!rb.__fnRoomBound){rb.__fnRoomBound=true;rb.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openSocial('room')},true);rb.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();openSocial('room')},{passive:false});}document.querySelectorAll('.lobbyGrid button').forEach(b=>b.addEventListener('click',()=>{const p=prof();p.games=(p.games||0)+1;saveProf(p);renderProfile();document.getElementById('appLobby').classList.add('hidden');openGame(b.dataset.game)}));document.querySelectorAll('#lobbyTabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#lobbyTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.lobbyGrid button').forEach(g=>g.style.display=b.dataset.cat==='all'||g.dataset.cat===b.dataset.cat?'flex':'none')}));});
 })();
 
 (function(){
