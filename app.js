@@ -185,77 +185,52 @@ function renderRouletteHistory(){
 
 
 
-function puchun(){
-  if(window.__FN_PUCHUN_BUSY)return false;
-  let blackout=$('blackout'),video=$('puchunVideo');
-  if(!blackout){
-    blackout=document.createElement('div');
-    blackout.id='blackout';
-    document.body.appendChild(blackout);
-  }
-  if(!video){
-    video=document.createElement('video');
-    video.id='puchunVideo';
-    video.className='puchun-video';
-    video.setAttribute('playsinline','');
-    video.setAttribute('webkit-playsinline','');
-    video.muted=true;
-    video.preload='auto';
-    video.src='puchun.mp4';
-    blackout.replaceChildren(video);
-  }else{
-    video.src='puchun.mp4';
-  }
-  window.__FN_PUCHUN_BUSY=true;
-  let finished=false;
-  let safety=null;
-  const finish=()=>{
-    if(finished)return;
-    finished=true;
-    if(safety)clearTimeout(safety);
-    try{video.pause();video.currentTime=0;}catch(_){ }
-    video.onended=null;
-    video.onerror=null;
-    blackout.classList.remove('puchun-active');
-    blackout.style.display='none';
-    window.__FN_PUCHUN_BUSY=false;
-    window.FN_CANCEL_PUCHUN=null;
-  };
-  window.FN_CANCEL_PUCHUN=finish;
-  blackout.classList.add('puchun-active');
-  blackout.style.display='flex';
-  video.muted=true;
-  video.defaultMuted=true;
-  video.playsInline=true;
-  video.controls=false;
-  video.preload='auto';
-  video.onended=finish;
-  video.onerror=()=>{
-    debugLog('ERROR','PUCHUN VIDEO LOAD FAILED',{src:video.currentSrc||video.src});
-    if(safety)clearTimeout(safety);
-    safety=setTimeout(finish,250);
-  };
-  try{video.pause();video.currentTime=0;video.load();}catch(_){ }
-  safety=setTimeout(finish,2600);
-  const startPlayback=()=>{
-    if(finished)return;
-    try{
-      const playResult=video.play();
-      if(playResult&&typeof playResult.catch==='function'){
-        playResult.catch(err=>{
-          debugLog('ERROR','PUCHUN VIDEO PLAY FAILED',{message:String(err)});
-          if(safety)clearTimeout(safety);
-          safety=setTimeout(finish,250);
-        });
+let FN_PUCHUN_BUSY=false;
+let FN_PUCHUN_TIMER=null;
+let FN_PUCHUN_AUDIO_SOURCE=null;
+let FN_PUCHUN_AUDIO_BUFFER=null;
+let FN_PUCHUN_AUDIO_LOADING=null;
+function fnStopPuchun(){
+  if(FN_PUCHUN_TIMER){clearTimeout(FN_PUCHUN_TIMER);FN_PUCHUN_TIMER=null}
+  try{FN_PUCHUN_AUDIO_SOURCE?.stop()}catch(_){ }
+  FN_PUCHUN_AUDIO_SOURCE=null;
+  const e=$('blackout');
+  const v=e?.querySelector('#puchunVideo');
+  if(v){try{v.pause();v.currentTime=0}catch(_){}}
+  if(e){e.classList.remove('puchun-active');e.style.display='none';e.innerHTML=''}
+  FN_PUCHUN_BUSY=false;
+}
+async function fnPlayPuchunAudio(){
+  if(!S.sound)return;
+  const a=audio();if(!a)return;
+  try{if(a.state==='suspended')await a.resume()}catch(_){ }
+  try{
+    if(!FN_PUCHUN_AUDIO_BUFFER){
+      if(!FN_PUCHUN_AUDIO_LOADING){
+        FN_PUCHUN_AUDIO_LOADING=fetch('puchun.wav?v=20260828',{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('PUCHUN_AUDIO_LOAD');return r.arrayBuffer()}).then(b=>a.decodeAudioData(b));
       }
-    }catch(err){
-      debugLog('ERROR','PUCHUN VIDEO PLAY EXCEPTION',{message:String(err)});
-      if(safety)clearTimeout(safety);
-      safety=setTimeout(finish,250);
+      FN_PUCHUN_AUDIO_BUFFER=await FN_PUCHUN_AUDIO_LOADING;
     }
-  };
-  requestAnimationFrame(startPlayback);
-  return true;
+    if(FN_PUCHUN_AUDIO_SOURCE){try{FN_PUCHUN_AUDIO_SOURCE.stop()}catch(_){}}
+    const src=a.createBufferSource();src.buffer=FN_PUCHUN_AUDIO_BUFFER;src.connect(a.destination);FN_PUCHUN_AUDIO_SOURCE=src;src.onended=()=>{if(FN_PUCHUN_AUDIO_SOURCE===src)FN_PUCHUN_AUDIO_SOURCE=null};src.start(0);
+  }catch(_){ }
+}
+function puchun(){
+  if(FN_PUCHUN_BUSY)return;
+  FN_PUCHUN_BUSY=true;
+  const e=$('blackout');
+  if(!e){FN_PUCHUN_BUSY=false;return}
+  e.innerHTML='';
+  const v=document.createElement('video');
+  v.id='puchunVideo';v.src='puchun_effect.mp4?v=20260828';v.preload='auto';v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');
+  e.appendChild(v);e.classList.add('puchun-active');e.style.display='flex';
+  let done=false;
+  const finish=()=>{if(done)return;done=true;fnStopPuchun()};
+  v.addEventListener('ended',finish,{once:true});
+  v.addEventListener('error',()=>{FN_PUCHUN_TIMER=setTimeout(finish,1800)},{once:true});
+  FN_PUCHUN_TIMER=setTimeout(finish,3000);
+  try{const play=v.play();if(play&&typeof play.catch==='function')play.catch(()=>{FN_PUCHUN_TIMER=setTimeout(finish,1800)})}catch(_){FN_PUCHUN_TIMER=setTimeout(finish,1800)}
+  fnPlayPuchunAudio();
 }
 
 const CRASH_HISTORY_KEY="gb_crash_history_v1";
@@ -343,85 +318,45 @@ function playHighDice(){
  els.forEach((e,i)=>{e.classList.remove("hd-roll","hd-land");e.style.setProperty("--delay",`${i*90}ms`);e.style.setProperty("--drift",i%2?"12px":"-12px");void e.offsetWidth;e.classList.add("hd-roll")});sfx("dice");let t=0;
  const timer=setInterval(()=>{els.forEach(e=>hdSetDie(e,1+Math.floor(Math.random()*6)));if(++t>=12){clearInterval(timer);const v=els.map(()=>1+Math.floor(Math.random()*6));v.forEach((n,i)=>hdSetDie(els[i],n));els.forEach(e=>{e.classList.remove("hd-roll");e.classList.add("hd-land")});const pt=v[0]+v[1],dt=v[2]+v[3],draw=pt===dt,win=pt>dt;$("hdPTotal").textContent=pt;$("hdDTotal").textContent=dt;res.innerHTML=`<div class="hd-final">${pt} <em>VS</em> ${dt}</div><div class="hd-outcome">${draw?"DRAW":win?"PLAYER WIN":"DEALER WIN"} <b class="${draw?"draw":win?"win":"lose"}">${draw?"BET RETURN":win?"×2":"×0"}</b></div>`;settle(b,draw?b:(win?b*2:0),"HIGH DICE");sfx(draw?"win":(win?"win":"lose"));setTimeout(()=>{els.forEach(e=>e.classList.remove("hd-land"));window.GB_ACTION_BUSY=false},650)}},100);
 }
-const COIN_HISTORY_KEY="fn_coin_history_v1";
-function readCoinHistory(){
- try{const a=JSON.parse(localStorage.getItem(COIN_HISTORY_KEY)||"[]");return Array.isArray(a)?a.slice(0,5):[]}
- catch(_){return []}
-}
-function writeCoinHistory(r){
- const a=readCoinHistory();a.unshift({side:r.side,win:Boolean(r.win),t:r.t||new Date().toLocaleTimeString()});
- localStorage.setItem(COIN_HISTORY_KEY,JSON.stringify(a.slice(0,5)));
-}
+const COIN_HISTORY_KEY='fn_coin_history_v1';
+function readCoinHistory(){try{const a=JSON.parse(localStorage.getItem(COIN_HISTORY_KEY)||'[]');return Array.isArray(a)?a.slice(0,5):[]}catch(_){return []}}
+function writeCoinHistory(r){const a=readCoinHistory();a.unshift({side:r.side,win:!!r.win,bet:Number(r.bet)||0,net:Number(r.net)||0,t:r.t||new Date().toLocaleTimeString()});localStorage.setItem(COIN_HISTORY_KEY,JSON.stringify(a.slice(0,5)))}
 function renderCoinHistory(){
- const el=$("coinHistory");if(!el)return;
- const rows=readCoinHistory();
- el.innerHTML=rows.length?rows.map((x,i)=>`<div class="coin-history-row"><span>#${i+1} <small>${x.t||""}</small></span><b class="${x.win?"win":"lose"}">${String(x.side||"").toUpperCase()} • ${x.win?"WIN":"LOSE"}</b></div>`).join(""):`<div class="coin-history-empty">NO HISTORY</div>`;
+ const el=$('coinHistory');if(!el)return;const rows=readCoinHistory();
+ el.innerHTML=rows.length?rows.map((x,i)=>`<div class="coin-history-row"><span><b>#${i+1}</b><small>${x.t||''}</small></span><b class="coin-history-side ${x.side==='heads'?'heads':'tails'}">${String(x.side||'').toUpperCase()}</b><b class="${x.win?'win':'lose'}">${x.win?'WIN':'LOSE'}</b></div>`).join(''):`<div class="coin-history-empty">NO HISTORY</div>`;
 }
-let FN_COIN_FLIP_TOKEN=0;
+function fnResetCoinVisual(c){if(!c)return;c.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});c.style.transform='rotateY(0deg)';c.dataset.face='heads'}
 function coinFlip(pick){
-  if(window.GB_ACTION_BUSY)return;
-  const b=wager($('bet')?.value);if(!b)return;
-  const c=$('coin3d'),stage=$('coinFlipMotion'),res=$('res');
-  if(!c||!stage||!res)return;
-  const head=c.querySelector('.coin-head'),tail=c.querySelector('.coin-tail');
-  if(!head||!tail)return;
-
-  window.GB_ACTION_BUSY=true;
-  const token=++FN_COIN_FLIP_TOKEN;
-  const result=Math.random()<0.5?'heads':'tails';
-  const win=result===pick;
-  let timerId=null;
-  let cancelled=false;
-
-  const reset=()=>{
-    c.classList.remove('coin-flipping-heads','coin-flipping-tails');
-    stage.classList.remove('coin-arc');
-    c.dataset.face='heads';
-    c.style.removeProperty('transform');
-    stage.style.removeProperty('transform');
-    head.style.removeProperty('transform');
-    tail.style.removeProperty('transform');
-    head.style.opacity='1';tail.style.opacity='0';
-    head.style.visibility='visible';tail.style.visibility='hidden';
-  };
-  const cancel=()=>{
-    cancelled=true;
-    if(timerId)clearTimeout(timerId);
-    reset();
-    window.GB_ACTION_BUSY=false;
-    window.GB_CANCEL_COIN_FLIP=null;
-  };
-  window.GB_CANCEL_COIN_FLIP=cancel;
-
-  c.classList.remove('coin-flipping-heads','coin-flipping-tails');
-  void c.offsetWidth;
-  c.dataset.face='flipping';
-  head.style.opacity='1';tail.style.opacity='1';
-  head.style.visibility='visible';tail.style.visibility='visible';
-  res.textContent='FLIPPING…';
-  c.classList.add(result==='tails'?'coin-flipping-tails':'coin-flipping-heads');
-  stage.classList.add('coin-arc');
-  sfx('flip');
-
-  timerId=setTimeout(()=>{
-    if(cancelled||token!==FN_COIN_FLIP_TOKEN)return;
-    c.classList.remove('coin-flipping-heads','coin-flipping-tails');
-    stage.classList.remove('coin-arc');
-    c.dataset.face=result;
-    c.style.removeProperty('transform');
-    stage.style.removeProperty('transform');
-    head.style.opacity=result==='heads'?'1':'0';
-    tail.style.opacity=result==='tails'?'1':'0';
-    head.style.visibility=result==='heads'?'visible':'hidden';
-    tail.style.visibility=result==='tails'?'visible':'hidden';
-    res.textContent=`${result.toUpperCase()} — ${win?'WIN':'LOSE'}`;
-    writeCoinHistory({side:result,win});
-    renderCoinHistory();
-    settle(b,win?b*2:0,'COIN TOSS');
-    sfx(win?'win':'lose');
-    window.GB_ACTION_BUSY=false;
-    window.GB_CANCEL_COIN_FLIP=null;
-  },2450);
+ if(window.GB_ACTION_BUSY)return;
+ const b=wager($('bet')?.value);if(!b)return;
+ const c=$('coin3d'),res=$('res');if(!c||!res){window.GB_ACTION_BUSY=false;return}
+ window.GB_ACTION_BUSY=true;
+ const result=Math.random()<.5?'heads':'tails';
+ const win=result===pick;
+ fnResetCoinVisual(c);
+ res.textContent='FLIPPING…';
+ c.dataset.face='flipping';
+ c.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}});
+ const final=result==='tails'?1980:1800;
+ const spin=c.animate([
+  {transform:'rotateY(0deg) rotateZ(-5deg)'},
+  {transform:'rotateY(540deg) rotateZ(4deg)'},
+  {transform:'rotateY(1080deg) rotateZ(-3deg)'},
+  {transform:`rotateY(${final}deg) rotateZ(0deg)`}
+ ],{duration:1900,easing:'cubic-bezier(.2,.72,.18,1)',fill:'forwards'});
+ sfx('flip');
+ spin.finished.then(()=>{
+   try{spin.cancel()}catch(_){ }
+   c.style.transform=`rotateY(${result==='tails'?180:0}deg)`;
+   c.dataset.face=result;
+   res.textContent=`${result.toUpperCase()} — ${win?'WIN':'LOSE'}`;
+   const net=settle(b,win?b*2:0,'COIN TOSS');
+   writeCoinHistory({side:result,win,bet:b,net});renderCoinHistory();
+   sfx(win?'win':'lose');
+   window.GB_ACTION_BUSY=false;
+ }).catch(()=>{
+   fnResetCoinVisual(c);res.textContent='CHOOSE YOUR SIDE';window.GB_ACTION_BUSY=false;
+ });
 }
 
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
@@ -441,8 +376,13 @@ function fmt(n){return Math.floor(n).toLocaleString()}
 function audio(){if(!S.sound)return null; try{return audioCtx||(audioCtx=new (window.AudioContext||window.webkitAudioContext)())}catch(e){return null}}
 function tone(freq,d=.08,type="sine",vol=.035,delay=0){let a=audio();if(!a)return;let o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(0.0001,a.currentTime+delay);g.gain.exponentialRampToValueAtTime(vol,a.currentTime+delay+.01);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+delay+d);o.connect(g);g.connect(a.destination);o.start(a.currentTime+delay);o.stop(a.currentTime+delay+d+.02)}
 
+function audioFile(name){
+  if(!S.sound) return;
+  try{ const a=new Audio(name); a.volume=0.7; a.preload="auto"; a.play().catch(()=>{}); }catch(e){}
+}
 
-function sfx(name){if(!S.sound)return; const sets={click:[[180,.05]],chip:[[450,.05,"square"]],card:[[850,.045,"triangle"]],win:[[523,.08],[659,.08],[784,.16]],lose:[[180,.15],[120,.18]],spin:[[180,.05],[220,.05],[280,.05]],dice:[[220,.05],[330,.05],[180,.07]],roulette:[[260,.04],[320,.04],[390,.04],[460,.05]],crash:[[180,.15,"sawtooth"],[80,.35,"sawtooth"]],jackpot:[[392,.1],[523,.1],[659,.1],[1046,.3]],draw:[[392,.12],[392,.12],[330,.18]],flip:[[600,.08],[400,.08]],deal:[[700,.05],[900,.05]]};
+function sfx(name){if(!S.sound)return; const fileMap={click:"click.wav",chip:"chip.wav",card:"card.wav",win:"win.wav",lose:"lose.wav",spin:"spin.wav",dice:"dice.wav",roulette:"roulette.wav",crash:"crash.wav",jackpot:"jackpot.wav",flip:"flip.wav",deal:"card.wav"}; if(fileMap[name]) audioFile(fileMap[name]);
+ const sets={click:[[180,.05]],chip:[[450,.05,"square"]],card:[[850,.045,"triangle"]],win:[[523,.08],[659,.08],[784,.16]],lose:[[180,.15],[120,.18]],spin:[[180,.05],[220,.05],[280,.05]],dice:[[220,.05],[330,.05],[180,.07]],roulette:[[260,.04],[320,.04],[390,.04],[460,.05]],crash:[[180,.15,"sawtooth"],[80,.35,"sawtooth"]],jackpot:[[392,.1],[523,.1],[659,.1],[1046,.3]],draw:[[392,.12],[392,.12],[330,.18]],flip:[[600,.08],[400,.08]],deal:[[700,.05],[900,.05]]};
  (sets[name]||sets.click).forEach((x,i)=>tone(x[0],x[1],x[2]||"sine",.035,i*.06));
 }
 function wager(v){
@@ -505,7 +445,7 @@ function openGame(g){
  try{if(typeof games[g]!=="function")throw new Error("Unknown game: "+g);games[g]();debugLog("GAME","Launch success",{game:g,token})}
  catch(e){debugLog("ERROR","Game launch failed",{game:g,error:String(e),stack:e.stack});$("modalContent").innerHTML=`<div class="game"><h2>GAME ERROR</h2><pre class="debug-error">${String(e.stack||e)}</pre></div>`}
 }
-function closeGame(){GB_GAME_TOKEN++;try{window.FN_CANCEL_PUCHUN?.();}catch(_){}try{window.GB_CANCEL_COIN_FLIP?.();}catch(_){}debugLog("RUNTIME","STOP",{game:GB_RUNTIME.game});window.GB_stopGameRuntime();$("modal").classList.add("hidden");const lobby=document.getElementById("appLobby");if(lobby)lobby.classList.remove("hidden");sfx("click")}
+function closeGame(){fnStopPuchun();GB_GAME_TOKEN++;debugLog("RUNTIME","STOP",{game:GB_RUNTIME.game});window.GB_stopGameRuntime();$("modal").classList.add("hidden");const lobby=document.getElementById("appLobby");if(lobby)lobby.classList.remove("hidden");sfx("click")}
 function betbox(min=10,hideMax=false){
   const max=Math.max(min,S.coins||0);
   const step=max<=1000?10:max<=10000?100:500;
@@ -743,8 +683,11 @@ chohan(){
 coin(){
  $("gameBody").innerHTML=betbox()+`<div class="anim-game coin-game">
   <div class="anim-title">COIN TOSS</div>
-  <div class="coin-stage"><div id="coinFlipMotion" class="coin-flip-motion"><div id="coin3d" class="coin3d" data-face="heads"><div class="coin-face coin-head" aria-label="HEADS"><b>H</b><small>HEADS</small></div><div class="coin-face coin-tail" aria-label="TAILS"><b>T</b><small>TAILS</small></div></div></div></div>
-  <div class="coin-choices"><button onclick="coinFlip('heads')"><b>HEADS</b><small>GOLD SIDE</small></button><div class="coin-vs">VS</div><button onclick="coinFlip('tails')"><b>TAILS</b><small>BLACK SIDE</small></button></div>
+  <div class="coin-stage"><div id="coin3d" class="coin3d" data-face="heads" aria-label="Coin showing HEADS">
+   <div class="coin-face coin-head"><div class="coin-emblem">♛</div><strong>H</strong><small>HEADS</small><em>GOLD SIDE</em></div>
+   <div class="coin-face coin-tail"><div class="coin-emblem">◆</div><strong>T</strong><small>TAILS</small><em>BLACK SIDE</em></div>
+  </div></div>
+  <div class="coin-choices"><button type="button" onclick="coinFlip('heads')"><b>HEADS</b><small>GOLD SIDE</small></button><div class="coin-vs">VS</div><button type="button" onclick="coinFlip('tails')"><b>TAILS</b><small>BLACK SIDE</small></button></div>
   <div id="res" class="result coin-result">CHOOSE YOUR SIDE</div>
   <div class="coin-history"><div class="coin-history-head"><b>COIN FLIP HISTORY</b><small>LAST 5</small></div><div id="coinHistory"></div></div>
  </div>`;
@@ -761,11 +704,11 @@ lottery(){
    <div id="lotteryResult" class="lottery-result">PRESS DRAW TO START</div>
   </div>
   <div class="lottery-prize-board">
-   <div class="lottery-board-title">当選確率</div>
-   <div class="lottery-prize-row jp"><b>JACKPOT</b><em>0.05%</em><strong>100,000</strong></div>
-   <div class="lottery-prize-row gold"><b>GOLD</b><em>2.00%</em><strong>10,000</strong></div>
-   <div class="lottery-prize-row silver"><b>SILVER</b><em>12.95%</em><strong>500</strong></div>
-   <div class="lottery-prize-row lose"><b>MISS</b><em>85.00%</em><strong>0</strong></div>
+   <div class="lottery-board-title">PRIZE TABLE <small>TRUE DRAW ODDS</small></div>
+   <div class="lottery-prize-row jp"><span><b>JACKPOT</b><small>1 IN 2,000</small></span><strong>100,000</strong><em>0.05%</em></div>
+   <div class="lottery-prize-row gold"><span><b>GOLD</b><small>HIGH PRIZE</small></span><strong>10,000</strong><em>2.00%</em></div>
+   <div class="lottery-prize-row silver"><span><b>SILVER</b><small>SMALL PRIZE</small></span><strong>500</strong><em>13.00%</em></div>
+   <div class="lottery-prize-row lose"><span><b>MISS</b><small>NO PRIZE</small></span><strong>0</strong><em>84.95%</em></div>
   </div>
   <div class="lottery-history"><div class="lottery-history-head"><b>RECENT DRAWS</b><small>LAST 5</small></div><div id="lotteryHistory"></div></div>
   <button class="lottery-draw" onclick="lottery()">DRAW LOTTERY</button>
@@ -864,7 +807,7 @@ function spinSlot(){
        if(winLines){mult*=winLines>1?1.5:1;mult=Math.floor(mult);}
        SLOT_BUSY=false;if(btn)btn.disabled=false;
        if(res)res.textContent=winLines?`${hitName} • ${winLines} LINE${winLines>1?"S":""} • ×${mult}`:"";
-       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(mult>=15?"jackpot":"win");if(hitName==="SEVEN")puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
+       if(winLines){slotAudio("line");settle(b,Math.floor(b*mult),"ULTIMATE SLOTS");sfx(mult>=15?"jackpot":"win");if(hitName==="SEVEN" && mult>=15)puchun()}else{settle(b,0,"ULTIMATE SLOTS");sfx("lose")}
      }
    },1000+i*700);
  },
@@ -995,7 +938,7 @@ function bjDeal(){
  BJ={deck:deck(),p:[],d:[],bet:b,reveal:false,over:false,split:false,hands:[],active:0,totalBet:b};
  BJ.p=[BJ.deck.pop(),BJ.deck.pop()];BJ.d=[BJ.deck.pop(),BJ.deck.pop()];
  $("bjdeal").disabled=true;bjRender();sfx("deal");
- if(val(BJ.p)===21){BJ.reveal=true;BJ.over=true;bjRender();settle(BJ.bet,Math.floor(BJ.bet*2.5),"BLACKJACK");sfx("jackpot");puchun();bjActions(false);$("bjdeal").disabled=false;return}
+ if(BJ.p.length===2&&val(BJ.p)===21){BJ.reveal=true;BJ.over=true;bjRender();settle(BJ.bet,Math.floor(BJ.bet*2.5),"BLACKJACK");sfx("jackpot");puchun();bjActions(false);$("bjdeal").disabled=false;return}
  bjActions(true);
 }
 function bjHit(){if(BJ.over)return;const hand=BJ.split?BJ.hands[BJ.active]:BJ.p;hand.push(BJ.deck.pop());sfx("card");bjRender();if(val(hand)>21){BJ.reveal=true;BJ.over=true;bjRender();settle(BJ.bet,0,"BLACKJACK");sfx("lose");bjActions(false);$("bjdeal").disabled=false}else if(val(hand)===21)bjStand()}
@@ -1559,7 +1502,7 @@ function rouletteSpin(choice){
    renderRouletteHistory();
    settle(b,win?b*payout:0,'ROULETTE');
    sfx(win?'win':'lose');
-
+   
    GB_ROULETTE_BUSY=false;
    const spinAgain=$('rouletteNumberSpin');if(spinAgain&&window.ROULETTE_BET)spinAgain.disabled=false;
   };
@@ -1649,19 +1592,42 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
 (function(){
   const profileKey='gb_profile_v2';
   const defaultProfile={name:'PLAYER',icon:'♠',frame:'classic',language:'ja',sound:true,notifications:true,onlineStatus:true,reducedMotion:false,games:0,wins:0};
-  let FN_SPECIAL_FRAMES_READY=false;
-  let FN_SPECIAL_OWNED=new Set();
-  function prof(){try{const x=JSON.parse(localStorage.getItem(profileKey)||'{}');delete x.ownedFrames;return Object.assign({},defaultProfile,x)}catch(e){return Object.assign({},defaultProfile)}}
-  function saveProf(x){const y=Object.assign({},x);delete y.ownedFrames;localStorage.setItem(profileKey,JSON.stringify(y))}
-  function syncSpecialFrames(settings){const owned=Array.isArray(settings?.ownedFrames)?settings.ownedFrames:[];FN_SPECIAL_OWNED=new Set(owned.filter(x=>x==='early_access'||x==='admin'));FN_SPECIAL_FRAMES_READY=true}
-  function frameOwned(frame){if(frame==='admin')return window.__FN_AUTH_ROLE==='admin';if(frame==='early_access')return FN_SPECIAL_FRAMES_READY&&FN_SPECIAL_OWNED.has('early_access');return ['classic','gold','silver','neon','royal'].includes(frame)}
-  function applyProfileFrame(root,profile){const host=root&&root.nodeType?root:document.getElementById('avatar');if(!host)return;const p=profile||prof(),frame=p.frame||'classic',af=host.querySelector?.('.avatar-frame')||document.getElementById('avatarFrame');if(!af)return;const visible=frameOwned(frame)&&((frame==='early_access'||frame==='admin'));af.hidden=!visible;af.dataset.frame=visible?frame:'';if(visible)af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';else{af.removeAttribute('src');af.removeAttribute('data-frame')}host.dataset.profileFrame=visible?frame:''}
+  const BASE_FRAMES=['classic','gold','silver','neon','royal'];
+  let FN_SERVER_PROFILE_READY=false;
+  let FN_SERVER_OWNED_FRAMES=new Set(BASE_FRAMES);
+  function prof(){try{return Object.assign({},defaultProfile,JSON.parse(localStorage.getItem(profileKey)||'{}'))}catch(e){return Object.assign({},defaultProfile)}}
+  function saveProf(x){localStorage.setItem(profileKey,JSON.stringify(x))}
+  function isSpecialFrame(frame){return frame==='early_access'||frame==='admin'}
+  function frameAllowed(frame){return BASE_FRAMES.includes(frame)||(FN_SERVER_PROFILE_READY&&FN_SERVER_OWNED_FRAMES.has(frame))}
+  function frameAsset(frame){return frame==='early_access'?'early_access_frame.png':frame==='admin'?'admin_frame.png':''}
+  function applyProfileFrame(frameEl,frame){
+    if(!frameEl)return false;
+    const f=frameAllowed(frame)?frame:'classic';
+    frameEl.dataset.frame=f;frameEl.hidden=!isSpecialFrame(f);
+    if(isSpecialFrame(f)){frameEl.src=frameAsset(f);}else{frameEl.src='';}
+    return !frameEl.hidden;
+  }
   window.FN_APPLY_PROFILE_FRAME=applyProfileFrame;
-  async function syncProfileSettings(){FN_SPECIAL_FRAMES_READY=false;FN_SPECIAL_OWNED.clear();applyProfileFrame(document.getElementById('avatar'),prof());if(typeof window.FN_API_REQUEST!=='function')return;const role=window.__FN_AUTH_ROLE||'';if(!role)return;const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');try{const d=await window.FN_API_REQUEST('/profile/settings',{},tok);if(d.settings){syncSpecialFrames(d.settings);const x=Object.assign({},prof(),d.settings);saveProf(x);renderProfile()}}catch(_){FN_SPECIAL_FRAMES_READY=true;FN_SPECIAL_OWNED.clear();renderProfile()}}
-  function ensureFriendsBottom(){const lobby=document.getElementById('appLobby');if(!lobby||lobby.querySelector('.friendsBottom'))return;const wrap=document.createElement('div');wrap.className='friendsBottom';wrap.innerHTML='<button type="button" id="friendsBottomBtn"><small>SOCIAL</small><b>FRIEND</b><span>SEARCH PLAYERS • SEND / ACCEPT REQUESTS</span></button>';lobby.appendChild(wrap);wrap.querySelector('#friendsBottomBtn').onclick=()=>openSocial('friends')}
-  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');FN_SPECIAL_FRAMES_READY=false;FN_SPECIAL_OWNED.clear();renderProfile();ensureFriendsBottom();syncProfileSettings()}
-  function renderProfile(){const p=prof(),frame=p.frame||'classic',n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}applyProfileFrame(document.getElementById('avatar'),p);if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
-  async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','puchun.mp4'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
+  async function syncProfileSettings(){
+    if(typeof window.FN_API_REQUEST!=='function')return;
+    const role=window.__FN_AUTH_ROLE||'';if(!role)return;
+    const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');
+    FN_SERVER_PROFILE_READY=false;FN_SERVER_OWNED_FRAMES=new Set(BASE_FRAMES);renderProfile();
+    try{
+      const d=await window.FN_API_REQUEST('/profile/settings',{},tok);
+      if(d.settings){FN_SERVER_OWNED_FRAMES=new Set([...BASE_FRAMES,...(Array.isArray(d.settings.ownedFrames)?d.settings.ownedFrames:[])]);FN_SERVER_PROFILE_READY=true;
+        const x=Object.assign({},prof(),d.settings);if(!frameAllowed(x.frame))x.frame='classic';delete x.ownedFrames;saveProf(x);renderProfile();}
+    }catch(_){FN_SERVER_PROFILE_READY=false;FN_SERVER_OWNED_FRAMES=new Set(BASE_FRAMES);renderProfile()}
+  }
+  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');renderProfile();syncProfileSettings()}
+  function renderProfile(){
+    const p=prof(),frame=frameAllowed(p.frame)?p.frame:'classic';
+    const n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');
+    if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}
+    const af=document.getElementById('avatarFrame');applyProfileFrame(af,frame);
+    if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1);
+  }
+  async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;try{const ac=audio();if(ac?.state==='suspended')await ac.resume()}catch(_){ }window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','puchun_effect.mp4','puchun.wav','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   async function fnApi(path,opts={}){
     if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
     let tok=(window.__FN_AUTH_ROLE==='admin' ? (localStorage.getItem('FN_ADMIN_TOKEN')||'') : (localStorage.getItem('FN_PLAYER_TOKEN')||''));
@@ -1682,10 +1648,11 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     o.classList.remove('hidden');
     if(type==='profile'){
+      await syncProfileSettings();
       const x=prof();
       p.innerHTML='<h2>PROFILE & SETTINGS</h2><label>PLAYER NAME</label><input id="pname" maxlength="16" value="'+esc(x.name)+'" readonly><div class="fn-setting-grid"><label>ICON<select id="picon"><option>♠</option><option>♦</option><option>♣</option><option>♥</option><option>★</option><option>◆</option><option>●</option><option>♛</option></select></label><label>FRAME<select id="pframe"><option value="classic">CLASSIC</option><option value="gold">GOLD</option><option value="silver">SILVER</option><option value="neon">NEON</option><option value="royal">ROYAL</option></select></label><label>LANGUAGE<select id="plang"><option value="ja">日本語</option><option value="en">English</option></select></label></div><label class="fn-check"><input id="psound" type="checkbox"> SOUND</label><label class="fn-check"><input id="pnotify" type="checkbox"> NOTIFICATIONS</label><label class="fn-check"><input id="ponline" type="checkbox"> SHOW ONLINE STATUS</label><label class="fn-check"><input id="pmotion" type="checkbox"> REDUCED MOTION</label><div class="socialActions"><button class="primary" id="saveP">SAVE SETTINGS</button><button id="closeP">CLOSE</button></div><div id="profileStatus"></div>';
-      const sel=document.getElementById('pframe');if(FN_SPECIAL_FRAMES_READY&&FN_SPECIAL_OWNED.has('early_access')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o);}if(FN_SPECIAL_FRAMES_READY&&FN_SPECIAL_OWNED.has('admin')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o);}if(!frameOwned(x.frame))x.frame='classic';document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=x.frame||'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
-      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;x.frame=document.getElementById('pframe').value;x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;if(!frameOwned(x.frame))x.frame='classic';saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='LOCAL SAVED • SERVER SYNC FAILED'} };
+      const sel=document.getElementById('pframe');if(FN_SERVER_PROFILE_READY&&FN_SERVER_OWNED_FRAMES.has('early_access')){const o=document.createElement('option');o.value='early_access';o.textContent='EARLY ACCESS';sel.appendChild(o)}if(FN_SERVER_PROFILE_READY&&FN_SERVER_OWNED_FRAMES.has('admin')){const o=document.createElement('option');o.value='admin';o.textContent='ADMIN FRAME';sel.appendChild(o)}document.getElementById('picon').value=x.icon||'♠';document.getElementById('pframe').value=frameAllowed(x.frame)?x.frame:'classic';document.getElementById('plang').value=x.language||'ja';document.getElementById('psound').checked=x.sound!==false;document.getElementById('pnotify').checked=x.notifications!==false;document.getElementById('ponline').checked=x.onlineStatus!==false;document.getElementById('pmotion').checked=!!x.reducedMotion;
+      document.getElementById('saveP').onclick=async()=>{x.icon=document.getElementById('picon').value;const requestedFrame=document.getElementById('pframe').value;x.frame=frameAllowed(requestedFrame)?requestedFrame:'classic';x.language=document.getElementById('plang').value;x.sound=document.getElementById('psound').checked;x.notifications=document.getElementById('pnotify').checked;x.onlineStatus=document.getElementById('ponline').checked;x.reducedMotion=document.getElementById('pmotion').checked;saveProf(x);renderProfile();try{const tok=(window.__FN_AUTH_ROLE==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||''));await window.FN_API_REQUEST('/profile/settings',{method:'POST',body:JSON.stringify({icon:x.icon,frame:x.frame,language:x.language,sound:x.sound,notifications:x.notifications,onlineStatus:x.onlineStatus,reducedMotion:x.reducedMotion})},tok);document.getElementById('profileStatus').textContent='SAVED TO SERVER'}catch(e){document.getElementById('profileStatus').textContent='SERVER SAVE FAILED'} };
       document.getElementById('closeP').onclick=()=>o.classList.add('hidden');
     }else if(type==='friends'){
       let friends=[],requests={incoming:[],outgoing:[]};
@@ -1712,6 +1679,7 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
       }else renderRoom(room);
     }
   }
+  window.addEventListener('fn-auth-changed',()=>{FN_SERVER_PROFILE_READY=false;FN_SERVER_OWNED_FRAMES=new Set(BASE_FRAMES);renderProfile();if(document.getElementById('appLobby')&&!document.getElementById('appLobby').classList.contains('hidden'))syncProfileSettings()});
   async function renderRoom(room){
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
     if(!room){openSocial('room');return}
