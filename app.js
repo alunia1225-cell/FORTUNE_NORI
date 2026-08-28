@@ -186,41 +186,76 @@ function renderRouletteHistory(){
 
 
 function puchun(){
-  if(window.__FN_PUCHUN_BUSY)return;
-  const blackout=$("blackout"),video=$("puchunVideo");
-  if(!blackout||!video)return;
+  if(window.__FN_PUCHUN_BUSY)return false;
+  let blackout=$('blackout'),video=$('puchunVideo');
+  if(!blackout){
+    blackout=document.createElement('div');
+    blackout.id='blackout';
+    document.body.appendChild(blackout);
+  }
+  if(!video){
+    video=document.createElement('video');
+    video.id='puchunVideo';
+    video.className='puchun-video';
+    video.setAttribute('playsinline','');
+    video.setAttribute('webkit-playsinline','');
+    video.muted=true;
+    video.preload='auto';
+    video.src='puchun.mp4';
+    blackout.replaceChildren(video);
+  }else{
+    video.src='puchun.mp4';
+  }
   window.__FN_PUCHUN_BUSY=true;
-  let finished=false,safety=null;
+  let finished=false;
+  let safety=null;
   const finish=()=>{
     if(finished)return;
     finished=true;
     if(safety)clearTimeout(safety);
-    try{video.pause();video.currentTime=0;}catch(_){}
-    video.onended=null;video.onerror=null;
-    blackout.classList.remove("puchun-active");
-    blackout.style.display="none";
+    try{video.pause();video.currentTime=0;}catch(_){ }
+    video.onended=null;
+    video.onerror=null;
+    blackout.classList.remove('puchun-active');
+    blackout.style.display='none';
     window.__FN_PUCHUN_BUSY=false;
     window.FN_CANCEL_PUCHUN=null;
   };
   window.FN_CANCEL_PUCHUN=finish;
-  blackout.classList.add("puchun-active");
-  blackout.style.display="flex";
+  blackout.classList.add('puchun-active');
+  blackout.style.display='flex';
   video.muted=true;
   video.defaultMuted=true;
   video.playsInline=true;
-  video.setAttribute("playsinline","");
-  video.setAttribute("webkit-playsinline","");
   video.controls=false;
-  video.preload="auto";
+  video.preload='auto';
   video.onended=finish;
-  video.onerror=()=>{if(safety)clearTimeout(safety);safety=setTimeout(finish,1000);};
-  try{video.pause();video.currentTime=0;video.load();}catch(_){}
-  safety=setTimeout(finish,3600);
-  requestAnimationFrame(()=>{
+  video.onerror=()=>{
+    debugLog('ERROR','PUCHUN VIDEO LOAD FAILED',{src:video.currentSrc||video.src});
+    if(safety)clearTimeout(safety);
+    safety=setTimeout(finish,250);
+  };
+  try{video.pause();video.currentTime=0;video.load();}catch(_){ }
+  safety=setTimeout(finish,2600);
+  const startPlayback=()=>{
     if(finished)return;
-    try{const playResult=video.play();if(playResult&&typeof playResult.catch==="function")playResult.catch(()=>{if(safety)clearTimeout(safety);safety=setTimeout(finish,1000);});}
-    catch(_){if(safety)clearTimeout(safety);safety=setTimeout(finish,1000);}
-  });
+    try{
+      const playResult=video.play();
+      if(playResult&&typeof playResult.catch==='function'){
+        playResult.catch(err=>{
+          debugLog('ERROR','PUCHUN VIDEO PLAY FAILED',{message:String(err)});
+          if(safety)clearTimeout(safety);
+          safety=setTimeout(finish,250);
+        });
+      }
+    }catch(err){
+      debugLog('ERROR','PUCHUN VIDEO PLAY EXCEPTION',{message:String(err)});
+      if(safety)clearTimeout(safety);
+      safety=setTimeout(finish,250);
+    }
+  };
+  requestAnimationFrame(startPlayback);
+  return true;
 }
 
 const CRASH_HISTORY_KEY="gb_crash_history_v1";
@@ -322,61 +357,71 @@ function renderCoinHistory(){
  const rows=readCoinHistory();
  el.innerHTML=rows.length?rows.map((x,i)=>`<div class="coin-history-row"><span>#${i+1} <small>${x.t||""}</small></span><b class="${x.win?"win":"lose"}">${String(x.side||"").toUpperCase()} • ${x.win?"WIN":"LOSE"}</b></div>`).join(""):`<div class="coin-history-empty">NO HISTORY</div>`;
 }
+let FN_COIN_FLIP_TOKEN=0;
 function coinFlip(pick){
- if(window.GB_ACTION_BUSY)return;
- const b=wager($("bet")?.value);if(!b)return;
- const c=$("coin3d"),stage=$("coinFlipMotion"),res=$("res");
- if(!c||!stage||!res){window.GB_ACTION_BUSY=false;return}
- const head=c.querySelector(".coin-head"),tail=c.querySelector(".coin-tail");
- if(!head||!tail){window.GB_ACTION_BUSY=false;return}
- window.GB_ACTION_BUSY=true;
- const result=Math.random()<.5?"heads":"tails",win=result===pick;
- let cancelled=false;
- const cancel=()=>{
-  cancelled=true;
-  try{c.getAnimations().forEach(a=>a.cancel());stage.getAnimations().forEach(a=>a.cancel())}catch(_){}
-  c.dataset.face="heads";c.style.transform="rotateY(0deg) rotateZ(0deg)";
-  head.style.transform="rotateY(0deg) translateZ(2px)";tail.style.transform="rotateY(180deg) translateZ(2px)";
-  head.style.opacity="1";tail.style.opacity="0";head.style.visibility="visible";tail.style.visibility="hidden";
-  stage.style.transform="none";
-  window.GB_ACTION_BUSY=false;window.GB_CANCEL_COIN_FLIP=null;
- };
- window.GB_CANCEL_COIN_FLIP=cancel;
- c.dataset.face="flipping";c.style.transform="rotateY(0deg) rotateZ(0deg)";
- head.style.transform="rotateY(0deg) translateZ(2px)";
- tail.style.transform="rotateY(180deg) translateZ(2px)";
- head.style.opacity="1";tail.style.opacity="1";
- head.style.visibility="visible";tail.style.visibility="visible";
- stage.style.transform="translate3d(0,34px,0) scale(.92)";
- void stage.offsetWidth;res.textContent="FLIPPING…";
- const finalAngle=result==="tails"?2340:2160;
- const motion=stage.animate([
-  {transform:"translate3d(0,34px,0) scale(.92)"},
-  {transform:"translate3d(-34px,-20px,0) scale(1.02)"},
-  {transform:"translate3d(28px,-104px,0) scale(1.12)"},
-  {transform:"translate3d(-20px,-126px,0) scale(1.16)"},
-  {transform:"translate3d(22px,-66px,0) scale(1.09)"},
-  {transform:"translate3d(0,0,0) scale(1)"}
- ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
- const spin=c.animate([
-  {transform:"rotateY(0deg) rotateZ(-8deg)"},
-  {transform:"rotateY(720deg) rotateZ(8deg)"},
-  {transform:"rotateY(1440deg) rotateZ(-6deg)"},
-  {transform:`rotateY(${finalAngle}deg) rotateZ(0deg)`}
- ],{duration:2850,easing:"cubic-bezier(.15,.78,.17,1)",fill:"forwards"});
- sfx("flip");
- Promise.all([motion.finished,spin.finished]).then(()=>{
-  if(cancelled){return}
-  motion.cancel();spin.cancel();stage.style.transform="none";
-  c.dataset.face=result;c.style.transform=result==="tails"?"rotateY(180deg)":"rotateY(0deg)";
-  head.style.transform="rotateY(0deg) translateZ(2px)";tail.style.transform="rotateY(180deg) translateZ(2px)";
-  head.style.opacity=result==="heads"?"1":"0";tail.style.opacity=result==="tails"?"1":"0";
-  head.style.visibility=result==="heads"?"visible":"hidden";tail.style.visibility=result==="tails"?"visible":"hidden";
-  res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;
-  writeCoinHistory({side:result,win});renderCoinHistory();
-  settle(b,win?b*2:0,"COIN TOSS");sfx(win?"win":"lose");
-  window.GB_ACTION_BUSY=false;window.GB_CANCEL_COIN_FLIP=null;
- }).catch(()=>{cancelled=true;cancel()});
+  if(window.GB_ACTION_BUSY)return;
+  const b=wager($('bet')?.value);if(!b)return;
+  const c=$('coin3d'),stage=$('coinFlipMotion'),res=$('res');
+  if(!c||!stage||!res)return;
+  const head=c.querySelector('.coin-head'),tail=c.querySelector('.coin-tail');
+  if(!head||!tail)return;
+
+  window.GB_ACTION_BUSY=true;
+  const token=++FN_COIN_FLIP_TOKEN;
+  const result=Math.random()<0.5?'heads':'tails';
+  const win=result===pick;
+  let timerId=null;
+  let cancelled=false;
+
+  const reset=()=>{
+    c.classList.remove('coin-flipping-heads','coin-flipping-tails');
+    stage.classList.remove('coin-arc');
+    c.dataset.face='heads';
+    c.style.removeProperty('transform');
+    stage.style.removeProperty('transform');
+    head.style.removeProperty('transform');
+    tail.style.removeProperty('transform');
+    head.style.opacity='1';tail.style.opacity='0';
+    head.style.visibility='visible';tail.style.visibility='hidden';
+  };
+  const cancel=()=>{
+    cancelled=true;
+    if(timerId)clearTimeout(timerId);
+    reset();
+    window.GB_ACTION_BUSY=false;
+    window.GB_CANCEL_COIN_FLIP=null;
+  };
+  window.GB_CANCEL_COIN_FLIP=cancel;
+
+  c.classList.remove('coin-flipping-heads','coin-flipping-tails');
+  void c.offsetWidth;
+  c.dataset.face='flipping';
+  head.style.opacity='1';tail.style.opacity='1';
+  head.style.visibility='visible';tail.style.visibility='visible';
+  res.textContent='FLIPPING…';
+  c.classList.add(result==='tails'?'coin-flipping-tails':'coin-flipping-heads');
+  stage.classList.add('coin-arc');
+  sfx('flip');
+
+  timerId=setTimeout(()=>{
+    if(cancelled||token!==FN_COIN_FLIP_TOKEN)return;
+    c.classList.remove('coin-flipping-heads','coin-flipping-tails');
+    stage.classList.remove('coin-arc');
+    c.dataset.face=result;
+    c.style.removeProperty('transform');
+    stage.style.removeProperty('transform');
+    head.style.opacity=result==='heads'?'1':'0';
+    tail.style.opacity=result==='tails'?'1':'0';
+    head.style.visibility=result==='heads'?'visible':'hidden';
+    tail.style.visibility=result==='tails'?'visible':'hidden';
+    res.textContent=`${result.toUpperCase()} — ${win?'WIN':'LOSE'}`;
+    writeCoinHistory({side:result,win});
+    renderCoinHistory();
+    settle(b,win?b*2:0,'COIN TOSS');
+    sfx(win?'win':'lose');
+    window.GB_ACTION_BUSY=false;
+    window.GB_CANCEL_COIN_FLIP=null;
+  },2450);
 }
 
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
@@ -396,13 +441,8 @@ function fmt(n){return Math.floor(n).toLocaleString()}
 function audio(){if(!S.sound)return null; try{return audioCtx||(audioCtx=new (window.AudioContext||window.webkitAudioContext)())}catch(e){return null}}
 function tone(freq,d=.08,type="sine",vol=.035,delay=0){let a=audio();if(!a)return;let o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(0.0001,a.currentTime+delay);g.gain.exponentialRampToValueAtTime(vol,a.currentTime+delay+.01);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+delay+d);o.connect(g);g.connect(a.destination);o.start(a.currentTime+delay);o.stop(a.currentTime+delay+d+.02)}
 
-function audioFile(name){
-  if(!S.sound) return;
-  try{ const a=new Audio(name); a.volume=0.7; a.preload="auto"; a.play().catch(()=>{}); }catch(e){}
-}
 
-function sfx(name){if(!S.sound)return; const fileMap={click:"click.wav",chip:"chip.wav",card:"card.wav",win:"win.wav",lose:"lose.wav",spin:"spin.wav",dice:"dice.wav",roulette:"roulette.wav",crash:"crash.wav",jackpot:"jackpot.wav",flip:"flip.wav",deal:"card.wav"}; if(fileMap[name]) audioFile(fileMap[name]);
- const sets={click:[[180,.05]],chip:[[450,.05,"square"]],card:[[850,.045,"triangle"]],win:[[523,.08],[659,.08],[784,.16]],lose:[[180,.15],[120,.18]],spin:[[180,.05],[220,.05],[280,.05]],dice:[[220,.05],[330,.05],[180,.07]],roulette:[[260,.04],[320,.04],[390,.04],[460,.05]],crash:[[180,.15,"sawtooth"],[80,.35,"sawtooth"]],jackpot:[[392,.1],[523,.1],[659,.1],[1046,.3]],draw:[[392,.12],[392,.12],[330,.18]],flip:[[600,.08],[400,.08]],deal:[[700,.05],[900,.05]]};
+function sfx(name){if(!S.sound)return; const sets={click:[[180,.05]],chip:[[450,.05,"square"]],card:[[850,.045,"triangle"]],win:[[523,.08],[659,.08],[784,.16]],lose:[[180,.15],[120,.18]],spin:[[180,.05],[220,.05],[280,.05]],dice:[[220,.05],[330,.05],[180,.07]],roulette:[[260,.04],[320,.04],[390,.04],[460,.05]],crash:[[180,.15,"sawtooth"],[80,.35,"sawtooth"]],jackpot:[[392,.1],[523,.1],[659,.1],[1046,.3]],draw:[[392,.12],[392,.12],[330,.18]],flip:[[600,.08],[400,.08]],deal:[[700,.05],[900,.05]]};
  (sets[name]||sets.click).forEach((x,i)=>tone(x[0],x[1],x[2]||"sine",.035,i*.06));
 }
 function wager(v){
@@ -1614,13 +1654,14 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
   function prof(){try{const x=JSON.parse(localStorage.getItem(profileKey)||'{}');delete x.ownedFrames;return Object.assign({},defaultProfile,x)}catch(e){return Object.assign({},defaultProfile)}}
   function saveProf(x){const y=Object.assign({},x);delete y.ownedFrames;localStorage.setItem(profileKey,JSON.stringify(y))}
   function syncSpecialFrames(settings){const owned=Array.isArray(settings?.ownedFrames)?settings.ownedFrames:[];FN_SPECIAL_OWNED=new Set(owned.filter(x=>x==='early_access'||x==='admin'));FN_SPECIAL_FRAMES_READY=true}
-  function frameOwned(frame){return frame==='early_access'||frame==='admin'?FN_SPECIAL_FRAMES_READY&&FN_SPECIAL_OWNED.has(frame):['classic','gold','silver','neon','royal'].includes(frame)}
-  function applyProfileFrame(root,profile){const host=root&&root.nodeType?root:document.getElementById('avatar');if(!host)return;const p=profile||prof(),frame=p.frame||'classic',af=host.querySelector?.('.avatar-frame')||document.getElementById('avatarFrame');if(!af)return;const special=frame==='early_access'||frame==='admin',visible=special&&frameOwned(frame);af.hidden=!visible;af.dataset.frame=visible?frame:'';if(visible)af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';else af.removeAttribute('src');host.dataset.profileFrame=visible?frame:''}
+  function frameOwned(frame){if(frame==='admin')return window.__FN_AUTH_ROLE==='admin';if(frame==='early_access')return FN_SPECIAL_FRAMES_READY&&FN_SPECIAL_OWNED.has('early_access');return ['classic','gold','silver','neon','royal'].includes(frame)}
+  function applyProfileFrame(root,profile){const host=root&&root.nodeType?root:document.getElementById('avatar');if(!host)return;const p=profile||prof(),frame=p.frame||'classic',af=host.querySelector?.('.avatar-frame')||document.getElementById('avatarFrame');if(!af)return;const visible=frameOwned(frame)&&((frame==='early_access'||frame==='admin'));af.hidden=!visible;af.dataset.frame=visible?frame:'';if(visible)af.src=frame==='admin'?'admin_frame.png':'early_access_frame.png';else{af.removeAttribute('src');af.removeAttribute('data-frame')}host.dataset.profileFrame=visible?frame:''}
   window.FN_APPLY_PROFILE_FRAME=applyProfileFrame;
   async function syncProfileSettings(){FN_SPECIAL_FRAMES_READY=false;FN_SPECIAL_OWNED.clear();applyProfileFrame(document.getElementById('avatar'),prof());if(typeof window.FN_API_REQUEST!=='function')return;const role=window.__FN_AUTH_ROLE||'';if(!role)return;const tok=role==='admin'?(localStorage.getItem('FN_ADMIN_TOKEN')||''):(localStorage.getItem('FN_PLAYER_TOKEN')||'');try{const d=await window.FN_API_REQUEST('/profile/settings',{},tok);if(d.settings){syncSpecialFrames(d.settings);const x=Object.assign({},prof(),d.settings);saveProf(x);renderProfile()}}catch(_){FN_SPECIAL_FRAMES_READY=true;FN_SPECIAL_OWNED.clear();renderProfile()}}
-  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');FN_SPECIAL_FRAMES_READY=false;FN_SPECIAL_OWNED.clear();renderProfile();syncProfileSettings()}
+  function ensureFriendsBottom(){const lobby=document.getElementById('appLobby');if(!lobby||lobby.querySelector('.friendsBottom'))return;const wrap=document.createElement('div');wrap.className='friendsBottom';wrap.innerHTML='<button type="button" id="friendsBottomBtn"><small>SOCIAL</small><b>FRIEND</b><span>SEARCH PLAYERS • SEND / ACCEPT REQUESTS</span></button>';lobby.appendChild(wrap);wrap.querySelector('#friendsBottomBtn').onclick=()=>openSocial('friends')}
+  function showLobby(){document.getElementById('appSplash')?.classList.add('hide');document.getElementById('appLobby')?.classList.remove('hidden');FN_SPECIAL_FRAMES_READY=false;FN_SPECIAL_OWNED.clear();renderProfile();ensureFriendsBottom();syncProfileSettings()}
   function renderProfile(){const p=prof(),frame=p.frame||'classic',n=document.getElementById('playerName'),a=document.getElementById('avatarText'),m=document.getElementById('profileMeta');if(n)n.textContent=p.name;if(a){a.textContent=p.icon||'♠';a.dataset.frame=frame;}applyProfileFrame(document.getElementById('avatar'),p);if(m)m.textContent=p.name+' • LV.'+(Math.floor((p.games||0)/10)+1)}
-  async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','click.wav','chip.wav','card.wav','spin.wav','roulette.wav','dice.wav','flip.wav','win.wav','lose.wav','jackpot.wav','crash.wav'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
+  async function start(){if(window.__FN_LOADING)return;window.__FN_LOADING=true;const b=document.getElementById('tapStart'),box=document.getElementById('loadBox'),bar=document.getElementById('loadFill'),pct=document.getElementById('loadPct'),txt=document.getElementById('loadText'),detail=document.getElementById('loadDetail');b.disabled=true;b.classList.add('hidden');box.classList.remove('hidden');const assets=['style.css','app.js','puchun.mp4'];for(let i=0;i<assets.length;i++){txt.textContent=i<3?'INITIALIZING':i<assets.length-2?'LOADING ASSETS':'FINALIZING';detail.textContent='Loading '+assets[i];try{await fetch(assets[i],{cache:'no-store'})}catch(e){try{debugLog('WARN','ASSET LOAD WARNING',{asset:assets[i]})}catch(_){} }const q=Math.round((i+1)/assets.length*100);bar.style.width=q+'%';pct.textContent=q+'%';await new Promise(r=>setTimeout(r,55))}txt.textContent='READY';detail.textContent='GAME RUNTIME ONLINE';await new Promise(r=>setTimeout(r,350));showLobby()}
   async function fnApi(path,opts={}){
     if(typeof window.FN_API_REQUEST!=='function')throw new Error('AUTH_API_NOT_READY');
     let tok=(window.__FN_AUTH_ROLE==='admin' ? (localStorage.getItem('FN_ADMIN_TOKEN')||'') : (localStorage.getItem('FN_PLAYER_TOKEN')||''));
