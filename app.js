@@ -1621,16 +1621,26 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     frameEl.hidden=!special;
     frameEl.style.setProperty('--fn-frame-dx','0px');
     frameEl.style.setProperty('--fn-frame-dy','0px');
+    frameEl.style.removeProperty('--fn-frame-size');
     if(special){
       frameEl.src=frameAsset(f);
+      // The supplied 512px artwork has different inner-hole diameters/centers.
+      // Scale the artwork so its actual transparent opening matches the 40px avatar icon,
+      // then place that opening—not the PNG canvas center—on the icon center.
+      const geometry = f==='admin'
+        ? {size:69,holeX:256/512,holeY:235.5/512}
+        : {size:59,holeX:256/512,holeY:236.5/512};
+      frameEl.style.setProperty('--fn-frame-size',geometry.size+'px');
       const avatar=frameEl.closest('.avatar');
       if(avatar && targetEl){
         const ar=avatar.getBoundingClientRect(),tr=targetEl.getBoundingClientRect();
         const acx=ar.left+ar.width/2,acy=ar.top+ar.height/2;
         const tcx=tr.left+tr.width/2,tcy=tr.top+tr.height/2;
-        const upward = f==='admin' ? -3 : -2;
+        // PNG inner-hole center is above canvas center, so move the whole artwork downward
+        // by the corresponding amount to make the opening coincide with the icon.
+        const artworkHoleOffsetY=(0.5-geometry.holeY)*geometry.size;
         frameEl.style.setProperty('--fn-frame-dx',(tcx-acx).toFixed(2)+'px');
-        frameEl.style.setProperty('--fn-frame-dy',((tcy-acy)+upward).toFixed(2)+'px');
+        frameEl.style.setProperty('--fn-frame-dy',((tcy-acy)+artworkHoleOffsetY).toFixed(2)+'px');
       }
     }else{frameEl.src='';frameEl.removeAttribute('data-frame-size');}
     return special;
