@@ -61,3 +61,6 @@ CREATE TABLE IF NOT EXISTS mahjong_actions (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_mahjong_actions_game ON mahjong_actions(game_id,id DESC);
+
+CREATE TABLE IF NOT EXISTS mahjong_match_results (id INTEGER PRIMARY KEY AUTOINCREMENT,game_id TEXT NOT NULL,player_id TEXT NOT NULL,seat INTEGER NOT NULL,final_score INTEGER NOT NULL,rank INTEGER NOT NULL,point_delta INTEGER NOT NULL DEFAULT 0,uma INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_mahjong_match_results_game ON mahjong_match_results(game_id,id);
