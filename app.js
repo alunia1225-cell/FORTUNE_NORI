@@ -972,7 +972,7 @@ const HE_N=3;
 function holdemNames(){return["PLAYER","CPU_ACE","CPU_BOSS"];}
 function holdemInit(){
  H={
- players:holdemNames().map((name,i)=>({name,stack:Number(S.coins||0),bet:0,total:0,folded:false,allin:false,cards:[],action:"",
+ players:holdemNames().map((name,i)=>({name,stack:Number(S.chips||0),bet:0,total:0,folded:false,allin:false,cards:[],action:"",
    style:["TAG","LAG","TRICKSTER","CALLING"][i%4],bluff:0.06+(i%4)*0.045,confidence:.45,tilt:0,history:[]})),
  hero:0,button:Math.floor(Math.random()*HE_N),street:0,board:[],deck:deck(),pot:0,currentBet:0,turn:0,pending:new Set(),
  heroRevealed:[false,false],communityRevealed:[],over:false,timerId:null,advanceTimer:null,cpuTimer:null,token:GB_GAME_TOKEN,raiseCount:0,lastRaiseSize:100,streetAggro:0,heroAggro:0};
@@ -986,7 +986,8 @@ function holdemInit(){
 function heStart(){
  clearTimeout(H.advanceTimer);clearTimeout(H.cpuTimer);cancelAnimationFrame(H.timerId);H.cpuTimer=null;
  H.street=0;H.board=[];H.deck=deck();H.pot=0;H.currentBet=0;H.over=false;H.heroRevealed=[false,false];H.communityRevealed=[];H.raiseCount=0;H.lastRaiseSize=100;H.streetAggro=0;H.heroAggro=0;
- H.players.forEach((p,i)=>{p.stack=Math.max(0,Number(S.coins)||0);p.bet=0;p.total=0;p.folded=false;p.allin=false;p.action="";p.cards=[H.deck.pop(),H.deck.pop()];p.confidence=.45;p.tilt=Math.max(0,(p.tilt||0)*.8);p.history=[]});
+ const chipStack=Math.max(0,Number(S.chips)||0);
+ H.players.forEach((p,i)=>{p.stack=chipStack;p.bet=0;p.total=0;p.folded=false;p.allin=false;p.action="";p.cards=[H.deck.pop(),H.deck.pop()];p.confidence=.45;p.tilt=Math.max(0,(p.tilt||0)*.8);p.history=[]});
  const sb=(H.button+1)%HE_N,bb=(H.button+2)%HE_N;
  hePut(sb,50,"SB");hePut(bb,100,"BB");H.currentBet=100;
  H.pending=new Set(H.players.map((_,i)=>i).filter(i=>!H.players[i].folded&&!H.players[i].allin));
@@ -994,6 +995,13 @@ function heStart(){
  if(H.turn===H.hero)heTimer();else heCpuLater();
 }
 function hePut(i,n,act){const p=H.players[i],v=Math.min(n,p.stack);p.stack-=v;p.bet+=v;p.total+=v;H.pot+=v;p.action=act;if(p.stack===0)p.allin=true}
+function heSyncHeroChips(){
+ const hero=H?.players?.[H.hero];
+ if(!hero)return;
+ S.chips=Math.max(0,Math.floor(Number(hero.stack)||0));
+ localStorage.setItem(KEY,JSON.stringify(S));
+ render();
+}
 function heCard(c){return`<span class="he-mini ${c.s==="♥"||c.s==="♦"?"red":""}">${c.r}${c.s}</span>`}
 function heRender(){
  const s=["PRE-FLOP","FLOP","TURN","RIVER","SHOWDOWN"][H.street];
@@ -1004,13 +1012,13 @@ function heRender(){
    const act=p.action?`<span class="he-act ${["CHECK","CALL","SB","BB"].includes(p.action)?"passive":p.action==="FOLD"?"fold":"aggressive"}">${p.action}</span>`:"";
    const d=i===H.button?`<span class="he-d">D</span>`:"";
    const cards=H.over?p.cards.map(heCard).join(""):`<span class="he-mini back">FN</span><span class="he-mini back">FN</span>`;
-   return`<div class="he-player ${pos[i]} ${H.turn===i&&!H.over?"turn":""}">${d}<div class="he-avatar">${p.name==="PLAYER"?"YOU":p.name.slice(4,7)}</div>${act}<b>${p.name}</b><small>🪙 ${fmt(p.stack)}</small><small class="he-bet">BET ${fmt(p.bet)}</small><div>${cards}</div></div>`;
+   return`<div class="he-player ${pos[i]} ${H.turn===i&&!H.over?"turn":""}">${d}<div class="he-avatar">${p.name==="PLAYER"?"YOU":p.name.slice(4,7)}</div>${act}<b>${p.name}</b><small>CHIPS ${fmt(p.stack)} • BET ${fmt(p.bet)}</small><div>${cards}</div></div>`;
  }).join("");
  $("heBoard").innerHTML=H.board.map((c,i)=>`<div class="he-community ${H.communityRevealed[i]?"open":""}"><div class="he-ci"><div class="he-back">FN</div><div class="he-front ${c.s==="♥"||c.s==="♦"?"red":""}">${c.r}${c.s}</div></div></div>`).join("");
  const active=H.turn===H.hero&&!H.over,call=heCall();
  $("heCheck").disabled=!active||call>0;$("heCall").disabled=!active||call<=0;$("heBet").disabled=!active||call>0;$("heRaise").disabled=!active||call<=0;$("heFold").disabled=!active;
 }
-function heHero(){const p=H.players[H.hero];$("heHero").innerHTML=`<div class="he-you">YOU • 🪙 ${fmt(p.stack)} • BET ${fmt(p.bet)}</div><div class="he-myhand">${p.cards.map((c,i)=>`<div class="he-card ${H.heroRevealed[i]?"open":""}" onclick="heFlip(${i})"><div class="front ${c.s==="♥"||c.s==="♦"?"red":""}">${c.r}${c.s}</div><div class="back">FN</div></div>`).join("")}</div>`}
+function heHero(){const p=H.players[H.hero];$("heHero").innerHTML=`<div class="he-you">YOU • CHIPS ${fmt(p.stack)} • BET ${fmt(p.bet)}</div><div class="he-myhand">${p.cards.map((c,i)=>`<div class="he-card ${H.heroRevealed[i]?"open":""}" onclick="heFlip(${i})"><div class="front ${c.s==="♥"||c.s==="♦"?"red":""}">${c.r}${c.s}</div><div class="back">FN</div></div>`).join("")}</div>`}
 function heFlip(i){H.heroRevealed[i]=!H.heroRevealed[i];heHero();sfx("card")}
 function heCall(){return Math.max(0,H.currentBet-H.players[H.hero].bet)}
 function heOpenBet(mode){
@@ -1244,7 +1252,7 @@ function heAwardUncontested(){
  winner.stack+=H.pot;H.pot=0;H.over=true;
  clearTimeout(H.cpuTimer);clearTimeout(H.advanceTimer);cancelAnimationFrame(H.timerId);
  const text=winner===H.players[H.hero]?"YOU WIN":`${winner.name} WINS`;
- heRender();heHero();heFinishOverlay(text);
+ heRender();heHero();heSyncHeroChips();heFinishOverlay(text);
 }
 function heShowdown(){
  clearTimeout(H.cpuTimer);H.cpuTimer=null;
@@ -1258,7 +1266,7 @@ function heShowdown(){
  const share=Math.floor(H.pot/winners.length);
  const remainder=H.pot-share*winners.length;
  winners.forEach((x,i)=>x.p.stack+=share+(i===0?remainder:0));
- heRender();heHero();
+ heRender();heHero();heSyncHeroChips();
  const hero=ranked.find(x=>x.p===H.players[H.hero]);
  const heroWin=winners.some(x=>x.p===H.players[H.hero]);
  const heroInvested=Math.max(0,hero?.p.total||0);
@@ -1274,7 +1282,7 @@ function heShowdown(){
    heFinishOverlay({kind:"LOSE",detail:`${hero.r.name} / ${winner.p.name} ${winner.r.name}`,amount:0,mult:0,net:-heroInvested});
  }
 }
-function heFinish(text){clearTimeout(H.cpuTimer);H.cpuTimer=null;H.over=true;cancelAnimationFrame(H.timerId);clearTimeout(H.advanceTimer);heRender();heHero();heFinishOverlay(text)}
+function heFinish(text){clearTimeout(H.cpuTimer);H.cpuTimer=null;H.over=true;cancelAnimationFrame(H.timerId);clearTimeout(H.advanceTimer);heRender();heHero();heSyncHeroChips();heFinishOverlay(text)}
 function heFinishOverlay(text){
  $("heStatus").textContent=(typeof text==="object"?`${text.kind||"RESULT"} • ${text.detail||""}`:String(text));
  heCut(typeof text==="object"?`${text.kind||"RESULT"} • ${text.detail||""}`:String(text));
@@ -1620,7 +1628,7 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     frameEl.removeAttribute('style');
     if(!special){frameEl.src='';return false}
     frameEl.src=frameAsset(f);
-    const geometry=f==='admin'?{size:72,holeX:256/512,holeY:235/512,holeD:292/512}:{size:61,holeX:256/512,holeY:236/512,holeD:346/512};
+    const geometry=f==='admin'?{size:70.14,holeX:256/512,holeY:235.5/512,holeD:292/512}:{size:59.13,holeX:256/512,holeY:236.5/512,holeD:346/512};
     const avatar=frameEl.closest('.avatar');
     if(!avatar||!targetEl){frameEl.style.cssText=`position:absolute!important;left:50%!important;top:50%!important;width:${geometry.size}px!important;height:${geometry.size}px!important;transform:translate(-50%,-50%)!important;z-index:2!important;pointer-events:none!important;`;return true}
     const ar=avatar.getBoundingClientRect(),tr=targetEl.getBoundingClientRect();
@@ -1721,7 +1729,7 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     try{const d=await fnApi('/rooms/invites');const invites=d.invites||[];if(invites.length){const box=document.createElement('div');box.className='fn-room-invites';box.innerHTML='<h3>ROOM INVITES</h3>'+invites.map(x=>'<div class="friend-row"><span>'+esc(x.name)+' • '+esc(x.code)+'</span><button data-invite-accept="'+Number(x.id)+'">JOIN</button><button data-invite-reject="'+Number(x.id)+'">REJECT</button></div>').join('');p.appendChild(box);box.querySelectorAll('[data-invite-accept]').forEach(b=>b.onclick=async()=>{try{const d=await fnApi('/rooms/invite/respond',{method:'POST',body:JSON.stringify({inviteId:Number(b.dataset.inviteAccept),action:'accept'})});renderRoom(d.room)}catch(e){alert(e.message)}});box.querySelectorAll('[data-invite-reject]').forEach(b=>b.onclick=async()=>{try{await fnApi('/rooms/invite/respond',{method:'POST',body:JSON.stringify({inviteId:Number(b.dataset.inviteReject),action:'reject'})});openSocial('room')}catch(e){alert(e.message)}})}}catch(_){ }
     if(room.status==='playing'){const box=document.createElement('div');box.className='socialActions';const btn=document.createElement('button');btn.className='primary';btn.textContent='OPEN ONLINE POKER';btn.onclick=async()=>{try{const d=await fnApi('/poker/state');const g=d.game;box.insertAdjacentHTML('afterend','<div class="fn-poker-online"><h3>ONLINE POKER</h3><div>STREET: '+esc(g.street)+'</div><div>POT: '+Number(g.pot).toLocaleString('ja-JP')+'</div><div>TURN: '+Number(g.turnIndex+1)+' / '+g.players.length+'</div><div class="socialActions"><button data-pa="CHECK">CHECK</button><button data-pa="CALL">CALL</button><button data-pa="FOLD">FOLD</button></div><div id="pokerOnlineStatus">SERVER SYNCHRONIZED • RECONNECT READY</div></div>');const wrap=p.querySelector('.fn-poker-online');wrap.querySelectorAll('[data-pa]').forEach(b=>b.onclick=async()=>{try{const a=await fnApi('/poker/action',{method:'POST',body:JSON.stringify({action:b.dataset.pa})});wrap.querySelector('#pokerOnlineStatus').textContent='ACTION '+a.action+' • POT '+a.pot}catch(e){wrap.querySelector('#pokerOnlineStatus').textContent='FAILED: '+(e.message||e)}})}catch(e){alert(e.message||e)}};box.appendChild(btn);p.appendChild(box)}
   }
-  document.addEventListener('DOMContentLoaded',()=>{refreshShopRewardBadge();if(!window.__FN_SHOP_BADGE_TIMER)window.__FN_SHOP_BADGE_TIMER=setInterval(refreshShopRewardBadge,60000);document.getElementById('tapStart')?.addEventListener('click',start);document.getElementById('profileBtn')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('profileCard')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatarText')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatar')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatar')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSocial('profile')}});document.getElementById('friendsBtn')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('friendsCard')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('friendsCardLobby')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('lobbyDebugBtn')?.addEventListener('click',toggleDebug);const rb=document.getElementById('roomBtn');if(rb&&!rb.__fnRoomBound){rb.__fnRoomBound=true;rb.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openSocial('room')},true);rb.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();openSocial('room')},{passive:false});}document.querySelectorAll('.lobbyGrid button').forEach(b=>b.addEventListener('click',()=>{const p=prof();p.games=(p.games||0)+1;saveProf(p);renderProfile();document.getElementById('appLobby').classList.add('hidden');openGame(b.dataset.game)}));document.querySelectorAll('#lobbyTabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#lobbyTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.lobbyGrid button').forEach(g=>g.style.display=b.dataset.cat==='all'||g.dataset.cat===b.dataset.cat?'flex':'none')}));});
+  document.addEventListener('DOMContentLoaded',()=>{refreshShopRewardBadge();if(!window.__FN_SHOP_BADGE_TIMER)window.__FN_SHOP_BADGE_TIMER=setInterval(refreshShopRewardBadge,60000);document.getElementById('tapStart')?.addEventListener('click',start);document.getElementById('profileBtn')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('profileCard')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatar')?.addEventListener('click',()=>openSocial('profile'));document.getElementById('avatar')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSocial('profile')}});document.getElementById('friendsBtn')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('friendsCard')?.addEventListener('click',()=>openSocial('friends'));document.getElementById('friendsCardLobby')?.addEventListener('click',()=>openSocial('friends'));const lb=document.getElementById('lobbyDebugBtn');if(lb)lb.addEventListener('click',()=>{const panel=document.getElementById('debugPanel');if(panel)panel.classList.remove('hidden');const body=document.getElementById('debugBody');if(body)body.textContent=(window.__GB_DEBUG_LINES||[]).join('\n')});const rb=document.getElementById('roomBtn');if(rb&&!rb.__fnRoomBound){rb.__fnRoomBound=true;rb.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openSocial('room')},true);}document.querySelectorAll('.lobbyGrid button').forEach(b=>b.addEventListener('click',()=>{const p=prof();p.games=(p.games||0)+1;saveProf(p);renderProfile();document.getElementById('appLobby').classList.add('hidden');openGame(b.dataset.game)}));document.querySelectorAll('#lobbyTabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#lobbyTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.lobbyGrid button').forEach(g=>g.style.display=b.dataset.cat==='all'||g.dataset.cat===b.dataset.cat?'flex':'none')}));});
 })();
 
 (function(){
@@ -1736,16 +1744,3 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
   });
 })();
 
-document.addEventListener("DOMContentLoaded",function(){
-  const lb=document.getElementById("lobbyDebugBtn");
-  const panel=document.getElementById("debugPanel");
-  if(lb){
-    lb.addEventListener("click",function(){
-      if(panel)panel.classList.remove("hidden");
-      try{
-        const body=document.getElementById("debugBody");
-        if(body)body.textContent=(window.__GB_DEBUG_LINES||[]).join("\n");
-      }catch(e){}
-    });
-  }
-});
