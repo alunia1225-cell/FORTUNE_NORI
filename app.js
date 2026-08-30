@@ -1714,26 +1714,23 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
   }
   window.addEventListener('fn-auth-changed',()=>{FN_SERVER_PROFILE_READY=false;FN_SERVER_OWNED_FRAMES=new Set(BASE_FRAMES);renderProfile();refreshShopRewardBadge();if(document.getElementById('appLobby')&&!document.getElementById('appLobby').classList.contains('hidden'))syncProfileSettings()});
   async function openMahjongLobby(){
-    const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
-    o.classList.remove('hidden');
-    try{
-      const current=(await fnApi('/rooms/current')).room;
-      if(current){
-        if(current.game_type!=='mahjong'){
-          p.innerHTML='<h2>MAHJONG</h2><p>現在POKERルームに参加中です。麻雀とPOKERは別ルームです。</p><div class=\"socialActions\"><button id=\"mjBackRoom\">BACK</button></div>';
-          document.getElementById('mjBackRoom').onclick=()=>openSocial('room');
-          return;
-        }
-        return renderRoom(current);
-      }
-      const d=await fnApi('/rooms/create',{method:'POST',body:JSON.stringify({gameType:'mahjong'})});
-      return renderRoom(d.room);
-    }catch(e){
-      if(e.data?.room && e.data.room.game_type==='mahjong')return renderRoom(e.data.room);
-      p.innerHTML='<h2>MAHJONG</h2><p>ROOM FAILED: '+esc(e.message||e)+'</p><div class=\"socialActions\"><button id=\"mjBackRoom\">BACK</button></div>';
-      document.getElementById('mjBackRoom').onclick=()=>openSocial('room');
+    const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');o.classList.remove('hidden');
+    function createScreen(){
+      p.innerHTML='<div class="fn-mj-head"><div><small>FORTUNE NOIR / ONLINE</small><h2>MAHJONG</h2></div><button id="mjLobbyClose">CLOSE</button></div><div class="fn-mj-room-note">3 PLAYER • SANMA • CPU CAN BE ADDED MANUALLY</div><div class="fn-mj-cpu-picker"><b>CPU PLAYERS</b><div class="fn-mj-cpu-options"><button data-mj-cpu="0" class="active">0 CPU</button><button data-mj-cpu="1">1 CPU</button><button data-mj-cpu="2">2 CPU</button></div><small>1 HUMAN + 2 CPU CAN START</small></div><div class="socialActions"><button class="primary" id="createMahjongRoom">CREATE MAHJONG ROOM</button><button id="joinMahjongRoom">JOIN MAHJONG ROOM</button></div><div id="mjRoomStatus"></div>';
+      let cpu=0;p.querySelectorAll('[data-mj-cpu]').forEach(b=>b.onclick=()=>{cpu=Number(b.dataset.mjCpu);p.querySelectorAll('[data-mj-cpu]').forEach(x=>x.classList.toggle('active',x===b))});
+      document.getElementById('createMahjongRoom').onclick=async()=>{try{const d=await fnApi('/rooms/create',{method:'POST',body:JSON.stringify({gameType:'mahjong',cpuCount:cpu})});renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='FAILED: '+(e.message||e)}};
+      document.getElementById('joinMahjongRoom').onclick=()=>{p.innerHTML='<h2>JOIN MAHJONG ROOM</h2><input id="mjJoinCode" inputmode="numeric" maxlength="4" placeholder="4-DIGIT CODE"><div class="socialActions"><button class="primary" id="mjJoinNow">JOIN</button><button id="mjJoinBack">BACK</button></div><div id="mjJoinStatus"></div>';document.getElementById('mjJoinNow').onclick=async()=>{try{const d=await fnApi('/mahjong/room/join',{method:'POST',body:JSON.stringify({code:document.getElementById('mjJoinCode').value})});if(d.room?.game_type!=='mahjong')throw new Error('THIS CODE IS NOT A MAHJONG ROOM');renderMahjongRoom(d.room)}catch(e){document.getElementById('mjJoinStatus').textContent='FAILED: '+(e.message||e)}};document.getElementById('mjJoinBack').onclick=createScreen};
+      document.getElementById('mjLobbyClose').onclick=()=>o.classList.add('hidden');
     }
-  }
+    async function renderMahjongRoom(room){
+      const pid=localStorage.getItem('FN_SERVER_PLAYER_ID')||'',host=room.host_player_id===pid,humans=(room.members||[]).length,cpu=Number(room.cpu_count||0),filled=humans+cpu,allReady=(room.members||[]).every(m=>!!m.ready);
+      p.innerHTML='<div class="fn-mj-head"><div><small>FORTUNE NOIR / ONLINE</small><h2>MAHJONG ROOM</h2></div><button id="mjRoomClose">CLOSE</button></div><div class="roomCode"><small>ROOM CODE</small><strong>'+esc(room.code)+'</strong></div><div class="fn-mj-room-note">'+filled+' / 3 SEATS • '+humans+' HUMAN • '+cpu+' CPU</div><div id="roomPlayers">'+(room.members||[]).map(m=>'<div class="friend-row"><span>'+esc(m.name)+'</span><small>'+(m.ready?'READY':'WAITING')+'</small></div>').join('')+(cpu?Array.from({length:cpu},(_,i)=>'<div class="friend-row fn-mj-cpu-row"><span>CPU '+(i+1)+'</span><small>READY • CPU</small></div>').join(''):'')+'</div>'+(host&&room.status==='waiting'?'<div class="fn-mj-cpu-picker"><b>CPU PLAYERS</b><div class="fn-mj-cpu-options">'+[0,1,2].map(n=>'<button data-room-cpu="'+n+'" class="'+(cpu===n?'active':'')+'">'+n+' CPU</button>').join('')+'</div><small>MANUAL CPU FILL • '+humans+' HUMAN</small></div>':'')+'<div class="socialActions"><button class="primary" id="readyMJ">READY</button>'+(host&&room.status==='waiting'?'<button id="startMJ" '+(filled===3&&allReady?'':'disabled')+'>START MAHJONG</button>':'')+(room.status==='playing'?'<button class="primary" id="openMJPlaying">OPEN MAHJONG</button>':'')+'<button id="leaveMJ">LEAVE</button></div><div id="mjRoomStatus" class="fn-admin-note">'+(room.status==='playing'?'ROOM STARTED':filled===3?(allReady?'ALL READY':'READY REQUIRED'):'ADD CPU OR PLAYERS: '+(3-filled)+' SEAT(S) EMPTY')+'</div>';
+      document.getElementById('readyMJ').onclick=async()=>{try{const d=await fnApi('/rooms/ready',{method:'POST',body:JSON.stringify({ready:true})});renderMahjongRoom(d.room)}catch(e){alert(e.message)}};
+      if(host&&room.status==='waiting'){p.querySelectorAll('[data-room-cpu]').forEach(b=>b.onclick=async()=>{try{const d=await fnApi('/mahjong/room/cpu',{method:'POST',body:JSON.stringify({cpuCount:Number(b.dataset.roomCpu)})});renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='CPU UPDATE FAILED: '+(e.message||e)}});const st=document.getElementById('startMJ');if(st)st.onclick=async()=>{try{const d=await fnApi('/rooms/start',{method:'POST'});renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='START FAILED: '+(e.message||e)}}}
+      if(room.status==='playing')document.getElementById('openMJPlaying').onclick=()=>openOnlineMahjong();
+      document.getElementById('leaveMJ').onclick=async()=>{try{await fnApi('/rooms/leave',{method:'POST'});createScreen()}catch(e){alert(e.message)}};document.getElementById('mjRoomClose').onclick=()=>o.classList.add('hidden');
+    }
+    try{const current=(await fnApi('/rooms/current')).room;if(current){if(current.game_type!=='mahjong'){p.innerHTML='<h2>MAHJONG</h2><p>現在POKERルームに参加中です。麻雀とPOKERは別ルームです。</p><div class="socialActions"><button id="mjBackRoom">BACK</button></div>';document.getElementById('mjBackRoom').onclick=()=>o.classList.add('hidden');return}return renderMahjongRoom(current)}createScreen()}catch(e){createScreen();document.getElementById('mjRoomStatus').textContent='ROOM CHECK FAILED: '+(e.message||e)}}
   window.FN_OPEN_MAHJONG_ROOM=openMahjongLobby;
   async function openOnlineMahjong(){
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');

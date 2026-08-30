@@ -3951,7 +3951,9 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 @media(max-width:420px){.fn-mj-table{min-height:0;padding:8px}.fn-mj-tile{width:30px;height:44px;font-size:10px}.fn-mj-actions button{min-height:36px}.fn-mj-rules span{font-size:5px}}
 
 /* MAHJONG lobby icon */
-.lobbyGrid button .gameEmoji.mahjong-game-icon{width:54px;height:54px;overflow:hidden;display:grid;place-items:center;border-radius:8px;}
-.lobbyGrid button .gameEmoji.mahjong-game-icon img{width:100%;height:100%;padding:0;object-fit:cover;object-position:center;display:block;}
+.lobbyGrid button .gameEmoji.mahjong-game-icon{width:58px;height:58px;overflow:hidden;display:grid;place-items:center;border-radius:12px;}
+.lobbyGrid button .gameEmoji.mahjong-game-icon img{width:132%;height:132%;padding:0;object-fit:cover;object-position:center;display:block;}
 .fn-mj-room-note{margin:8px 0 14px;color:#8b836f;font:800 8px/1.5 Orbitron;letter-spacing:.08em;}
-@media(max-width:600px){.lobbyGrid button .gameEmoji.mahjong-game-icon{width:54px;height:54px}.lobbyGrid button .gameEmoji.mahjong-game-icon img{object-fit:cover}}
+@media(max-width:600px){.lobbyGrid button .gameEmoji.mahjong-game-icon{width:54px;height:54px}.lobbyGrid button .gameEmoji.mahjong-game-icon img{width:132%;height:132%;object-fit:cover}}
+
+.fn-mj-cpu-picker{margin:14px 0;padding:14px;border:1px solid #2d2a21;background:#0d0f10;text-align:center}.fn-mj-cpu-picker>b{display:block;color:#e3c56d;font:900 10px Orbitron;letter-spacing:2px}.fn-mj-cpu-picker>small{display:block;margin-top:8px;color:#6f7479;font:700 7px Orbitron}.fn-mj-cpu-options{display:flex;justify-content:center;gap:7px;margin-top:10px}.fn-mj-cpu-options button{min-width:84px;padding:10px 12px;border:1px solid #51482d;background:#151716;color:#aaa;border-radius:5px;font:900 8px Orbitron;cursor:pointer}.fn-mj-cpu-options button.active{background:linear-gradient(#e5ca79,#aa8736);color:#090806;border-color:#d0ae55}.fn-mj-cpu-row{opacity:.8}
