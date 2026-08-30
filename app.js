@@ -164,6 +164,7 @@ window.addEventListener("DOMContentLoaded",()=>{
 
 const KEY="gb3_save";
 const S=JSON.parse(localStorage.getItem(KEY)||'{"coins":0,"wagered":0,"profit":0,"wins":0,"maxwin":0,"history":[],"lastDaily":0,"items":[],"sound":true}');
+S.chips=Number.isSafeInteger(Number(S.chips))&&Number(S.chips)>=0?Number(S.chips):0;
 const MAHJONG_POINTS_KEY='fn_mahjong_points_v1';
 function getMahjongPoints(){try{const n=Number(localStorage.getItem(MAHJONG_POINTS_KEY)||0);return Number.isSafeInteger(n)&&n>=0?n:0}catch(_){return 0}}
 function setMahjongPoints(n){n=Math.max(0,Math.floor(Number(n)||0));try{localStorage.setItem(MAHJONG_POINTS_KEY,String(n))}catch(_){};render()}
@@ -330,13 +331,18 @@ function renderCoinHistory(){
 }
 function coinFlip(pick){
  if(window.GB_ACTION_BUSY)return;
- const b=wager($('bet')?.value);if(!b)return;
- const c=$('coin3d'),res=$('res');if(!c||!res){window.GB_ACTION_BUSY=false;return}
+ const b=wager($("bet")?.value);if(!b)return;
+ const c=$("coin3d"),res=$("res");if(!c||!res)return;
+ const head=c.querySelector(".coin-head"),tail=c.querySelector(".coin-tail");if(!head||!tail)return;
  window.GB_ACTION_BUSY=true;
- const result=Math.random()<.5?'heads':'tails',win=result===pick;
- c.classList.remove('coin-flipping');c.dataset.face='flipping';c.style.setProperty('--coin-end',result==='tails'?'1620deg':'1440deg');void c.offsetWidth;res.textContent='FLIPPING…';c.classList.add('coin-flipping');sfx('flip');
- const finish=()=>{c.classList.remove('coin-flipping');c.dataset.face=result;c.style.setProperty('--coin-end',result==='tails'?'180deg':'0deg');res.textContent=`${result.toUpperCase()} — ${win?'WIN':'LOSE'}`;const net=settle(b,win?b*2:0,'COIN TOSS');writeCoinHistory({side:result,win,bet:b,net});renderCoinHistory();sfx(win?'win':'lose');window.GB_ACTION_BUSY=false};
- c.addEventListener('animationend',finish,{once:true});
+ const result=Math.random()<.5?"heads":"tails",win=result===pick;
+ const duration=2100,startAngle=0,turns=5,finalAngle=turns*360+(result==="tails"?180:0);
+ let start=0,frame=0,settled=false;
+ c.classList.add("coin-flipping");c.dataset.face="flipping";c.style.transform=`rotateY(${startAngle}deg)`;res.textContent="FLIPPING…";sfx("flip");
+ const ease=t=>1-Math.pow(1-t,3);
+ const finish=()=>{if(settled)return;settled=true;if(frame)cancelAnimationFrame(frame);c.classList.remove("coin-flipping");c.style.transform=`rotateY(${result==="tails"?180:0}deg)`;c.dataset.face=result;res.textContent=`${result.toUpperCase()} — ${win?"WIN":"LOSE"}`;const net=settle(b,win?b*2:0,"COIN TOSS");writeCoinHistory({side:result,win,bet:b,net});renderCoinHistory();sfx(win?"win":"lose");window.GB_ACTION_BUSY=false};
+ const tick=ts=>{if(!start)start=ts;const p=Math.min(1,(ts-start)/duration);c.style.transform=`rotateY(${(ease(p)*finalAngle).toFixed(2)}deg)`;if(p<1){frame=requestAnimationFrame(tick)}else{finish()}};
+ frame=requestAnimationFrame(tick);
 }
 function pokerCard(c){return `<div class="poker-card">${c.r}${c.s}</div>`}
 function flipHeroCard(i){H.heroRevealed[i]=!H.heroRevealed[i];sfx("card");hRender()}
@@ -405,7 +411,7 @@ function settle(b,p,g){
  }
  S.history.unshift({g,net,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();return net;
 }
-function render(){$("coins").textContent=fmt(S.coins);$("coins2").textContent=fmt(S.coins);if($("welcomeCoins"))$("welcomeCoins").textContent=fmt(S.coins);if($("welcomePoints"))$("welcomePoints").textContent=fmt(getMahjongPoints());$("profit").textContent=(S.profit>=0?"+":"")+fmt(S.profit);$("wagered").textContent=fmt(S.wagered);$("level").textContent=Math.floor(S.wagered/10000)+1;$("history").innerHTML=S.history.length?S.history.map(x=>`<div class="history-row"><span>${x.g}</span><b class="${x.net>=0?"win":"lose"}">${x.net>=0?"+":""}${fmt(x.net)}</b><small>${x.t}</small></div>`).join(""):"<div class='history-row'>NO DATA</div>";let names=["YOU","777_MASTER","BLACK_KING","LUCKY_ACE","HOUSE"];$("ranking").innerHTML=names.map((n,i)=>`<div class="rank-row"><span>#${i+1}　${n}</span><b>${fmt(i?250000-i*28000:S.maxwin)} COIN</b><small>${i?"ONLINE":"YOU"}</small></div>`).join("")}
+function render(){$("coins").textContent=fmt(S.coins);$("coins2").textContent=fmt(S.coins);if($("welcomeCoins"))$("welcomeCoins").textContent=fmt(S.coins);if($("welcomePoints"))$("welcomePoints").textContent=fmt(getMahjongPoints());if($("welcomeChips"))$("welcomeChips").textContent=fmt(S.chips||0);if($("shopBalance"))$("shopBalance").textContent=fmt(S.coins);if($("shopChipCount"))$("shopChipCount").textContent=fmt(S.chips||0);$("profit").textContent=(S.profit>=0?"+":"")+fmt(S.profit);$("wagered").textContent=fmt(S.wagered);$("level").textContent=Math.floor(S.wagered/10000)+1;$("history").innerHTML=S.history.length?S.history.map(x=>`<div class="history-row"><span>${x.g}</span><b class="${x.net>=0?"win":"lose"}">${x.net>=0?"+":""}${fmt(x.net)}</b><small>${x.t}</small></div>`).join(""):"<div class='history-row'>NO DATA</div>";let names=["YOU","777_MASTER","BLACK_KING","LUCKY_ACE","HOUSE"];$("ranking").innerHTML=names.map((n,i)=>`<div class="rank-row"><span>#${i+1}　${n}</span><b>${fmt(i?250000-i*28000:S.maxwin)} COIN</b><small>${i?"ONLINE":"YOU"}</small></div>`).join("")}
  syncBalanceBar();
 
 let GB_GAME_TOKEN=0;
@@ -517,31 +523,23 @@ async function loadReward5h(){
   try{return await fnApi('/rewards/5h',{method:'GET'})}catch(_){return null}
 }
 async function refreshShopRewardBadge(){const badge=document.getElementById('shopRewardBadge');if(!badge)return;if(window.__FN_AUTH_ROLE==='admin'){badge.hidden=true;return}try{const d=await loadReward5h();badge.hidden=!(d&&d.claimable)}catch(_){badge.hidden=true}}
-async function buy(name,cost){
-  cost=Math.floor(Number(cost)||0);
-  if(!Number.isSafeInteger(cost)||cost<=0)return false;
+async function buy(name,cost,chipQty=0){
+  cost=Math.floor(Number(cost)||0);chipQty=Math.floor(Number(chipQty)||0);
+  if(!Number.isSafeInteger(cost)||cost<=0||!Number.isSafeInteger(chipQty)||chipQty<=0)return false;
   if(S.coins<cost){const r=$("res");if(r)r.textContent="NOT ENOUGH COINS";return false}
-  const before=S.coins;
-  S.coins-=cost;
-  S.items=S.items||[];
-  S.items.push(name);
-  S.history.unshift({g:"SHOP",net:-cost,t:new Date().toLocaleTimeString()});
-  S.history=S.history.slice(0,20);
+  const beforeCoins=S.coins,beforeChips=S.chips;
+  S.coins-=cost;S.chips+=chipQty;
+  S.items=S.items||[];S.items.push(name);
+  S.history.unshift({g:"SHOP",net:-cost,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);
   render();
   try{
-    if(FN_API_URL&&FN_PLAYER_TOKEN){
-      const ok=await fnCommitBalanceDelta(-cost,"SHOP PURCHASE");
-      if(!ok)throw new Error("SERVER_BALANCE_COMMIT_FAILED");
-    }
+    if(FN_API_URL&&FN_PLAYER_TOKEN){const ok=await fnCommitBalanceDelta(-cost,"SHOP PURCHASE");if(!ok)throw new Error("SERVER_BALANCE_COMMIT_FAILED")}
     localStorage.setItem(KEY,JSON.stringify(S));
-    const r=$("res");if(r)r.textContent=`PURCHASED ${name}`;
-    sfx("chip");
+    const r=$("res");if(r)r.textContent=`PURCHASED ${chipQty.toLocaleString()} CHIP / ${S.coins.toLocaleString()} COIN`;
+    sfx("chip");render();
     return true;
   }catch(e){
-    S.coins=before;
-    S.items.pop();
-    S.history.shift();
-    render();
+    S.coins=beforeCoins;S.chips=beforeChips;S.items.pop();S.history.shift();render();
     const r=$("res");if(r)r.textContent="PURCHASE FAILED • BALANCE RESTORED";
     return false;
   }
@@ -739,7 +737,7 @@ multiplier(){
 daily(){$("gameBody").innerHTML=`<p id="rewardStatus">CHECKING…</p><p>Every 5 hours: <b>+5,000 COIN</b></p><button id="claim5hBtn" onclick="daily()">CLAIM 5,000</button><div id="res" class="result"></div>`;loadReward5h().then(d=>{const st=$("rewardStatus"),btn=$("claim5hBtn");if(!d)return;if(d.claimable){st.textContent='VAULT READY';btn.disabled=false}else{st.textContent='VAULT LOCKED • NEXT CLAIM '+new Date(d.nextClaimAt).toLocaleString('ja-JP');btn.disabled=true}})} ,
 shop(){
  const points=getMahjongPoints(),isAdmin=window.__FN_AUTH_ROLE==='admin';
- $('gameBody').innerHTML=`<div class="shop-head"><small>FORTUNE NOIR / SHOP</small><h2>SHOP</h2><p>REWARDS • CHIPS • MAHJONG EXCHANGE</p></div><section class="shop-section shop-reward"><div class="shop-section-head"><span><b>5H VAULT</b><small>CLAIMABLE EVERY 5 HOURS</small></span><strong>+5,000</strong></div><div id="shopRewardStatus" class="shop-status">CHECKING…</div><button id="shopClaim5h" class="shop-gold-btn" ${isAdmin?'disabled':''}>CLAIM +5,000 COIN</button></section><section class="shop-section"><div class="shop-section-head"><span><b>CHIP BANK</b><small>VIRTUAL TABLE CHIPS</small></span><strong>${fmt(S.coins)}</strong></div><div class="chip-bank"><button onclick="buy('100 CHIP STACK',100)">+100</button><button onclick="buy('500 CHIP STACK',500)">+500</button><button onclick="buy('1,000 CHIP STACK',1000)">+1,000</button></div></section><section class="shop-section mahjong-exchange"><div class="shop-section-head"><span><b>MAHJONG POINT STICKS</b><small>EXCHANGE POINTS FOR BALANCE</small></span><strong><span id="shopPoints">${fmt(points)}</span> PT</strong></div><div class="exchange-grid"><button data-exchange-points="1000" data-exchange-coins="500"><span>1,000 PT</span><b>→ 500 COIN</b></button><button data-exchange-points="10000" data-exchange-coins="5000"><span>10,000 PT</span><b>→ 5,000 COIN</b></button></div><div class="shop-note">MAHJONG POINTS are separate from COIN balance.</div></section><div id="res" class="result">READY</div>`;
+ $('gameBody').innerHTML=`<div class="shop-head"><small>FORTUNE NOIR / SHOP</small><h2>SHOP</h2><p>REWARDS • CHIPS • MAHJONG EXCHANGE</p></div><section class="shop-section shop-reward"><div class="shop-section-head"><span><b>5H VAULT</b><small>CLAIMABLE EVERY 5 HOURS</small></span><strong>+5,000</strong></div><div id="shopRewardStatus" class="shop-status">CHECKING…</div><button id="shopClaim5h" class="shop-gold-btn" ${isAdmin?'disabled':''}>CLAIM +5,000 COIN</button></section><section class="shop-section"><div class="shop-section-head"><span><b>CHIP BANK</b><small>CHIPS / BALANCE</small></span><strong><span id="shopChipCount">${fmt(S.chips||0)}</span> CHIP / <span id="shopBalance">${fmt(S.coins)}</span> COIN</strong></div><div class="chip-bank"><button onclick="buy('100 CHIP STACK',100,100)">+100</button><button onclick="buy('500 CHIP STACK',500,500)">+500</button><button onclick="buy('1,000 CHIP STACK',1000,1000)">+1,000</button></div></section><section class="shop-section mahjong-exchange"><div class="shop-section-head"><span><b>MAHJONG POINT STICKS</b><small>EXCHANGE POINTS FOR BALANCE</small></span><strong><span id="shopPoints">${fmt(points)}</span> PT</strong></div><div class="exchange-grid"><button data-exchange-points="1000" data-exchange-coins="500"><span>1,000 PT</span><b>→ 500 COIN</b></button><button data-exchange-points="10000" data-exchange-coins="5000"><span>10,000 PT</span><b>→ 5,000 COIN</b></button></div><div class="shop-note">MAHJONG POINTS are separate from COIN balance.</div></section><div id="res" class="result">READY</div>`;
  const claim=$('shopClaim5h');if(claim){if(isAdmin){$('shopRewardStatus').textContent='ADMIN ACCOUNT • PLAYER REWARD ONLY'}else loadReward5h().then(d=>{const st=$('shopRewardStatus');if(!d){st.textContent='REWARD STATUS UNAVAILABLE';return}if(d.claimable){st.textContent='VAULT READY';claim.disabled=false}else{st.textContent='VAULT LOCKED • NEXT '+new Date(d.nextClaimAt).toLocaleString('ja-JP');claim.disabled=true}});claim.onclick=async()=>{claim.disabled=true;try{const d=await fnApi('/rewards/5h',{method:'POST'});if(d.balance!==undefined){FN_SERVER_BALANCE=Number(d.balance);S.coins=FN_SERVER_BALANCE;localStorage.setItem(KEY,JSON.stringify(S));render()}$('shopRewardStatus').textContent='VAULT CLAIMED';$('res').textContent='CLAIMED +5,000';refreshShopRewardBadge();sfx('win')}catch(e){$('res').textContent=e.message==='REWARD_COOLDOWN'?'VAULT LOCKED':'FAILED: '+(e.message||e);if(e.data?.nextClaimAt)$('shopRewardStatus').textContent='VAULT LOCKED • NEXT '+new Date(e.data.nextClaimAt).toLocaleString('ja-JP')}}}
  document.querySelectorAll('[data-exchange-points]').forEach(btn=>btn.onclick=()=>exchangeMahjongPoints(Number(btn.dataset.exchangePoints),Number(btn.dataset.exchangeCoins)));
 }
@@ -1619,31 +1617,18 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     const special=isSpecialFrame(f);
     frameEl.dataset.frame=f;
     frameEl.hidden=!special;
-    frameEl.style.setProperty('--fn-frame-dx','0px');
-    frameEl.style.setProperty('--fn-frame-dy','0px');
-    frameEl.style.removeProperty('--fn-frame-size');
-    if(special){
-      frameEl.src=frameAsset(f);
-      // The supplied 512px artwork has different inner-hole diameters/centers.
-      // Scale the artwork so its actual transparent opening matches the 40px avatar icon,
-      // then place that opening—not the PNG canvas center—on the icon center.
-      const geometry = f==='admin'
-        ? {size:69,holeX:256/512,holeY:235.5/512}
-        : {size:59,holeX:256/512,holeY:236.5/512};
-      frameEl.style.setProperty('--fn-frame-size',geometry.size+'px');
-      const avatar=frameEl.closest('.avatar');
-      if(avatar && targetEl){
-        const ar=avatar.getBoundingClientRect(),tr=targetEl.getBoundingClientRect();
-        const acx=ar.left+ar.width/2,acy=ar.top+ar.height/2;
-        const tcx=tr.left+tr.width/2,tcy=tr.top+tr.height/2;
-        // PNG inner-hole center is above canvas center, so move the whole artwork downward
-        // by the corresponding amount to make the opening coincide with the icon.
-        const artworkHoleOffsetY=(0.5-geometry.holeY)*geometry.size;
-        frameEl.style.setProperty('--fn-frame-dx',(tcx-acx).toFixed(2)+'px');
-        frameEl.style.setProperty('--fn-frame-dy',((tcy-acy)+artworkHoleOffsetY).toFixed(2)+'px');
-      }
-    }else{frameEl.src='';frameEl.removeAttribute('data-frame-size');}
-    return special;
+    frameEl.removeAttribute('style');
+    if(!special){frameEl.src='';return false}
+    frameEl.src=frameAsset(f);
+    const geometry=f==='admin'?{size:72,holeX:256/512,holeY:235/512,holeD:292/512}:{size:61,holeX:256/512,holeY:236/512,holeD:346/512};
+    const avatar=frameEl.closest('.avatar');
+    if(!avatar||!targetEl){frameEl.style.cssText=`position:absolute!important;left:50%!important;top:50%!important;width:${geometry.size}px!important;height:${geometry.size}px!important;transform:translate(-50%,-50%)!important;z-index:2!important;pointer-events:none!important;`;return true}
+    const ar=avatar.getBoundingClientRect(),tr=targetEl.getBoundingClientRect();
+    const targetX=tr.left+tr.width/2-ar.left,targetY=tr.top+tr.height/2-ar.top;
+    const holeX=geometry.holeX*geometry.size,holeY=geometry.holeY*geometry.size;
+    const left=targetX-holeX,top=targetY-holeY;
+    frameEl.style.cssText=`position:absolute!important;left:${left.toFixed(2)}px!important;top:${top.toFixed(2)}px!important;width:${geometry.size}px!important;height:${geometry.size}px!important;max-width:none!important;max-height:none!important;object-fit:contain!important;margin:0!important;padding:0!important;transform:none!important;z-index:2!important;pointer-events:none!important;border:0!important;`;
+    return true;
   }
   window.FN_APPLY_PROFILE_FRAME=applyProfileFrame;
   function refreshLobbyFramePosition(){const af=document.getElementById('avatarFrame'),a=document.getElementById('avatarText');if(af&&a&&!af.hidden)applyProfileFrame(af,prof().frame,a)}
