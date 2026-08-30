@@ -424,7 +424,7 @@ function openGame(g){
  if(lobby)lobby.classList.add("hidden");
  window.GB_stopGameRuntime();window.GB_startGameRuntime(g);
  const token=GB_GAME_TOKEN;
- const title={slot:"ULTIMATE SLOTS",dice:"HIGH DICE",blackjack:"BLACKJACK",holdem:"TEXAS HOLD'EM",roulette:"ROULETTE",highlow:"HIGH & LOW",chohan:"丁半",coin:"COIN FLIP",lottery:"LOTTERY",multiplier:"CRASH ×",daily:"DAILY VAULT",shop:"CHIP SHOP","mahjong-online":"ONLINE SANMA"}[g]||g.toUpperCase();
+ const title={slot:"ULTIMATE SLOTS",dice:"HIGH DICE",blackjack:"BLACKJACK",holdem:"TEXAS HOLD'EM",roulette:"ROULETTE",highlow:"HIGH & LOW",chohan:"丁半",coin:"COIN FLIP",lottery:"LOTTERY",multiplier:"CRASH ×",daily:"DAILY VAULT",shop:"CHIP SHOP","mahjong-online":"MAHJONG"}[g]||g.toUpperCase();
  $("modalContent").innerHTML=`<div class="game"><div class="jackpot">FORTUNE NOIR / ${title}</div><h2>${title}</h2><div class="game-balance-hud" aria-label="CURRENT BALANCE"><img src="balance_icon.png" alt=""><span id="gameCoins">${fmt(S.coins)}</span><small>COIN</small></div><div id="gameBody"></div></div>`;
  $("modal").classList.remove("hidden");sfx("click");
  try{if(typeof games[g]!=="function")throw new Error("Unknown game: "+g);games[g]();debugLog("GAME","Launch success",{game:g,token})}
@@ -1719,21 +1719,27 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     function tileLabel(t){if(!t)return '—';const suits={m:'萬',p:'筒',s:'索',z:'字'};const n=String(t).replace('r','').slice(1);return t[0]==='z'?['東','南','西','北','白','發','中'][Number(n)-1]:(n+(suits[t[0]]||''))+(String(t).endsWith('r')?'★':'')}
     function renderMahjong(d){
       const g=d.game,state=g.state,you=g.you;const me=state.players[you];
-      const others=state.players.filter(x=>x.seat!==you).map(x=>'<div class="fn-mj-player"><b>'+esc(x.name)+'</b><span>'+x.score.toLocaleString()+' PT</span><small>'+esc(x.riichi?'RIICHI':'')+'</small></div>').join('');
+      const others=state.players.filter(x=>x.seat!==you).map(x=>'<div class="fn-mj-player"><b>'+esc(x.name)+'</b><span>'+Number(x.score).toLocaleString()+' PT</span><small>'+esc(x.riichi?'RIICHI':'')+'</small><div class="fn-mj-mini-river">'+(x.discards||[]).map(tileLabel).join(' ')+'</div></div>').join('');
       const hand=me.hand.map((t,i)=>t?'<button class="fn-mj-tile" data-mj-discard="'+i+'" title="DISCARD">'+esc(tileLabel(t))+'</button>':'<span class="fn-mj-back"></span>').join('');
       const river=(me.discards||[]).map(tileLabel).join('　');
-      const meld=(me.melds||[]).flatMap(m=>m.tiles||[]).map(tileLabel).join(' ');
-      const canPon=state.phase==='response'&&state.lastDiscard&&state.lastDiscard.seat!==you;
+      const meld=(me.melds||[]).map(m=>(m.type==='kan'?'KAN':'PON')+':'+(m.tiles||[]).map(tileLabel).join(' ')).join('　');
+      const last=state.lastDiscard;
+      const canPon=state.phase==='response'&&state.responseMode==='call'&&state.callSeats?.includes(you)&&last&&last.seat!==you&&me.hand.filter(t=>t&&t.replace('r','')===last.tile.replace('r','')).length>=2;
+      const canKan=state.phase==='response'&&state.responseMode==='call'&&state.callSeats?.includes(you)&&last&&last.seat!==you&&me.hand.filter(t=>t&&t.replace('r','')===last.tile.replace('r','')).length>=3;
+      const canRon=state.phase==='response'&&state.responseMode==='ron'&&state.ronSeats?.includes(you)&&!state.passedSeats?.includes(you);
       const isTurn=state.turnSeat===you&&state.phase==='discard';
-      p.innerHTML='<div class="fn-mj-head"><div><small>FORTUNE NOIR / JANMA SOUL SANMA</small><h2>ONLINE SANMA</h2></div><button id="mjLeave">LEAVE</button></div><div class="fn-mj-rules"><span>35,000 START</span><span>35,000 RETURN</span><span>40,000 TARGET</span><span>赤2</span><span>NORTH NUKI</span><span>TSUMO LOSS</span></div><div class="fn-mj-table"><div class="fn-mj-others">'+others+'</div><div class="fn-mj-info"><b>'+esc(state.roundWind)+'-'+state.handNumber+'</b><span>'+state.honba+' HONBA • '+state.kyotaku+' RIICHI STICK</span><span>DORA '+(state.doraIndicators||[]).map(tileLabel).join(' ')+'</span></div><div class="fn-mj-river"><small>YOUR DISCARD</small><div>'+esc(river||'—')+'</div></div><div class="fn-mj-meld">'+esc(meld||'')+'</div><div class="fn-mj-hand">'+hand+'</div><div class="fn-mj-actions"><button id="mjTsumo" '+(isTurn?'':'disabled')+'>TSUMO</button><button id="mjRiichi" '+(isTurn&&!me.riichi&&!me.open?'':'disabled')+'>RIICHI</button><button id="mjNuki" '+(isTurn&&me.hand.some(t=>t&&t.replace('r','')==='z4')?'':'disabled')+'>NORTH</button><button id="mjPon" '+(canPon?'':'disabled')+'>PON</button><button id="mjKan" '+(canPon||isTurn?'':'disabled')+'>KAN</button><button id="mjRon" '+(state.phase==='response'&&state.lastDiscard&&state.lastDiscard.seat!==you?'':'disabled')+'>RON</button></div><div class="fn-mj-status">'+esc(state.phase==='result'?(state.result?.type||'ROUND FINISHED'):(isTurn?'YOUR TURN':state.phase==='response'?'WAITING FOR CALL / RON':'WAITING'))+'</div></div>';
+      const result=state.phase==='result'&&state.result?('<div class="fn-mj-result"><strong>'+esc(state.result.type||'ROUND FINISHED')+'</strong>'+(state.result.winners||[]).map(w=>'<div>SEAT '+Number(w.seat+1)+' • '+Number(w.han||0)+' HAN / '+Number(w.fu||0)+' FU • '+esc(w.limit||'')+'</div>').join('')+(state.result.reason?'<div>'+esc(state.result.reason)+'</div>':'')+'</div>') : '';
+      p.innerHTML='<div class="fn-mj-head"><div><small>FORTUNE NOIR / JANMA SOUL SANMA</small><h2>MAHJONG</h2></div><button id="mjLeave">LEAVE</button></div><div class="fn-mj-rules"><span>3 PLAYER</span><span>35,000 START</span><span>35,000 RETURN</span><span>40,000 TARGET</span><span>赤2</span><span>NO CHI</span><span>NORTH NUKI</span><span>TSUMO LOSS</span></div><div class="fn-mj-table"><div class="fn-mj-others">'+others+'</div><div class="fn-mj-info"><b>'+esc(state.roundWind)+'-'+state.handNumber+'</b><span>'+state.honba+' HONBA • '+state.kyotaku+' RIICHI STICK</span><span>DORA '+(state.doraIndicators||[]).map(tileLabel).join(' ')+'</span><span>NORTH ×'+Number(me.nukiCount||0)+'</span></div><div class="fn-mj-river"><small>YOUR DISCARD</small><div>'+esc(river||'—')+'</div></div><div class="fn-mj-meld">'+esc(meld||'')+'</div><div class="fn-mj-hand">'+hand+'</div><div class="fn-mj-actions"><button id="mjTsumo" '+(isTurn?'':'disabled')+'>TSUMO</button><button id="mjRiichi" '+(isTurn&&!me.riichi&&!me.open?'':'disabled')+'>RIICHI</button><button id="mjNuki" '+(isTurn&&me.hand.some(t=>t&&t.replace('r','')==='z4')?'':'disabled')+'>NORTH</button><button id="mjPon" '+(canPon?'':'disabled')+'>PON</button><button id="mjKan" '+((canKan||isTurn)?'':'disabled')+'>KAN</button><button id="mjPass" '+(state.phase==='response'?'':'disabled')+'>PASS</button><button id="mjRon" '+(canRon?'':'disabled')+'>RON</button></div><div class="fn-mj-status">'+esc(state.phase==='result'?(state.result?.type||'ROUND FINISHED'):(canRon?'RON AVAILABLE':isTurn?'YOUR TURN':state.phase==='response'?'WAITING FOR CALL / RON':'WAITING'))+'</div>'+result+'</div></div>';
       p.querySelectorAll('[data-mj-discard]').forEach(btn=>btn.onclick=async()=>{const i=Number(btn.dataset.mjDiscard);const tile=me.hand[i];await mjAction({action:'discard',tile})});
-      document.getElementById('mjTsumo')?.addEventListener('click',()=>mjAction({action:'tsumo'}));
-      document.getElementById('mjRiichi')?.addEventListener('click',()=>{const i=me.hand.length-1; mjAction({action:'riichi',discardIndex:i})});
-      document.getElementById('mjNuki')?.addEventListener('click',()=>mjAction({action:'nuki'}));
-      document.getElementById('mjPon')?.addEventListener('click',()=>mjAction({action:'pon',tile:state.lastDiscard?.tile||''}));
-      document.getElementById('mjKan')?.addEventListener('click',()=>mjAction({action:'kan',tile:state.lastDiscard?.tile||''}));
-      document.getElementById('mjRon')?.addEventListener('click',()=>mjAction({action:'ron',tile:state.lastDiscard?.tile||''}));
-      document.getElementById('mjLeave')?.addEventListener('click',async()=>{if(poll)clearInterval(poll);await fnApi('/rooms/leave',{method:'POST'});openSocial('room')});
+      const bind=(id,fn)=>{const el=document.getElementById(id);if(el)el.onclick=fn};
+      bind('mjTsumo',()=>mjAction({action:'tsumo'}));
+      bind('mjRiichi',()=>{const i=me.hand.length-1;mjAction({action:'riichi',discardIndex:i})});
+      bind('mjNuki',()=>mjAction({action:'nuki'}));
+      bind('mjPon',()=>mjAction({action:'pon',tile:last?.tile||''}));
+      bind('mjKan',()=>mjAction({action:'kan',tile:last?.tile||''}));
+      bind('mjRon',()=>mjAction({action:'ron',tile:last?.tile||''}));
+      bind('mjPass',()=>mjAction({action:'pass'}));
+      bind('mjLeave',async()=>{if(poll)clearInterval(poll);await fnApi('/rooms/leave',{method:'POST'});openSocial('room')});
     }
     async function load(){const d=await fnApi('/mahjong/state');renderMahjong(d)}
     async function mjAction(payload){try{await fnApi('/mahjong/action',{method:'POST',body:JSON.stringify(payload)});await load()}catch(e){const st=p.querySelector('.fn-mj-status');if(st)st.textContent='FAILED: '+(e.message||e)}}
