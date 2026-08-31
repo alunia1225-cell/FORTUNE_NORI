@@ -546,7 +546,7 @@ async function buy(name,cost,chipQty=0){
 }
 function exchangeMahjongPoints(points,coins){points=Math.floor(Number(points)||0);coins=Math.floor(Number(coins)||0);const current=getMahjongPoints(),res=$('res');if(!points||!coins)return false;if(current<points){if(res)res.textContent='NOT ENOUGH MAHJONG POINTS';return false}setMahjongPoints(current-points);S.coins+=coins;S.history.unshift({g:'MAHJONG EXCHANGE',net:coins,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();if(res)res.textContent=`EXCHANGED ${fmt(points)} PT → +${fmt(coins)} COIN`;sfx('win');const sp=$('shopPoints');if(sp)sp.textContent=fmt(getMahjongPoints());return true}
 const games={
-"mahjong-online"(){ openOnlineMahjong(); },
+"mahjong-online"(){ startLocalMahjong(); },
 slot(){
  $("gameBody").innerHTML=`<div class="anim-game slot-game">
   <div class="anim-title">GOLDEN REEL</div>
@@ -1714,75 +1714,123 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     }
   }
   window.addEventListener('fn-auth-changed',()=>{FN_SERVER_PROFILE_READY=false;FN_SERVER_OWNED_FRAMES=new Set(BASE_FRAMES);renderProfile();refreshShopRewardBadge();if(document.getElementById('appLobby')&&!document.getElementById('appLobby').classList.contains('hidden'))syncProfileSettings()});
-  async function openMahjongLobby(){
-    const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');o.classList.remove('hidden');
-    function createScreen(){
-      p.innerHTML='<div class="fn-mj-head"><div><small>FORTUNE NOIR / ONLINE</small><h2>MAHJONG</h2></div><button id="mjLobbyClose">CLOSE</button></div><div class="fn-mj-room-note">3 PLAYER • SANMA • CPU CAN BE ADDED MANUALLY</div><div class="fn-mj-cpu-picker"><b>CPU PLAYERS</b><div class="fn-mj-cpu-options"><button data-mj-cpu="0" class="active">0 CPU</button><button data-mj-cpu="1">1 CPU</button><button data-mj-cpu="2">2 CPU</button></div><small>1 HUMAN + 2 CPU CAN START</small></div><div class="socialActions"><button class="primary" id="createMahjongRoom">CREATE MAHJONG ROOM</button><button id="joinMahjongRoom">JOIN MAHJONG ROOM</button></div><div id="mjRoomStatus"></div>';
-      let cpu=0;p.querySelectorAll('[data-mj-cpu]').forEach(b=>b.onclick=()=>{cpu=Number(b.dataset.mjCpu);p.querySelectorAll('[data-mj-cpu]').forEach(x=>x.classList.toggle('active',x===b))});
-      document.getElementById('createMahjongRoom').onclick=async()=>{try{const d=await fnApi('/rooms/create',{method:'POST',body:JSON.stringify({gameType:'mahjong',cpuCount:cpu})});renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='FAILED: '+(e.message||e)}};
-      document.getElementById('joinMahjongRoom').onclick=()=>{p.innerHTML='<h2>JOIN MAHJONG ROOM</h2><input id="mjJoinCode" inputmode="numeric" maxlength="4" placeholder="4-DIGIT CODE"><div class="socialActions"><button class="primary" id="mjJoinNow">JOIN</button><button id="mjJoinBack">BACK</button></div><div id="mjJoinStatus"></div>';document.getElementById('mjJoinNow').onclick=async()=>{try{const d=await fnApi('/mahjong/room/join',{method:'POST',body:JSON.stringify({code:document.getElementById('mjJoinCode').value})});if(d.room?.game_type!=='mahjong')throw new Error('THIS CODE IS NOT A MAHJONG ROOM');renderMahjongRoom(d.room)}catch(e){document.getElementById('mjJoinStatus').textContent='FAILED: '+(e.message||e)}};document.getElementById('mjJoinBack').onclick=createScreen};
-      document.getElementById('mjLobbyClose').onclick=()=>o.classList.add('hidden');
-    }
-    async function renderMahjongRoom(room){
-      const pid=localStorage.getItem('FN_SERVER_PLAYER_ID')||'',host=room.host_player_id===pid,humans=(room.members||[]).length,cpu=Number(room.cpu_count||0),filled=humans+cpu,allReady=(room.members||[]).every(m=>!!m.ready);
-      p.innerHTML='<div class="fn-mj-head"><div><small>FORTUNE NOIR / ONLINE</small><h2>MAHJONG ROOM</h2></div><button id="mjRoomClose">CLOSE</button></div><div class="roomCode"><small>ROOM CODE</small><strong>'+esc(room.code)+'</strong></div><div class="fn-mj-room-note">'+filled+' / 3 SEATS • '+humans+' HUMAN • '+cpu+' CPU</div><div id="roomPlayers">'+(room.members||[]).map(m=>'<div class="friend-row"><span>'+esc(m.name)+'</span><small>'+(m.ready?'READY':'WAITING')+'</small></div>').join('')+(cpu?Array.from({length:cpu},(_,i)=>'<div class="friend-row fn-mj-cpu-row"><span>CPU '+(i+1)+'</span><small>READY • CPU</small></div>').join(''):'')+'</div>'+(host&&room.status==='waiting'?'<div class="fn-mj-cpu-picker"><b>CPU PLAYERS</b><div class="fn-mj-cpu-options">'+[0,1,2].map(n=>'<button data-room-cpu="'+n+'" class="'+(cpu===n?'active':'')+'">'+n+' CPU</button>').join('')+'</div><small>MANUAL CPU FILL • '+humans+' HUMAN</small></div>':'')+'<div class="socialActions"><button class="primary" id="readyMJ">READY</button>'+(host&&room.status==='waiting'?'<button id="startMJ" '+(filled===3?'':'disabled')+'>START MAHJONG</button>':'')+(room.status==='playing'?'<button class="primary" id="openMJPlaying">OPEN MAHJONG</button>':'')+'<button id="leaveMJ">LEAVE</button></div><div id="mjRoomStatus" class="fn-admin-note">'+(room.status==='playing'?'ROOM STARTED':filled===3?(allReady?'ALL READY':'READY REQUIRED'):'ADD CPU OR PLAYERS: '+(3-filled)+' SEAT(S) EMPTY')+'</div>';
-      document.getElementById('readyMJ').onclick=async()=>{try{const d=await fnApi('/rooms/ready',{method:'POST',body:JSON.stringify({ready:true})});renderMahjongRoom(d.room)}catch(e){alert(e.message)}};
-      if(host&&room.status==='waiting'){p.querySelectorAll('[data-room-cpu]').forEach(b=>b.onclick=async()=>{try{const d=await fnApi('/mahjong/room/cpu',{method:'POST',body:JSON.stringify({cpuCount:Number(b.dataset.roomCpu)})});renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='CPU UPDATE FAILED: '+(e.message||e)}});const st=document.getElementById('startMJ');if(st){st.onclick=async()=>{try{const meMember=(room.members||[]).find(m=>m.player_id===pid);if(meMember&&!meMember.ready){await fnApi('/rooms/ready',{method:'POST',body:JSON.stringify({ready:true})});}const d=await fnApi('/rooms/start',{method:'POST'});if(d.room?.status==='playing'){o.classList.add('hidden');await openOnlineMahjong();}else renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='START FAILED: '+(e.message||e)}}}}
-      if(room.status==='playing')document.getElementById('openMJPlaying').onclick=()=>openOnlineMahjong();
-      document.getElementById('leaveMJ').onclick=async()=>{try{await fnApi('/rooms/leave',{method:'POST'});createScreen()}catch(e){alert(e.message)}};document.getElementById('mjRoomClose').onclick=()=>o.classList.add('hidden');
-    }
-    try{const current=(await fnApi('/rooms/current')).room;if(current){if(current.game_type!=='mahjong'){p.innerHTML='<h2>MAHJONG</h2><p>現在POKERルームに参加中です。麻雀とPOKERは別ルームです。</p><div class="socialActions"><button id="mjBackRoom">BACK</button></div>';document.getElementById('mjBackRoom').onclick=()=>o.classList.add('hidden');return}return renderMahjongRoom(current)}createScreen()}catch(e){createScreen();document.getElementById('mjRoomStatus').textContent='ROOM CHECK FAILED: '+(e.message||e)}}
+  function openMahjongLobby(){
+    const modal=document.getElementById('modal');
+    const content=document.getElementById('modalContent');
+    document.getElementById('appLobby')?.classList.add('hidden');
+    if(modal)modal.classList.remove('hidden');
+    if(content)content.innerHTML='<div id="fnMahjongRoot"></div>';
+    startLocalMahjong();
+  }
   window.FN_OPEN_MAHJONG_ROOM=openMahjongLobby;
-  async function openOnlineMahjong(){
-    const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
-    let poll=null;
-    function tileLabel(t){if(!t)return '—';const suits={m:'萬',p:'筒',s:'索',z:'字'};const n=String(t).replace('r','').slice(1);return t[0]==='z'?['東','南','西','北','白','發','中'][Number(n)-1]:(n+(suits[t[0]]||''))+(String(t).endsWith('r')?'★':'')}
-    function renderMahjong(d){
-      const g=d.game||{},state=g.state||{},you=Number(g.you||0),me=state.players?.[you];
-      if(!me){p.innerHTML='<div class="fn-mj-error"><b>MAHJONG STATE ERROR</b><span>PLAYER STATE NOT FOUND</span></div>';return}
-      const escTile=t=>{if(!t)return '—';const base=String(t).replace('r',''),s=base[0],n=Number(base.slice(1));const honors=['東','南','西','北','白','發','中'];return s==='z'?honors[n-1]:(s==='m'?n+'萬':s==='p'?n+'筒':n+'索')};
-      const tileClass=t=>{const b=String(t||'').replace('r',''),s=b[0];return s==='z'?'honor':s==='m'?'man':s==='p'?'pin':'sou'};
-      const tile=t=>'<span class="fn-mj-tile'+(String(t||'').endsWith('r')?' red-five':'')+' '+tileClass(t)+'"><span>'+escTile(t)+'</span></span>';
-      const back=()=>'<span class="fn-mj-tile back"><span></span></span>';
-      const playerPos=seat=>{const rel=(seat-you+3)%3;return rel===0?'self':rel===1?'left':'right'};
-      const opponent=(x)=>{
-        const pos=playerPos(x.seat), hand=(x.hand||[]).map(t=>t?back():back()).join('');
-        return '<div class="fn-mj-seat fn-mj-seat-'+pos+'"><div class="fn-mj-seat-head"><b>'+esc(x.name||('PLAYER '+(x.seat+1)))+'</b><span>'+Number(x.score||0).toLocaleString('ja-JP')+' PT</span>'+(x.riichi?'<em>RIICHI</em>':'')+'</div><div class="fn-mj-opponent-hand">'+hand+'</div><div class="fn-mj-river-grid">'+(x.discards||[]).map(tile).join('')+'</div></div>';
-      };
-      const last=state.lastDiscard;
-      const baseOf=t=>String(t||'').replace('r','');
-      const ownCounts={};(me.hand||[]).forEach(t=>{const k=baseOf(t);ownCounts[k]=(ownCounts[k]||0)+1});
-      const canPon=state.phase==='response'&&state.responseMode==='call'&&state.callSeats?.includes(you)&&last&&last.seat!==you&&(ownCounts[baseOf(last.tile)]||0)>=2;
-      const canKanCall=state.phase==='response'&&state.responseMode==='call'&&state.callSeats?.includes(you)&&last&&last.seat!==you&&(ownCounts[baseOf(last.tile)]||0)>=3;
-      const canKanSelf=state.phase==='discard'&&state.turnSeat===you&&((me.hand||[]).some(t=>(ownCounts[baseOf(t)]||0)>=4)||(me.melds||[]).some(m=>m.type==='pon'&&(ownCounts[baseOf(m.tiles?.[0])]||0)>=1));
-      const canRon=state.phase==='response'&&state.responseMode==='ron'&&state.ronSeats?.includes(you)&&!state.passedSeats?.includes(you);
-      const isTurn=state.turnSeat===you&&state.phase==='discard';
-      const canTsumo=isTurn;
-      const canRiichi=isTurn&&!me.riichi&&!me.open&&Number(me.score||0)>=1000;
-      const canNuki=isTurn&&(me.hand||[]).some(t=>baseOf(t)==='z4');
-      const phaseText=state.phase==='result'?(state.result?.type||'ROUND FINISHED'):canRon?'RON AVAILABLE':canPon||canKanCall?'CALL AVAILABLE':isTurn?'YOUR TURN':'WAITING';
-      const result=state.phase==='result'&&state.result?'<div class="fn-mj-result"><strong>'+esc(state.result.type||'ROUND FINISHED')+'</strong>'+(state.result.winners||[]).map(w=>'<div>SEAT '+(Number(w.seat)+1)+' • '+Number(w.han||0)+' HAN / '+Number(w.fu||0)+' FU • '+esc(w.limit||'')+'</div>').join('')+(state.result.reason?'<div>'+esc(state.result.reason)+'</div>':'')+(state.matchFinished?'<div class="fn-mj-match-end">MATCH FINISHED</div>':'<button id="mjNextHand" class="fn-mj-next">NEXT HAND</button>')+'</div>':'';
-      const dora=(state.doraIndicators||[]).map(tile).join('');
-      const myMelds=(me.melds||[]).map(m=>'<div class="fn-mj-meld-set">'+(m.tiles||[]).map(tile).join('')+'</div>').join('');
-      const ownRiver=(me.discards||[]).map(tile).join('');
-      const ownHand=(me.hand||[]).map((t,i)=>t?'<button class="fn-mj-hand-btn" data-mj-discard="'+i+'" aria-label="DISCARD '+escTile(t)+'">'+tile(t)+'</button>':'').join('');
-      const wallCount=Number(state.wallCount??0), deadCount=Number(state.deadWallCount??14);
-      p.innerHTML='<div class="fn-mj-shell"><header class="fn-mj-top"><div><small>FORTUNE NOIR / ONLINE SANMA</small><h2>MAHJONG</h2></div><div class="fn-mj-top-meta"><span>'+esc(state.roundWind||'E')+'-'+Number(state.handNumber||1)+'</span><span>'+Number(state.honba||0)+' HONBA</span><span>'+Number(state.kyotaku||0)+' RIICHI</span></div><button id="mjLeave" class="fn-mj-leave">LEAVE</button></header><div class="fn-mj-rulebar"><span>3 PLAYER</span><span>35,000 START</span><span>40,000 TARGET</span><span>赤2</span><span>NO CHI</span><span>NORTH NUKI</span><span>TSUMO LOSS</span></div><main class="fn-mj-table"><div class="fn-mj-felt"></div>'+state.players.filter(x=>x.seat!==you).map(opponent).join('')+'<section class="fn-mj-center"><div class="fn-mj-center-info"><div class="fn-mj-scoreline"><span>'+state.players.map(x=>'<b>'+esc(x.name)+'</b> '+Number(x.score||0).toLocaleString('ja-JP')).join(' • ')+'</span></div><div class="fn-mj-wind">'+esc(state.roundWind||'E')+' '+Number(state.handNumber||1)+'局</div><div class="fn-mj-dora"><small>DORA</small><div>'+dora+'</div></div><div class="fn-mj-wall"><span>LIVE <b>'+wallCount+'</b></span><span>DEAD <b>'+deadCount+'</b></span><span>NORTH <b>'+Number(me.nukiCount||0)+'</b></span></div></div><div class="fn-mj-last-discard">'+(last?'<small>LAST DISCARD</small>'+tile(last.tile):'<small>TABLE</small>')+'</div></section><section class="fn-mj-self fn-mj-seat-self"><div class="fn-mj-self-head"><div><b>YOU</b><span>'+Number(me.score||0).toLocaleString('ja-JP')+' PT</span></div><strong class="fn-mj-turn">'+esc(phaseText)+'</strong></div><div class="fn-mj-melds">'+myMelds+'</div><div class="fn-mj-self-river">'+ownRiver+'</div><div class="fn-mj-hand">'+ownHand+'</div><div class="fn-mj-actions"><button id="mjTsumo" '+(canTsumo?'':'disabled')+'>TSUMO</button><button id="mjRiichi" '+(canRiichi?'':'disabled')+'>RIICHI</button><button id="mjNuki" '+(canNuki?'':'disabled')+'>NORTH</button><button id="mjPon" '+(canPon?'':'disabled')+'>PON</button><button id="mjKan" '+((canKanCall||canKanSelf)?'':'disabled')+'>KAN</button><button id="mjPass" '+(state.phase==='response'?'':'disabled')+'>PASS</button><button id="mjRon" '+(canRon?'':'disabled')+'>RON</button></div></section></main><div class="fn-mj-status">'+esc(phaseText)+'</div>'+result+'</div>';
-      p.querySelectorAll('[data-mj-discard]').forEach(btn=>btn.onclick=()=>mjAction({action:'discard',tile:me.hand[Number(btn.dataset.mjDiscard)],revision:Number(state.revision||0)}));
-      const bind=(id,fn)=>{const el=document.getElementById(id);if(el)el.onclick=fn};
-      bind('mjTsumo',()=>mjAction({action:'tsumo',revision:Number(state.revision||0)}));
-      bind('mjRiichi',()=>{const i=me.hand.length-1;mjAction({action:'riichi',discardIndex:i,revision:Number(state.revision||0)})});
-      bind('mjNuki',()=>mjAction({action:'nuki',revision:Number(state.revision||0)}));
-      bind('mjPon',()=>mjAction({action:'pon',tile:last?.tile||'',revision:Number(state.revision||0)}));
-      bind('mjKan',()=>mjAction({action:'kan',tile:last?.tile||'',revision:Number(state.revision||0)}));
-      bind('mjRon',()=>mjAction({action:'ron',tile:last?.tile||'',revision:Number(state.revision||0)}));
-      bind('mjPass',()=>mjAction({action:'pass',revision:Number(state.revision||0)}));
-      bind('mjNextHand',()=>mjAction({action:'next_hand',revision:Number(state.revision||0)}));
-      bind('mjLeave',async()=>{if(poll)clearInterval(poll);await fnApi('/rooms/leave',{method:'POST'});openSocial('room')});
+
+  const FN_MJ_TILE_NAMES={
+    z1:'東',z2:'南',z3:'西',z4:'北',z5:'白',z6:'發',z7:'中'
+  };
+  function mjLocalBase(t){return String(t||'').replace(/r$/,'')}
+  function mjLocalSuit(t){return mjLocalBase(t)[0]||''}
+  function mjLocalNum(t){const n=Number(mjLocalBase(t).slice(1));return Number.isFinite(n)?n:0}
+  function mjLocalLabel(t){const b=mjLocalBase(t),s=b[0],n=mjLocalNum(b);return s==='z'?FN_MJ_TILE_NAMES[b]||'?' : String(n)}
+  function mjLocalClass(t){const s=mjLocalSuit(t),b=mjLocalBase(t);if(b==='z6')return 'honor green-hatsu';if(b==='z7')return 'honor red-chun';return s==='m'?'man':s==='s'?'sou':s==='p'?'pin':'honor'}
+  function mjLocalTileHTML(t,opts={}){const cls=mjLocalClass(t)+(String(t||'').endsWith('r')?' red-five':'')+(opts.back?' back':'');return `<span class="fn-local-mj-tile ${cls}" data-tile="${esc(t||'')}">${opts.back?'':`<span>${esc(mjLocalLabel(t))}</span>`}</span>`}
+  function mjLocalBacks(n=13){return Array.from({length:n},()=>mjLocalTileHTML('',{back:true})).join('')}
+
+  function startLocalMahjong(){
+    const root=document.getElementById('fnMahjongRoot');
+    if(!root)return;
+    const state={phase:'playing',roundWind:'EAST',handNumber:1,honba:0,kyotaku:0,dealer:0,turn:0,drawnTile:null,lastDiscard:null,revision:0,winner:null,matchFinished:false};
+    const players=[0,1,2].map((seat)=>({seat,name:seat===0?'YOU':`CPU ${seat}`,score:35000,hand:[],discards:[],melds:[],nuki:0,riichi:false,ippatsu:false,tsumo:false,open:false}));
+    let deck=buildLocalMahjongWall();
+    const deadWall=deck.splice(0,14);
+    const dora=[deadWall[4]];
+    for(let seat=0;seat<3;seat++)players[seat].hand=deck.splice(0,13);
+    players[0].hand.push(deck.pop()); state.turn=0;
+    sortLocalHand(players[0]); players.slice(1).forEach(p=>sortLocalHand(p));
+
+    root.innerHTML=`<div class="fn-mj-local-shell" id="fnMjShell"><div class="fn-mj-landscape-guard" id="fnMjGuard"><div><b>MAHJONG</b><span>横画面でプレイしてください</span></div></div>
+      <header class="fn-mj-local-head"><div class="fn-mj-brand"><img src="mahjong.png" alt="MAHJONG"><div><small>FORTUNE NOIR</small><h1>MAHJONG</h1><span>SANMA • LOCAL TABLE</span></div></div><button id="fnMjLeave" class="fn-mj-head-btn">LEAVE</button></header>
+      <main class="fn-mj-local-table"><div class="fn-mj-table-felt"></div>
+        <section class="fn-mj-opponent fn-mj-opponent-top"><div class="fn-mj-playerbar"><b>CPU 1</b><span id="mjScore1">35,000</span><em id="mjState1">WAIT</em></div><div class="fn-mj-opponent-hand">${mjLocalBacks(13)}</div><div class="fn-mj-river" id="mjRiver1"></div></section>
+        <section class="fn-mj-opponent fn-mj-opponent-left"><div class="fn-mj-playerbar"><b>CPU 2</b><span id="mjScore2">35,000</span><em id="mjState2">WAIT</em></div><div class="fn-mj-opponent-hand">${mjLocalBacks(13)}</div><div class="fn-mj-river" id="mjRiver2"></div></section>
+        <section class="fn-mj-center-panel"><div class="fn-mj-round">東${state.handNumber}局</div><strong id="mjTurnText">YOUR TURN</strong><div class="fn-mj-center-grid"><span>HONBA <b>${state.honba}</b></span><span>RIICHI <b>${state.kyotaku}</b></span><span>WALL <b id="mjWall">${deck.length}</b></span></div><div class="fn-mj-dora-line"><small>DORA</small><div>${dora.map(t=>mjLocalTileHTML(t)).join('')}</div></div></section>
+        <section class="fn-mj-bottom-player"><div class="fn-mj-playerbar"><b>YOU</b><span id="mjScore0">35,000</span><em id="mjState0">YOUR TURN</em></div><div class="fn-mj-bottom-area"><div id="mjMelds0" class="fn-mj-melds"></div><div id="mjHand0" class="fn-mj-hand"></div><div id="mjDiscard0" class="fn-mj-river fn-mj-own-river"></div></div><div id="mjActions" class="fn-mj-actions"><button data-act="tsumo">TSUMO</button><button data-act="riichi">RIICHI</button><button data-act="nuki">NORTH</button><button data-act="pon">PON</button><button data-act="kan">KAN</button><button data-act="pass">PASS</button><button data-act="ron">RON</button></div></section>
+      </main></div>`;
+
+    const rootShell=document.getElementById('fnMjShell');
+    const wallEl=document.getElementById('mjWall');
+    const handEl=document.getElementById('mjHand0');
+    const actions=document.getElementById('mjActions');
+    const phaseGuard=()=>{if(!rootShell)return;rootShell.classList.toggle('portrait-blocked',window.innerHeight>window.innerWidth)};
+    phaseGuard(); window.addEventListener('resize',phaseGuard);
+    try{window.screen?.orientation?.lock?.('landscape').catch(()=>{});}catch(_){}
+
+    function renderLocal(){
+      if(!rootShell)return;
+      phaseGuard();
+      const me=players[0];
+      document.getElementById('mjScore0').textContent=fmt(me.score);
+      document.getElementById('mjScore1').textContent=fmt(players[1].score);
+      document.getElementById('mjScore2').textContent=fmt(players[2].score);
+      document.getElementById('mjWall').textContent=String(deck.length);
+      document.getElementById('mjTurnText').textContent=state.phase==='result'?'ROUND RESULT':(state.turn===0?'YOUR TURN':`CPU ${state.turn} TURN`);
+      players.forEach(p=>{
+        document.querySelectorAll(`#mjState${p.seat}`).forEach(el=>el.textContent=p.seat===state.turn?'TURN':(p.riichi?'RIICHI':'WAIT'));
+      });
+      handEl.innerHTML=me.hand.map((t,i)=>`<button class="fn-local-mj-hand-btn" data-index="${i}" ${state.turn!==0||state.phase!=='playing'?'disabled':''}>${mjLocalTileHTML(t)}</button>`).join('');
+      document.getElementById('mjDiscard0').innerHTML=me.discards.map(t=>mjLocalTileHTML(t)).join('');
+      document.getElementById('mjRiver1').innerHTML=players[1].discards.map(t=>mjLocalTileHTML(t)).join('');
+      document.getElementById('mjRiver2').innerHTML=players[2].discards.map(t=>mjLocalTileHTML(t)).join('');
+      actions.querySelectorAll('button').forEach(b=>{
+        const a=b.dataset.act;
+        let enabled=state.phase==='playing'&&state.turn===0;
+        if(a==='nuki')enabled=enabled&&me.hand.includes('z4');
+        if(a==='riichi')enabled=enabled&&!me.riichi&&!me.open&&me.score>=1000;
+        if(a==='pon'||a==='kan'||a==='ron'||a==='pass')enabled=false;
+        b.disabled=!enabled;
+      });
     }
-    async function load(){const d=await fnApi('/mahjong/state');renderMahjong(d)}
-    async function mjAction(payload){try{await fnApi('/mahjong/action',{method:'POST',body:JSON.stringify(payload)});await load()}catch(e){const st=p.querySelector('.fn-mj-status');if(st)st.textContent='FAILED: '+(e.message||e)}}
-    await load();poll=setInterval(load,1500);
+    function animateDraw(tile){
+      handEl.classList.remove('mj-draw-anim'); void handEl.offsetWidth; handEl.classList.add('mj-draw-anim');
+      state.drawnTile=tile; renderLocal();
+    }
+    function drawFor(seat){
+      if(deck.length<=0){state.phase='result';state.winner='DRAW';renderLocal();return null}
+      const tile=deck.pop();players[seat].hand.push(tile);sortLocalHand(players[seat]);if(seat===0)animateDraw(tile);return tile;
+    }
+    function discardFor(seat,index){
+      const p=players[seat]; if(!p.hand.length)return;
+      const idx=Math.max(0,Math.min(index,p.hand.length-1));const tile=p.hand.splice(idx,1)[0];p.discards.push(tile);state.lastDiscard={seat,tile};
+      if(seat===0){handEl.classList.remove('mj-discard-anim');void handEl.offsetWidth;handEl.classList.add('mj-discard-anim');}
+      renderLocal();
+    }
+    function cpuStep(seat){
+      if(state.phase!=='playing')return;
+      state.turn=seat;const p=players[seat];drawFor(seat);
+      const northIndex=p.hand.findIndex(t=>mjLocalBase(t)==='z4');
+      if(northIndex>=0&&Math.random()<0.12){p.hand.splice(northIndex,1);p.nuki++;if(deck.length)drawFor(seat)}
+      const idx=Math.floor(Math.random()*p.hand.length);discardFor(seat,idx);
+      state.turn=(seat+1)%3;
+      if(state.turn===0)drawFor(0);
+      else setTimeout(()=>cpuStep(state.turn),650);
+      renderLocal();
+    }
+    function buildLocalMahjongWall(){return shuffleLocal([
+      ...['m','p','s'].flatMap(s=>Array.from({length:9},(_,i)=>Array(4).fill(`${s}${i+1}`)).flat()),
+      ...Array.from({length:7},(_,i)=>Array(4).fill(`z${i+1}`)).flat(),
+      'm5r','m5r'
+    ])}
+    function sortLocalHand(p){p.hand.sort((a,b)=>tileOrderLocal(a)-tileOrderLocal(b))}
+    function tileOrderLocal(t){const s=mjLocalSuit(t),n=mjLocalNum(t);return s==='m'?n:s==='p'?20+n:s==='s'?40+n:60+n}
+    function shuffleLocal(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+    function closeLocal(){window.removeEventListener('resize',phaseGuard);closeGame()}
+    document.getElementById('fnMjLeave').onclick=closeLocal;
+    handEl.onclick=(e)=>{const b=e.target.closest('[data-index]');if(!b||state.turn!==0||state.phase!=='playing')return;discardFor(0,Number(b.dataset.index));state.turn=1;setTimeout(()=>cpuStep(1),650)};
+    actions.onclick=(e)=>{const b=e.target.closest('button');if(!b||b.disabled)return;const a=b.dataset.act;const me=players[0];
+      if(a==='nuki'){const i=me.hand.findIndex(t=>mjLocalBase(t)==='z4');if(i>=0){me.hand.splice(i,1);me.nuki++;drawFor(0);state.turn=0;renderLocal();}}
+      else if(a==='riichi'){me.riichi=true;me.ippatsu=true;renderLocal();}
+      else if(a==='tsumo'){state.phase='result';state.winner='TSUMO';renderLocal();}
+    };
+    renderLocal();
   }
   async function renderRoom(room){
     const o=document.getElementById('socialOverlay'),p=document.getElementById('socialPanel');
