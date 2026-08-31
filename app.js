@@ -25,7 +25,7 @@ let FN_SERVER_SYNCING = false;
 function fnApi(path, options={}, tokenOverride=null){
   if(!FN_API_URL) return Promise.reject(new Error("FN_ADMIN_API_URL_NOT_CONFIGURED"));
   const headers=Object.assign({"content-type":"application/json"},options.headers||{});
-  const tok=tokenOverride===null?FN_PLAYER_TOKEN:tokenOverride;
+  const tok=tokenOverride===null?(window.__FN_AUTH_ROLE==='admin'?(FN_ADMIN_TOKEN||FN_PLAYER_TOKEN):FN_PLAYER_TOKEN):tokenOverride;
   if(tok) headers.Authorization="Bearer "+tok;
   return fetch(FN_API_URL+path,Object.assign({},options,{headers,cache:"no-store"})).then(async r=>{let d={};try{d=await r.json()}catch(_){} if(!r.ok)throw Object.assign(new Error(d.error||"API_ERROR"),{status:r.status,data:d});return d;});
 }
@@ -67,7 +67,7 @@ async function fnSyncServerBalance(){
 }
 window.FN_SYNC_SERVER_BALANCE=fnSyncServerBalance;
 async function fnCommitBalanceDelta(delta, reason){
-  if(!FN_API_URL||!FN_PLAYER_TOKEN||!Number.isSafeInteger(delta)||delta===0)return false;
+  if(!FN_API_URL||!(window.__FN_AUTH_ROLE==='admin'?FN_ADMIN_TOKEN:FN_PLAYER_TOKEN)||!Number.isSafeInteger(delta)||delta===0)return false;
   try{
     const txId=(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random());
     const d=await fnApi("/player/adjust",{method:"POST",body:JSON.stringify({delta,reason:String(reason||"GAME").slice(0,80),txId})});
@@ -546,6 +546,7 @@ async function buy(name,cost,chipQty=0){
 }
 function exchangeMahjongPoints(points,coins){points=Math.floor(Number(points)||0);coins=Math.floor(Number(coins)||0);const current=getMahjongPoints(),res=$('res');if(!points||!coins)return false;if(current<points){if(res)res.textContent='NOT ENOUGH MAHJONG POINTS';return false}setMahjongPoints(current-points);S.coins+=coins;S.history.unshift({g:'MAHJONG EXCHANGE',net:coins,t:new Date().toLocaleTimeString()});S.history=S.history.slice(0,20);save();if(res)res.textContent=`EXCHANGED ${fmt(points)} PT → +${fmt(coins)} COIN`;sfx('win');const sp=$('shopPoints');if(sp)sp.textContent=fmt(getMahjongPoints());return true}
 const games={
+"mahjong-online"(){ openOnlineMahjong(); },
 slot(){
  $("gameBody").innerHTML=`<div class="anim-game slot-game">
   <div class="anim-title">GOLDEN REEL</div>
@@ -1724,9 +1725,9 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
     }
     async function renderMahjongRoom(room){
       const pid=localStorage.getItem('FN_SERVER_PLAYER_ID')||'',host=room.host_player_id===pid,humans=(room.members||[]).length,cpu=Number(room.cpu_count||0),filled=humans+cpu,allReady=(room.members||[]).every(m=>!!m.ready);
-      p.innerHTML='<div class="fn-mj-head"><div><small>FORTUNE NOIR / ONLINE</small><h2>MAHJONG ROOM</h2></div><button id="mjRoomClose">CLOSE</button></div><div class="roomCode"><small>ROOM CODE</small><strong>'+esc(room.code)+'</strong></div><div class="fn-mj-room-note">'+filled+' / 3 SEATS • '+humans+' HUMAN • '+cpu+' CPU</div><div id="roomPlayers">'+(room.members||[]).map(m=>'<div class="friend-row"><span>'+esc(m.name)+'</span><small>'+(m.ready?'READY':'WAITING')+'</small></div>').join('')+(cpu?Array.from({length:cpu},(_,i)=>'<div class="friend-row fn-mj-cpu-row"><span>CPU '+(i+1)+'</span><small>READY • CPU</small></div>').join(''):'')+'</div>'+(host&&room.status==='waiting'?'<div class="fn-mj-cpu-picker"><b>CPU PLAYERS</b><div class="fn-mj-cpu-options">'+[0,1,2].map(n=>'<button data-room-cpu="'+n+'" class="'+(cpu===n?'active':'')+'">'+n+' CPU</button>').join('')+'</div><small>MANUAL CPU FILL • '+humans+' HUMAN</small></div>':'')+'<div class="socialActions"><button class="primary" id="readyMJ">READY</button>'+(host&&room.status==='waiting'?'<button id="startMJ" '+(filled===3&&allReady?'':'disabled')+'>START MAHJONG</button>':'')+(room.status==='playing'?'<button class="primary" id="openMJPlaying">OPEN MAHJONG</button>':'')+'<button id="leaveMJ">LEAVE</button></div><div id="mjRoomStatus" class="fn-admin-note">'+(room.status==='playing'?'ROOM STARTED':filled===3?(allReady?'ALL READY':'READY REQUIRED'):'ADD CPU OR PLAYERS: '+(3-filled)+' SEAT(S) EMPTY')+'</div>';
+      p.innerHTML='<div class="fn-mj-head"><div><small>FORTUNE NOIR / ONLINE</small><h2>MAHJONG ROOM</h2></div><button id="mjRoomClose">CLOSE</button></div><div class="roomCode"><small>ROOM CODE</small><strong>'+esc(room.code)+'</strong></div><div class="fn-mj-room-note">'+filled+' / 3 SEATS • '+humans+' HUMAN • '+cpu+' CPU</div><div id="roomPlayers">'+(room.members||[]).map(m=>'<div class="friend-row"><span>'+esc(m.name)+'</span><small>'+(m.ready?'READY':'WAITING')+'</small></div>').join('')+(cpu?Array.from({length:cpu},(_,i)=>'<div class="friend-row fn-mj-cpu-row"><span>CPU '+(i+1)+'</span><small>READY • CPU</small></div>').join(''):'')+'</div>'+(host&&room.status==='waiting'?'<div class="fn-mj-cpu-picker"><b>CPU PLAYERS</b><div class="fn-mj-cpu-options">'+[0,1,2].map(n=>'<button data-room-cpu="'+n+'" class="'+(cpu===n?'active':'')+'">'+n+' CPU</button>').join('')+'</div><small>MANUAL CPU FILL • '+humans+' HUMAN</small></div>':'')+'<div class="socialActions"><button class="primary" id="readyMJ">READY</button>'+(host&&room.status==='waiting'?'<button id="startMJ" '+(filled===3?'':'disabled')+'>START MAHJONG</button>':'')+(room.status==='playing'?'<button class="primary" id="openMJPlaying">OPEN MAHJONG</button>':'')+'<button id="leaveMJ">LEAVE</button></div><div id="mjRoomStatus" class="fn-admin-note">'+(room.status==='playing'?'ROOM STARTED':filled===3?(allReady?'ALL READY':'READY REQUIRED'):'ADD CPU OR PLAYERS: '+(3-filled)+' SEAT(S) EMPTY')+'</div>';
       document.getElementById('readyMJ').onclick=async()=>{try{const d=await fnApi('/rooms/ready',{method:'POST',body:JSON.stringify({ready:true})});renderMahjongRoom(d.room)}catch(e){alert(e.message)}};
-      if(host&&room.status==='waiting'){p.querySelectorAll('[data-room-cpu]').forEach(b=>b.onclick=async()=>{try{const d=await fnApi('/mahjong/room/cpu',{method:'POST',body:JSON.stringify({cpuCount:Number(b.dataset.roomCpu)})});renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='CPU UPDATE FAILED: '+(e.message||e)}});const st=document.getElementById('startMJ');if(st)st.onclick=async()=>{try{const d=await fnApi('/rooms/start',{method:'POST'});renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='START FAILED: '+(e.message||e)}}}
+      if(host&&room.status==='waiting'){p.querySelectorAll('[data-room-cpu]').forEach(b=>b.onclick=async()=>{try{const d=await fnApi('/mahjong/room/cpu',{method:'POST',body:JSON.stringify({cpuCount:Number(b.dataset.roomCpu)})});renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='CPU UPDATE FAILED: '+(e.message||e)}});const st=document.getElementById('startMJ');if(st){st.onclick=async()=>{try{const meMember=(room.members||[]).find(m=>m.player_id===pid);if(meMember&&!meMember.ready){await fnApi('/rooms/ready',{method:'POST',body:JSON.stringify({ready:true})});}const d=await fnApi('/rooms/start',{method:'POST'});renderMahjongRoom(d.room)}catch(e){document.getElementById('mjRoomStatus').textContent='START FAILED: '+(e.message||e)}}}}
       if(room.status==='playing')document.getElementById('openMJPlaying').onclick=()=>openOnlineMahjong();
       document.getElementById('leaveMJ').onclick=async()=>{try{await fnApi('/rooms/leave',{method:'POST'});createScreen()}catch(e){alert(e.message)}};document.getElementById('mjRoomClose').onclick=()=>o.classList.add('hidden');
     }
