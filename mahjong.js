@@ -149,7 +149,7 @@
     clearAuto();
     if(state.wall.length===0){endDraw();return}
     const p=state.players[state.turn]; state.drawn=state.wall.pop();state.selected=null;state.pending=null;
-    state.message=`${p.name} ツモ`;sfx('tsumo');render();
+    state.message=`${p.name} ツモ`;render();
     if(state.turn===0){
       playAnim('draw',()=>{
         if(p.riichi){
@@ -234,7 +234,7 @@
   }
   function cpuPon(i,tile){const p=state.players[i],b=baseTile(tile);let need=2,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}if(need)return;p.hand=sortHand(keep);p.melds.push({type:'pon',tiles:[tile,tile,tile]});state.turn=i;state.drawn=null;state.message=`${p.name} ポン`;sfx('pon');render();autoTimer=setTimeout(cpuTurn,520)}
   function cpuDaiminkan(i,tile){const p=state.players[i],b=baseTile(tile);let need=3,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}if(need)return;p.hand=sortHand(keep);p.melds.push({type:'daiminkan',tiles:[tile,tile,tile,tile]});state.turn=i;state.drawn=null;state.message=`${p.name} カン`;sfx('kan');render();drawKang()}
-  function drawKang(){if(state.dead.length===0){endDraw();return}state.drawn=state.dead.shift();state.dora=[state.dead[4]||state.dora[0]];state.message='嶺上ツモ';sfx('tsumo');render();if(state.turn===0){if(canTsumo())return; if(state.players[0].riichi)autoTimer=setTimeout(discardDrawn,900)}else autoTimer=setTimeout(cpuTurn,520)}
+  function drawKang(){if(state.dead.length===0){endDraw();return}state.drawn=state.dead.shift();state.dora=[state.dead[4]||state.dora[0]];state.message='嶺上ツモ';render();if(state.turn===0){if(canTsumo())return; if(state.players[0].riichi)autoTimer=setTimeout(discardDrawn,900)}else autoTimer=setTimeout(cpuTurn,520)}
   function winTsumo(){if(!canTsumo())return;const p=state.players[0],h=p.hand.concat(state.drawn||[]),y=yaku(h,p,'tsumo');finishWin(0,'ツモ',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)))}
   function winRon(){if(!state.pending?.ron||!canRon(state.pending.tile,state.pending.from))return;const p=state.players[0],h=p.hand.concat(state.pending.tile),y=yaku(h,p,'ron');finishWin(0,'ロン',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)),state.pending.from)}
   function winCpuRon(i,tile,from){const p=state.players[i],h=p.hand.concat(tile),y=yaku(h,p,'ron');finishWin(i,'ロン',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)),from)}
@@ -300,9 +300,10 @@
         <div class="mj-seat mj-seat-south"><div class="mj-player-label"><b id="mjName1">CPU 南</b><span id="mjScore1">35,000</span><i id="mjRiichi1" class="riichi-mini" hidden>RIICHI</i></div><div id="mjHand1" class="mj-opponent-hand"></div><div id="mjMelds1" class="mj-melds"></div><div id="mjRiverSouth" class="mj-river mj-river-top"></div></div>
         <div class="mj-seat mj-seat-west"><div class="mj-player-label"><b id="mjName2">CPU 西</b><span id="mjScore2">35,000</span><i id="mjRiichi2" class="riichi-mini" hidden>RIICHI</i></div><div id="mjHand2" class="mj-opponent-hand vertical"></div><div id="mjMelds2" class="mj-melds vertical-melds"></div><div id="mjRiverWest" class="mj-river mj-river-left"></div></div>
         <div class="mj-center">
-          <div class="mj-center-head"><b>MAHJONG</b><span>三人麻雀</span></div>
-          <div class="mj-center-panel"><b id="mjRoundCenter">東1局 0本場</b><span>親: YOU</span><strong id="mjWallCenter">0</strong><small>残り牌</small></div>
-          <div class="mj-dora"><small>ドラ</small><span id="mjDoraTile"></span></div><div id="mjStickStack" class="mj-stick-stack"></div>
+          <div class="mj-center-round" id="mjRoundCenter">東1局 0本場</div>
+          <div class="mj-center-meta"><span>残り <b id="mjWallCenter">0</b></span><span>親 YOU</span></div>
+          <div class="mj-dora"><small>ドラ</small><span id="mjDoraTile"></span></div>
+          <div id="mjStickStack" class="mj-stick-stack"></div>
         </div>
         <div class="mj-seat mj-seat-self"><div class="mj-player-label"><b id="mjName0">YOU</b><span id="mjScore0">35,000</span><i id="mjRiichi0" class="riichi-mini" hidden>RIICHI</i></div><div id="mjRiverSelf" class="mj-river mj-river-self"></div><div id="mjMeldsSelf" class="mj-melds self-melds"></div><div class="mj-hand-wrap"><div id="mjHandSelf" class="mj-hand"></div></div><div id="mjActions" class="mj-actions"></div></div>
         <div class="mj-status"><span id="mjMessage">配牌完了</span><small id="mjStatusAuto" hidden>ツモ切り中</small></div>
