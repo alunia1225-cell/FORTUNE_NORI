@@ -1,0 +1,3 @@
+MAHJONG integration uses assets and game-UI concepts from the supplied Majiang-master archive.
+The supplied archive identifies the project as "電脳麻将" by Satoshi Kobayashi and is MIT licensed.
+FORTUNE NOIR integration code is isolated under the mahjong/ directory and is client-side only.
