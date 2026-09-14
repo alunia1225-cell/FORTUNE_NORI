@@ -19,9 +19,8 @@
   const TILE_ORDER = new Map(TILE_TYPES.map((t,i)=>[t,i]));
   const audioCache = Object.create(null);
   let autoTimer = null;
-  let sessionId = 0;
-  let active = false;
-  const animationTimers = new Set();
+  let animTimer = null;
+  let sessionActive = false;
 
   const state = {
     players: [
@@ -29,9 +28,9 @@
       mkPlayer('CPU 南','南家'),
       mkPlayer('CPU 西','西家')
     ],
-    wall: [], dead: [], dora: [],
+    wall: [], dead: [], rinshan: [], dora: [],
     turn: 0, dealer: 0, round:'東1', honba:0, kyotaku:0,
-    phase:'lobby', drawn:null, drawnSeat:-1, pending:null, selected:null,
+    phase:'lobby', drawn:null, pending:null, selected:null,
     riichiSelect:false, lastDiscard:null, message:'ルーム準備中',
     result:null, cpuCount:2
   };
@@ -51,10 +50,7 @@
   function counts(tiles){const c=Object.create(null);for(const t of tiles){const b=baseTile(t);c[b]=(c[b]||0)+1}return c}
   function clone(a){return a.map(x=>x)}
   function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-  function sfx(name){ return; /* Mahjong audio is intentionally disabled; only game state changes are visual. */ }
-  function setDraw(tile, seat){ state.drawn=tile||null; state.drawnSeat=tile?seat:-1; }
-  function clearDraw(){ state.drawn=null; state.drawnSeat=-1; }
-  function schedule(fn,ms){ const token=sessionId; return setTimeout(()=>{ if(!active||token!==sessionId)return; autoTimer=null; fn(); },ms); }
+  function sfx(name){return; /* voice/audio intentionally disabled for this client-only table */}
 
   function buildWall(){
     const w=[];
@@ -119,64 +115,79 @@
     return isWinning(hand,p.melds.length)&&yaku(hand,p,'ron').han>0;
   }
   function canTsumo(){
-    const p=state.players[0],h=p.hand.concat((state.drawnSeat===0?state.drawn:null)||[]);
-    return !!(state.drawnSeat===0&&state.drawn)&&isWinning(h,p.melds.length)&&yaku(h,p,'tsumo').han>0;
+    const p=state.players[0],h=p.hand.concat(state.drawn||[]);
+    return !!state.drawn&&isWinning(h,p.melds.length)&&yaku(h,p,'tsumo').han>0;
   }
   function waitingTiles(hand,p){
     const waits=[];for(const t of TILE_TYPES){const h=hand.concat(t);if(isWinning(h,p.melds.length)&&yaku(h,p,'ron').han>0)waits.push(t)}return waits;
   }
   function canRiichi(){
     const p=state.players[0];if(p.riichi||p.melds.length||p.nuki)return false;
-    const h=p.hand.concat((state.drawnSeat===0?state.drawn:null)||[]);if(h.length!==14)return false;
+    const h=p.hand.concat(state.drawn||[]);if(h.length!==14)return false;
     for(let i=0;i<h.length;i++){const x=h.slice();x.splice(i,1);if(waitingTiles(x,p).length)return true}
     return false;
   }
   function canAnkan(){
-    const p=state.players[0],c=counts(p.hand.concat((state.drawnSeat===0?state.drawn:null)||[]));return Object.values(c).some(v=>v===4);
+    const p=state.players[0],c=counts(p.hand.concat(state.drawn||[]));return Object.values(c).some(v=>v===4);
   }
   function canOpenKan(t){const p=state.players[0],c=counts(p.hand);return (c[baseTile(t)]||0)>=3}
   function canPon(t){const p=state.players[0],c=counts(p.hand);return (c[baseTile(t)]||0)>=2}
   function legalRiichiDiscardIndices(){
-    const p=state.players[0],h=p.hand.concat((state.drawnSeat===0?state.drawn:null)||[]),out=[];
+    const p=state.players[0],h=p.hand.concat(state.drawn||[]),out=[];
     for(let i=0;i<h.length;i++){const x=h.slice();x.splice(i,1);if(waitingTiles(x,p).length)out.push(i)}
     return out;
   }
   function clearAuto(){if(autoTimer){clearTimeout(autoTimer);autoTimer=null}}
-  function clearAnimations(){for(const id of animationTimers)clearTimeout(id);animationTimers.clear();const r=document.getElementById('fnMahjongRoot');if(r)r.classList.remove('draw-anim','discard-anim','nuki-anim','win-anim');}
+  function clearAnim(){if(animTimer){clearTimeout(animTimer);animTimer=null}}
 
   function setupDeal(){
-    clearAuto(); state.wall=buildWall();state.dead=state.wall.splice(-14);state.dora=[state.dead[4]];
+    clearAuto(); state.wall=buildWall();
+    // Sanma with Kita-nuki needs 8 replacement tiles in the dead wall.
+    // 4 are reserved for kan replacements and 4 for Kita-nuki replacements.
+    state.dead=state.wall.splice(-18);
+    state.rinshan=state.dead.slice(0,8);
+    state.dora=[state.dead[8]];
     state.players.forEach((p,i)=>{p.hand=[];p.melds=[];p.discards=[];p.nuki=0;p.riichi=false;p.ippatsu=false;p.riichiStick=false;p.score=35000;p.name=i===0?'YOU':i===1?'CPU 南':'CPU 西'});
     for(let i=0;i<13;i++)for(let s=0;s<3;s++)state.players[s].hand.push(state.wall.pop());
     state.players.forEach(p=>p.hand=sortHand(p.hand));
-    state.turn=state.dealer;clearDraw();state.pending=null;state.selected=null;state.riichiSelect=false;state.phase='playing';state.result=null;state.message='配牌完了';state.lastDiscard=null;state.kyotaku=0;
+    state.turn=state.dealer;state.drawn=null;state.pending=null;state.selected=null;state.riichiSelect=false;state.phase='playing';state.result=null;state.message='配牌完了';state.lastDiscard=null;state.kyotaku=0;
     drawForTurn(true);
   }
   function drawForTurn(initial=false){
     clearAuto();
     if(state.wall.length===0){endDraw();return}
-    const p=state.players[state.turn]; setDraw(state.wall.pop(),state.turn);state.selected=null;state.pending=null;
+    const p=state.players[state.turn]; state.drawn=state.wall.pop();state.selected=null;state.pending=null;
     state.message=`${p.name} ツモ`;render();
     if(state.turn===0){
       playAnim('draw',()=>{
         if(p.riichi){
           if(canTsumo()||canAnkan()) { renderActions(); }
-          if(!canTsumo()) autoTimer=schedule(()=>{ if(state.phase==='playing'&&state.turn===0&&state.drawnSeat===0&&state.drawn&&!p.riichiSelect){discardDrawn()} }, 900);
+          if(!canTsumo()) autoTimer=setTimeout(()=>{ if(state.phase==='playing'&&state.turn===0&&state.drawn&&!p.riichiSelect){discardDrawn()} }, 900);
         }
       });
-    }else autoTimer=schedule(cpuTurn,560);
+    }else autoTimer=setTimeout(cpuTurn,560);
   }
   function cpuTurn(){
     clearAuto();if(state.phase!=='playing')return;const p=state.players[state.turn];
     if(p.riichi){
-      const t=state.drawnSeat===state.turn?state.drawn:null;
-      const all=p.hand.concat(t||[]);clearDraw();p.hand=sortHand(all.slice(0,-1));const discard=all[all.length-1];p.discards.push(discard);state.lastDiscard={seat:state.turn,index:p.discards.length-1};state.message=`${p.name} ツモ切り`;sfx('dahai11');
+      const t=state.drawn;p.hand=p.hand.concat(t?[]:[]); // preserve drawn separately
+      const all=p.hand.concat(state.drawn||[]);state.drawn=null;p.hand=sortHand(all.slice(0,-1));const discard=all[all.length-1];p.discards.push(discard);state.lastDiscard={seat:state.turn,index:p.discards.length-1};state.message=`${p.name} ツモ切り`;sfx('dahai11');
       resolveCpuDiscard(state.turn,discard);return;
     }
-    let all=p.hand.concat((state.drawnSeat===state.turn?state.drawn:null)||[]);let discard;
-    if(all.includes('z4')&&Math.random()<.22){const idx=all.indexOf('z4');all.splice(idx,1);p.nuki++;p.hand=sortHand(all);clearDraw();state.message=`${p.name} 北抜き`;sfx('pon');playAnim('nuki',()=>drawForTurn());return}
+    let all=p.hand.concat(state.drawn||[]);let discard;
+    if(state.rinshan.length&&all.includes('z4')&&Math.random()<.22){
+      const idx=all.indexOf('z4');
+      all.splice(idx,1);
+      p.nuki++;
+      p.hand=sortHand(all);
+      state.drawn=null;
+      state.message=`${p.name} 北抜き`;
+      if(state.rinshan.length){ playAnim('nuki',()=>drawReplacement('nuki')); }
+      else { endDraw(); }
+      return;
+    }
     const honors=all.filter(isHonor);discard=(honors[0]&&Math.random()<.72)?honors[0]:all[Math.floor(Math.random()*all.length)];
-    all.splice(all.indexOf(discard),1);p.hand=sortHand(all);clearDraw();p.discards.push(discard);state.lastDiscard={seat:state.turn,index:p.discards.length-1};state.message=`${p.name} 打牌`;sfx('dahai11');
+    all.splice(all.indexOf(discard),1);p.hand=sortHand(all);state.drawn=null;p.discards.push(discard);state.lastDiscard={seat:state.turn,index:p.discards.length-1};state.message=`${p.name} 打牌`;sfx('dahai11');
     resolveCpuDiscard(state.turn,discard);
   }
   function resolveCpuDiscard(from,tile){
@@ -197,20 +208,20 @@
       state.pending=null;nextTurn();
     });
   }
-  function nextTurn(){state.lastDiscard=null;state.turn=(state.turn+1)%3;clearDraw();drawForTurn()}
+  function nextTurn(){state.lastDiscard=null;state.turn=(state.turn+1)%3;state.drawn=null;drawForTurn()}
   function discardIndex(idx){
     const p=state.players[0];if(state.phase!=='playing'||state.turn!==0)return;
     if(p.riichi&&!state.riichiSelect)return;
-    const all=p.hand.concat((state.drawnSeat===0?state.drawn:null)||[]);if(idx<0||idx>=all.length)return;
-    const t=all[idx];all.splice(idx,1);p.hand=sortHand(all.slice(0,all.length));clearDraw();
+    const all=p.hand.concat(state.drawn||[]);if(idx<0||idx>=all.length)return;
+    const t=all[idx];all.splice(idx,1);p.hand=sortHand(all.slice(0,all.length));state.drawn=null;
     p.discards.push(t);state.lastDiscard={seat:0,index:p.discards.length-1};state.selected=null;
     if(state.riichiSelect){p.riichi=true;p.ippatsu=true;p.riichiStick=true;p.riichiSelect=false;state.kyotaku++;state.message='リーチ';sfx('richi')}
     else state.message='打牌';
     sfx('dahai11');render();playAnim('discard',()=>resolveUserDiscard(t));
   }
   function discardDrawn(){
-    const p=state.players[0];if(state.phase!=='playing'||state.turn!==0||state.drawnSeat!==0||!state.drawn)return;
-    if(canTsumo())return;const t=state.drawn;clearDraw();p.discards.push(t);state.lastDiscard={seat:0,index:p.discards.length-1};state.message=p.riichi?'ツモ切り':'打牌';sfx('dahai11');render();playAnim('discard',()=>resolveUserDiscard(t));
+    const p=state.players[0];if(state.phase!=='playing'||state.turn!==0||!state.drawn)return;
+    if(canTsumo())return;const t=state.drawn;state.drawn=null;p.discards.push(t);state.lastDiscard={seat:0,index:p.discards.length-1};state.message=p.riichi?'ツモ切り':'打牌';sfx('dahai11');render();playAnim('discard',()=>resolveUserDiscard(t));
   }
   function resolveUserDiscard(tile){
     if(state.pending)return;
@@ -222,27 +233,60 @@
   function declareRiichi(){if(!canRiichi())return;state.riichiSelect=true;state.message='リーチする牌を選択';render();}
   function riichiDiscardAny(idx){if(state.riichiSelect)discardIndex(idx)}
   function nuki(){
-    const p=state.players[0];if(p.riichi)return;let idx=p.hand.indexOf('z4');
-    if(idx<0&&state.drawnSeat===0&&state.drawn==='z4'){clearDraw();p.nuki++;state.message='北抜き';sfx('pon');playAnim('nuki',()=>drawForTurn());return}
-    if(idx<0)return;p.hand.splice(idx,1);p.nuki++;state.message='北抜き';sfx('pon');render();playAnim('nuki',()=>{clearDraw();drawForTurn()});
+    const p=state.players[0];
+    if(state.phase!=='playing'||state.turn!==0||p.riichi||state.rinshan.length===0)return;
+    let removed=false;
+    if(state.drawn==='z4'){
+      state.drawn=null;
+      removed=true;
+    }else{
+      const idx=p.hand.indexOf('z4');
+      if(idx>=0){
+        // If the North came from the concealed hand, keep the current draw in
+        // the hand before taking the replacement tile from the rinshan.
+        if(state.drawn){p.hand.push(state.drawn);state.drawn=null;}
+        p.hand.splice(idx,1);
+        removed=true;
+      }
+    }
+    if(!removed)return;
+    p.nuki++;
+    p.hand=sortHand(p.hand);
+    state.message='北抜き';
+    render();
+    if(!state.rinshan.length){endDraw();return;}
+    playAnim('nuki',()=>drawReplacement('nuki'));
   }
+
   function ankan(){
     const p=state.players[0],all=p.hand.concat(state.drawn||[]),c=counts(all),t=Object.keys(c).find(k=>c[k]===4);if(!t)return;
     let removed=0;const keep=[];for(const x of all){if(baseTile(x)===t&&removed<4){removed++;continue}keep.push(x)}
-    p.hand=sortHand(keep);p.melds.push({type:'ankan',tiles:[t,t,t,t]});clearDraw();state.message='カン';sfx('kan');render();playAnim('discard',()=>drawKang())
+    p.hand=sortHand(keep);p.melds.push({type:'ankan',tiles:[t,t,t,t]});state.drawn=null;state.message='カン';sfx('kan');render();playAnim('discard',()=>drawKang())
   }
   function daiminkan(tile){
     const p=state.players[0],b=baseTile(tile);let need=3,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}
-    if(need)return;p.hand=sortHand(keep);clearDraw();p.melds.push({type:'daiminkan',tiles:[tile,tile,tile,tile]});state.pending=null;state.message='カン';sfx('kan');render();drawKang();
+    if(need)return;p.hand=sortHand(keep);state.drawn=null;p.melds.push({type:'daiminkan',tiles:[tile,tile,tile,tile]});state.pending=null;state.message='カン';sfx('kan');render();drawKang();
   }
   function pon(tile){
     const p=state.players[0],b=baseTile(tile);let need=2,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}
-    if(need)return;p.hand=sortHand(keep);clearDraw();p.melds.push({type:'pon',tiles:[tile,tile,tile]});state.pending=null;state.message='ポン';sfx('pon');render();
+    if(need)return;p.hand=sortHand(keep);state.drawn=null;p.melds.push({type:'pon',tiles:[tile,tile,tile]});state.pending=null;state.turn=0;state.message='ポン';sfx('pon');render();
   }
-  function cpuPon(i,tile){const p=state.players[i],b=baseTile(tile);let need=2,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}if(need)return;p.hand=sortHand(keep);p.melds.push({type:'pon',tiles:[tile,tile,tile]});state.turn=i;clearDraw();state.message=`${p.name} ポン`;sfx('pon');render();autoTimer=schedule(cpuTurn,520)}
-  function cpuDaiminkan(i,tile){const p=state.players[i],b=baseTile(tile);let need=3,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}if(need)return;p.hand=sortHand(keep);p.melds.push({type:'daiminkan',tiles:[tile,tile,tile,tile]});state.turn=i;clearDraw();state.message=`${p.name} カン`;sfx('kan');render();drawKang()}
-  function drawKang(){if(state.dead.length===0){endDraw();return}setDraw(state.dead.shift(),state.turn);state.dora=[state.dead[4]||state.dora[0]];state.message='嶺上ツモ';render();if(state.turn===0){if(canTsumo())return; if(state.players[0].riichi)autoTimer=schedule(discardDrawn,900)}else autoTimer=schedule(cpuTurn,520)}
-  function winTsumo(){if(!canTsumo())return;const p=state.players[0],h=p.hand.concat((state.drawnSeat===0?state.drawn:null)||[]),y=yaku(h,p,'tsumo');finishWin(0,'ツモ',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)))}
+  function cpuPon(i,tile){const p=state.players[i],b=baseTile(tile);let need=2,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}if(need)return;p.hand=sortHand(keep);p.melds.push({type:'pon',tiles:[tile,tile,tile]});state.turn=i;state.drawn=null;state.message=`${p.name} ポン`;sfx('pon');render();autoTimer=setTimeout(cpuTurn,520)}
+  function cpuDaiminkan(i,tile){const p=state.players[i],b=baseTile(tile);let need=3,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}if(need)return;p.hand=sortHand(keep);p.melds.push({type:'daiminkan',tiles:[tile,tile,tile,tile]});state.turn=i;state.drawn=null;state.message=`${p.name} カン`;sfx('kan');render();drawKang()}
+  function drawReplacement(kind='kan'){
+    clearAuto();
+    if(state.rinshan.length===0){endDraw();return;}
+    const p=state.players[state.turn];
+    state.drawn=state.rinshan.shift();
+    state.message=kind==='nuki'?`${p.name} 北抜き・嶺上ツモ`:'嶺上ツモ';
+    render();
+    if(state.turn===0){
+      if(canTsumo())return;
+      if(p.riichi)autoTimer=setTimeout(discardDrawn,900);
+    }else autoTimer=setTimeout(cpuTurn,520);
+  }
+  function drawKang(){drawReplacement('kan')}
+  function winTsumo(){if(!canTsumo())return;const p=state.players[0],h=p.hand.concat(state.drawn||[]),y=yaku(h,p,'tsumo');finishWin(0,'ツモ',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)))}
   function winRon(){if(!state.pending?.ron||!canRon(state.pending.tile,state.pending.from))return;const p=state.players[0],h=p.hand.concat(state.pending.tile),y=yaku(h,p,'ron');finishWin(0,'ロン',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)),state.pending.from)}
   function winCpuRon(i,tile,from){const p=state.players[i],h=p.hand.concat(tile),y=yaku(h,p,'ron');finishWin(i,'ロン',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)),from)}
   function finishWin(i,type,y,score,from=null){clearAuto();state.phase='result';state.result={winner:i,type,yaku:y.names,han:y.han,score,from};state.message=`${state.players[i].name} ${type}`;if(type==='ツモ')sfx('tsumo');else sfx('ron');render();playAnim('win')}
@@ -264,7 +308,7 @@
     const box=el.querySelector('#mjHandSelf');if(!box)return;box.innerHTML='';const p=state.players[0];
     p.hand.forEach((t,idx)=>{const b=document.createElement('button');b.type='button';b.className='mj-hand-tile';b.dataset.index=String(idx);b.innerHTML=tileImg(t);if(state.riichiSelect&&legalRiichiDiscardIndices().includes(idx))b.classList.add('riichi-choice');b.addEventListener('click',()=>{if(state.phase!=='playing'||state.turn!==0)return;if(state.riichiSelect){riichiDiscardAny(idx);return}if(p.riichi)return;if(state.drawn===null&&p.melds.length===0){discardIndex(idx);return}discardIndex(idx)});box.appendChild(b)});
     // state.drawn is shared for the active seat; never render a CPU draw inside YOUR hand.
-    if(state.turn===0 && state.drawnSeat===0 && state.drawn){const gap=document.createElement('span');gap.className='mj-drawn-gap';box.appendChild(gap);const b=document.createElement('button');b.type='button';b.className='mj-hand-tile mj-drawn-tile';b.innerHTML=tileImg(state.drawn);b.addEventListener('click',()=>{if(state.riichiSelect){const all=p.hand.concat(state.drawn);riichiDiscardAny(all.length-1);return}if(!p.riichi)discardDrawn()});box.appendChild(b)}
+    if(state.turn===0 && state.drawn){const gap=document.createElement('span');gap.className='mj-drawn-gap';box.appendChild(gap);const b=document.createElement('button');b.type='button';b.className='mj-hand-tile mj-drawn-tile';b.innerHTML=tileImg(state.drawn);b.addEventListener('click',()=>{if(state.riichiSelect){const all=p.hand.concat(state.drawn);riichiDiscardAny(all.length-1);return}if(!p.riichi)discardDrawn()});box.appendChild(b)}
   }
   function renderMelds(el){
     const p=state.players[0],box=el.querySelector('#mjMeldsSelf');if(!box)return;box.innerHTML='';for(const m of p.melds){const w=document.createElement('span');w.className='mj-meld';w.innerHTML=m.tiles.map(t=>tileImg(t)).join('');box.appendChild(w)}
@@ -288,16 +332,28 @@
     if(p.riichi){
       if(canTsumo())add('ツモ',winTsumo,'gold');
       if(canAnkan())add('カン',ankan,'dark');
-      if(state.drawnSeat===0&&state.drawn&&!canTsumo())el.querySelector('#mjStatusAuto')?.removeAttribute('hidden');
+      if(state.drawn&&!canTsumo())el.querySelector('#mjStatusAuto')?.removeAttribute('hidden');
       return;
     }
     if(canTsumo())add('ツモ',winTsumo,'gold');
     if(canRiichi())add('リーチ',declareRiichi,'gold');
-    if(p.hand.includes('z4')||(state.drawnSeat===0&&state.drawn==='z4'))add('北抜き',nuki,'dark');
+    if(p.hand.includes('z4')||state.drawn==='z4')add('北抜き',nuki,'dark');
     if(canAnkan())add('カン',ankan,'dark');
   }
   function renderResult(el){const r=state.result||{},box=el.querySelector('#mjResult');if(!box)return;box.hidden=false;el.querySelector('#mjResultTitle').textContent=r.type||'';el.querySelector('#mjResultSub').textContent=r.yaku?.join(' ・ ')||'牌局終了';el.querySelector('#mjResultScore').textContent=r.score?`${r.score.toLocaleString()}点`:'-'}
-  function playAnim(type,done){const r=document.getElementById('fnMahjongRoot');if(!r){done&&done();return}const token=sessionId;r.classList.remove('draw-anim','discard-anim','nuki-anim','win-anim');void r.offsetWidth;r.classList.add(type+'-anim');const id=setTimeout(()=>{animationTimers.delete(id);if(!active||token!==sessionId)return;r.classList.remove(type+'-anim');done&&done()},280);animationTimers.add(id)}
+  function playAnim(type,done){
+    clearAnim();
+    const r=document.getElementById('fnMahjongRoot');
+    if(!r){done&&done();return}
+    r.classList.remove('draw-anim','discard-anim','nuki-anim','win-anim');
+    void r.offsetWidth;
+    r.classList.add(type+'-anim');
+    animTimer=setTimeout(()=>{
+      animTimer=null;
+      r.classList.remove('draw-anim','discard-anim','nuki-anim','win-anim');
+      if(sessionActive&&state.phase==='playing')done&&done();
+    },280);
+  }
   function nextHand(){setupDeal();render()}
 
   function template(){
@@ -313,33 +369,34 @@
           <div class="mj-dora"><small>ドラ</small><span id="mjDoraTile"></span></div>
           <div id="mjStickStack" class="mj-stick-stack"></div>
         </div>
-        <div class="mj-seat mj-seat-self"><div class="mj-player-label"><b id="mjName0">YOU</b><span id="mjScore0">35,000</span><i id="mjRiichi0" class="riichi-mini" hidden>RIICHI</i></div><div id="mjRiverSelf" class="mj-river mj-river-self"></div><div id="mjMeldsSelf" class="mj-melds self-melds"></div><div class="mj-hand-wrap"><div id="mjHandSelf" class="mj-hand"></div></div><div id="mjActions" class="mj-actions"></div></div>
-        <div class="mj-status"><span id="mjMessage">配牌完了</span><small id="mjStatusAuto" hidden>ツモ切り中</small></div>
+        <div class="mj-seat mj-seat-self"><div class="mj-player-label"><b id="mjName0">YOU</b><span id="mjScore0">35,000</span><i id="mjRiichi0" class="riichi-mini" hidden>RIICHI</i></div><div id="mjRiverSelf" class="mj-river mj-river-self"></div><div id="mjMeldsSelf" class="mj-melds self-melds"></div><div class="mj-hand-wrap"><div id="mjHandSelf" class="mj-hand"></div></div></div>
+        <div id="mjActions" class="mj-actions"></div><div class="mj-status"><span id="mjMessage">配牌完了</span><small id="mjStatusAuto" hidden>ツモ切り中</small></div>
       </div>
       <div id="mjResult" class="mj-result" hidden><div class="mj-result-card"><small>GAME RESULT</small><h2 id="mjResultTitle">ツモ</h2><p id="mjResultSub">-</p><strong id="mjResultScore">-</strong><button id="mjNextHand" type="button">次局</button></div></div>
     </div>`
   }
   function start(){
-    const existing=document.getElementById('fnMahjongRoot');
-    if(active&&existing)return;
-    sessionId++;active=true;clearAuto();clearAnimations();
+    if(sessionActive)return;
+    sessionActive=true;
+    clearAuto();clearAnim();
     document.body.classList.add('fn-mahjong-active');
-    const modal=document.getElementById('modal');if(!modal)return;
+    const modal=document.getElementById('modal');
     modal.classList.remove('hidden');
-    const tabletop=modal.querySelector('.tabletop');if(tabletop)tabletop.classList.add('fn-mahjong-modal');
-    const content=modal.querySelector('#modalContent');if(!content)return;
-    content.innerHTML=template();
-    state.token=sessionId;setupDeal();
-    document.getElementById('mjClose')?.addEventListener('click',()=>stop(true),{once:true});
-    document.getElementById('mjNextHand')?.addEventListener('click',nextHand);
+    modal.querySelector('.tabletop').classList.add('fn-mahjong-modal');
+    modal.querySelector('#modalContent').innerHTML=template();
+    state.token++;
+    setupDeal();
+    document.getElementById('mjClose').addEventListener('click',()=>stop(true));
+    document.getElementById('mjNextHand').addEventListener('click',nextHand);
     render();
   }
   function stop(closeModal){
-    sessionId++;active=false;clearAuto();clearAnimations();clearDraw();state.phase='lobby';
+    sessionActive=false;
+    clearAuto();clearAnim();
     document.body.classList.remove('fn-mahjong-active');
     const modal=document.getElementById('modal');
-    if(modal){const tabletop=modal.querySelector('.tabletop');if(tabletop)tabletop.classList.remove('fn-mahjong-modal');}
-    if(closeModal&&typeof window.closeGame==='function')window.closeGame();
+    if(modal){const top=modal.querySelector('.tabletop');if(top)top.classList.remove('fn-mahjong-modal');}
+    if(closeModal)window.closeGame();
   }
   window.FN_MAHJONG_START=start;window.FN_MAHJONG_STOP=()=>stop(false);
 })();
