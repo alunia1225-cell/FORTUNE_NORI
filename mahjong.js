@@ -48,7 +48,7 @@
   function counts(tiles){const c=Object.create(null);for(const t of tiles){const b=baseTile(t);c[b]=(c[b]||0)+1}return c}
   function clone(a){return a.map(x=>x)}
   function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-  function sfx(name){try{audioCache[name] ||= new Audio(AUDIO+name+'.wav');audioCache[name].currentTime=0;audioCache[name].play().catch(()=>{})}catch(_){}}
+  function sfx(name){return; /* voice/audio intentionally disabled for this client-only table */}
 
   function buildWall(){
     const w=[];
@@ -256,7 +256,8 @@
   function renderHand(el){
     const box=el.querySelector('#mjHandSelf');if(!box)return;box.innerHTML='';const p=state.players[0];
     p.hand.forEach((t,idx)=>{const b=document.createElement('button');b.type='button';b.className='mj-hand-tile';b.dataset.index=String(idx);b.innerHTML=tileImg(t);if(state.riichiSelect&&legalRiichiDiscardIndices().includes(idx))b.classList.add('riichi-choice');b.addEventListener('click',()=>{if(state.phase!=='playing'||state.turn!==0)return;if(state.riichiSelect){riichiDiscardAny(idx);return}if(p.riichi)return;if(state.drawn===null&&p.melds.length===0){discardIndex(idx);return}discardIndex(idx)});box.appendChild(b)});
-    if(state.drawn){const gap=document.createElement('span');gap.className='mj-drawn-gap';box.appendChild(gap);const b=document.createElement('button');b.type='button';b.className='mj-hand-tile mj-drawn-tile';b.innerHTML=tileImg(state.drawn);b.addEventListener('click',()=>{if(state.riichiSelect){const all=p.hand.concat(state.drawn);riichiDiscardAny(all.length-1);return}if(!p.riichi)discardDrawn()});box.appendChild(b)}
+    // state.drawn is shared for the active seat; never render a CPU draw inside YOUR hand.
+    if(state.turn===0 && state.drawn){const gap=document.createElement('span');gap.className='mj-drawn-gap';box.appendChild(gap);const b=document.createElement('button');b.type='button';b.className='mj-hand-tile mj-drawn-tile';b.innerHTML=tileImg(state.drawn);b.addEventListener('click',()=>{if(state.riichiSelect){const all=p.hand.concat(state.drawn);riichiDiscardAny(all.length-1);return}if(!p.riichi)discardDrawn()});box.appendChild(b)}
   }
   function renderMelds(el){
     const p=state.players[0],box=el.querySelector('#mjMeldsSelf');if(!box)return;box.innerHTML='';for(const m of p.melds){const w=document.createElement('span');w.className='mj-meld';w.innerHTML=m.tiles.map(t=>tileImg(t)).join('');box.appendChild(w)}
