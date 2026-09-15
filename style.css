@@ -3948,3 +3948,77 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 
 /* Frame image must not be constrained by global image rules. */
 .appLobby .avatar > #avatarFrame{max-width:none!important;max-height:none!important;transform:none!important;}
+
+
+/* ===== FORTUNE NOIR / MAHJONG : client-only 3-player table ===== */
+.fn-mahjong-active{overflow:hidden!important;background:#030303!important}
+.fn-mahjong-active #appLobby,.fn-mahjong-active>header,.fn-mahjong-active>.ticker,.fn-mahjong-active>main,.fn-mahjong-active>footer{display:none!important}
+.fn-mahjong-active #modal{position:fixed!important;inset:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#030303!important;overflow:hidden!important;z-index:2147483000}
+.fn-mahjong-active #modal .tabletop.fn-mahjong-modal{position:absolute!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#030303!important;overflow:hidden!important}
+.fn-mahjong-active #modalContent{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;overflow:hidden!important}
+.mahjong-game-icon{width:58px!important;height:58px!important;display:grid!important;place-items:center!important;overflow:hidden!important}
+.mahjong-game-icon img{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain!important;padding:0!important;transform:none!important;border-radius:12px!important}
+
+.fn-mahjong-root{position:fixed;inset:0;width:100vw;height:100vh;overflow:hidden;color:#f6edda;background:#050504;font-family:"Noto Sans JP",system-ui,sans-serif;z-index:2147483005}
+.fn-mahjong-root:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 44%,rgba(196,158,64,.18),transparent 30%),linear-gradient(180deg,#080805,#020202)}
+.fn-mahjong-root:after{content:"";position:absolute;inset:8px;border:1px solid rgba(214,177,78,.22);pointer-events:none;z-index:80}
+.mj-topbar{position:absolute;top:10px;left:18px;right:18px;height:56px;display:flex;align-items:center;justify-content:space-between;z-index:50}
+.mj-topbar>b,.mj-topbar>div:first-child b{color:#e4c66e;font:900 clamp(18px,2.2vw,30px)/1 Orbitron;letter-spacing:.12em}
+.mj-topbar>div:first-child span{display:block;margin-top:4px;color:#8e805e;font:700 clamp(8px,.8vw,12px)/1 Orbitron;letter-spacing:.08em}
+.mj-top-info{display:flex;align-items:center;gap:8px}.mj-top-info>span{display:inline-flex;align-items:center;min-height:32px;padding:0 10px;border:1px solid rgba(214,176,79,.25);border-radius:7px;background:rgba(15,13,8,.86);color:#d7bf79;font:800 clamp(8px,.8vw,12px) Orbitron;white-space:nowrap}.mj-top-info strong{color:#fff0bc}
+.mj-close{width:36px;height:36px;border:1px solid #6e582b;border-radius:50%;background:#0b0a07;color:#e0c16b;font-size:23px;line-height:1;cursor:pointer}
+.mj-table{position:absolute;left:12px;right:12px;top:72px;bottom:12px;border:1px solid rgba(207,169,75,.25);border-radius:28px;background:radial-gradient(ellipse at center,#29412f 0,#173022 42%,#0b1710 74%,#07100a 100%);box-shadow:inset 0 0 0 8px rgba(3,6,4,.7),inset 0 0 100px #000b,0 15px 55px #000c;overflow:hidden}
+.mj-table:before{content:"";position:absolute;left:8%;right:8%;top:9%;bottom:9%;border:1px solid rgba(214,176,75,.16);border-radius:22px;box-shadow:inset 0 0 55px rgba(0,0,0,.24);pointer-events:none}
+.mj-seat{position:absolute;z-index:10}.mj-seat-south{top:4%;left:20%;right:20%;height:30%}.mj-seat-west{left:3%;top:19%;bottom:21%;width:19%}.mj-seat-self{left:4%;right:4%;bottom:3%;height:34%}
+.mj-player-label{position:absolute;display:flex;align-items:center;gap:9px;white-space:nowrap;text-shadow:0 2px 8px #000;color:#eee}.mj-player-label b{color:#e5c66c;font:900 clamp(9px,.92vw,14px) Orbitron;letter-spacing:.07em}.mj-player-label span{color:#f7ebcd;font:800 clamp(9px,.92vw,14px) Orbitron}.mj-seat-south .mj-player-label{left:50%;top:0;transform:translateX(-50%)}.mj-seat-west .mj-player-label{left:0;top:44%;transform:rotate(-90deg);transform-origin:left top}.mj-seat-self .mj-player-label{left:0;bottom:47%}
+.riichi-mini{font:800 8px Orbitron;color:#090704;background:#d9bd68;padding:4px 7px;border-radius:4px}
+.mj-opponent-hand{position:absolute;display:flex;gap:2px;align-items:center;justify-content:center}.mj-seat-south .mj-opponent-hand{left:50%;top:16%;transform:translateX(-50%)}.mj-seat-west .mj-opponent-hand{left:8%;top:30%;height:54%;flex-direction:column;justify-content:center;transform:none}.mj-seat-west .opponent-tile{transform:rotate(90deg)}
+.mj-tile-img{display:block;width:auto;height:clamp(34px,5.6vh,62px);user-select:none;pointer-events:none}.opponent-tile{height:clamp(28px,4.7vh,52px);filter:drop-shadow(0 2px 2px rgba(0,0,0,.65))}
+.mj-melds{position:absolute;display:flex;gap:3px}.mj-seat-south .mj-melds{left:50%;top:35%;transform:translateX(-50%)}.mj-seat-west .mj-melds{left:35%;top:59%;flex-direction:column;transform:rotate(90deg);transform-origin:center}.self-melds{left:5%;right:5%;bottom:36%;height:15%;align-items:flex-end;justify-content:center}.mj-meld{display:flex;gap:2px;padding:2px}.mj-meld .mj-tile-img{height:clamp(25px,4vh,42px)}
+.mj-river{position:absolute;z-index:9;display:grid;grid-template-columns:repeat(6,max-content);grid-auto-rows:max-content;gap:3px;padding:4px}.mj-river-top{left:26%;right:26%;top:49%;height:42%;justify-content:center;align-content:start}.mj-river-left{left:26%;top:29%;height:38%;width:62%;grid-template-columns:repeat(4,max-content);transform:none}.mj-river-self{left:14%;right:14%;bottom:44%;height:20%;justify-content:center;align-content:end}.mj-discard-tile{position:relative}.mj-discard-tile .mj-tile-img{height:clamp(24px,3.9vh,44px);filter:drop-shadow(0 2px 2px #000a)}.mj-discard-tile.last:after{content:"";position:absolute;inset:-3px;border:2px solid #ebca72;border-radius:4px;box-shadow:0 0 10px rgba(235,202,114,.45)}
+.mj-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(17%,210px);height:min(18%,118px);z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:1px solid rgba(214,176,77,.26);border-radius:12px;background:radial-gradient(circle at center,rgba(27,22,13,.94),rgba(8,10,8,.92) 72%);box-shadow:inset 0 0 24px #000a,0 8px 22px #0008;pointer-events:none}.mj-center-round{color:#f0d58a;font:900 clamp(10px,1vw,15px) Orbitron;letter-spacing:.08em;white-space:nowrap}.mj-center-meta{display:flex;gap:12px;color:#8e856f;font:800 7px Orbitron}.mj-center-meta b{color:#f1dfac}.mj-dora{display:flex;align-items:center;gap:5px;color:#a99a79;font:800 7px Orbitron}.mj-dora .mj-tile-img{height:clamp(28px,4.2vh,40px)}.mj-stick-stack{display:flex;flex-direction:column;gap:2px;align-items:center;min-height:5px}.mj-riichi-stick{width:58px;height:5px;border-radius:8px;background:linear-gradient(90deg,#7e5e20,#f0d47d 50%,#7e5e20);box-shadow:0 0 8px rgba(240,210,125,.28);display:block}
+.mj-hand-wrap{position:absolute;left:0;right:0;bottom:0;height:47%;display:flex;align-items:flex-end;justify-content:center}.mj-hand{display:flex;align-items:flex-end;justify-content:center;gap:2px;max-width:92%;min-height:100%;padding-bottom:4px}.mj-hand-tile{border:0;background:none;padding:0;margin:0;cursor:pointer;position:relative;transition:transform .12s ease,filter .12s ease}.mj-hand-tile:hover{transform:translateY(-7px)}.mj-hand-tile.riichi-choice{filter:drop-shadow(0 0 7px rgba(225,197,104,.75));transform:translateY(-3px)}.mj-drawn-gap{width:clamp(12px,1.2vw,20px);height:1px}.mj-drawn-tile{margin-left:clamp(5px,1vw,12px)}.mj-seat-self .mj-tile-img{height:clamp(43px,10.7vh,96px)}
+.mj-actions{position:absolute;right:0;bottom:calc(100% - 6px);display:flex;justify-content:flex-end;gap:7px;z-index:25}.mj-action{min-width:88px;min-height:44px;padding:0 12px;border:1px solid #71592a;border-radius:7px;background:linear-gradient(180deg,#1b170e,#080807);color:#d7bf79;font:900 10px Orbitron;letter-spacing:.08em;box-shadow:0 7px 25px #000b;cursor:pointer}.mj-action.gold{border-color:#ba913d;background:linear-gradient(180deg,#ebd281,#ad8027);color:#080705}.mj-action:active{transform:translateY(2px)}
+.mj-status{position:absolute;left:50%;bottom:2%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;z-index:20;color:#d6c69e;font:800 clamp(8px,.75vw,11px) Orbitron;letter-spacing:.07em}.mj-status small{color:#e6c96e}
+.mj-result[hidden]{display:none!important}.mj-result{position:absolute;inset:0;z-index:90;display:grid;place-items:center;background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}.mj-result-card{min-width:min(440px,72vw);padding:30px 34px;border:1px solid #a37d2d;border-radius:14px;background:linear-gradient(145deg,#1a160e,#070806);box-shadow:0 30px 100px #000;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}.mj-result-card small{color:#796d55;font:800 8px Orbitron;letter-spacing:.18em}.mj-result-card h2{margin:4px 0;color:#ebcb72;font:900 34px Orbitron}.mj-result-card p{margin:0;color:#c0b18f;font:800 11px Orbitron}.mj-result-card strong{margin:8px 0 12px;color:#fff0c5;font:900 25px Orbitron}.mj-result-card button{min-width:190px;min-height:47px;border:1px solid #b58b38;border-radius:7px;background:linear-gradient(#e5ca78,#a47728);color:#080704;font:900 10px Orbitron;cursor:pointer}
+.mj-landscape-warning{display:none}.draw-anim .mj-drawn-tile{animation:mjDraw .32s cubic-bezier(.2,.8,.2,1)}.discard-anim .mj-river-self .mj-discard-tile:last-child,.discard-anim .mj-river-top .mj-discard-tile.last{animation:mjDiscard .28s ease-out}.nuki-anim .mj-hand{animation:mjNuki .3s ease-out}.win-anim .mj-center{animation:mjWin .52s ease-out}
+@keyframes mjDraw{from{transform:translateY(-34px) scale(.8);opacity:0}to{transform:none;opacity:1}}@keyframes mjDiscard{from{transform:translateY(-14px) scale(1.07);opacity:.3}to{transform:none;opacity:1}}@keyframes mjNuki{0%{transform:translateX(0)}50%{transform:translateX(10px)}100%{transform:translateX(0)}}@keyframes mjWin{0%{box-shadow:inset 0 0 40px #000a,0 0 0 rgba(235,202,114,0)}50%{box-shadow:inset 0 0 40px #000a,0 0 55px rgba(235,202,114,.44)}100%{box-shadow:inset 0 0 40px #000a,0 0 0 rgba(235,202,114,0)}}
+@media (orientation:portrait){.fn-mahjong-root .mj-landscape-warning{position:absolute;inset:0;z-index:200;display:grid;place-items:center;background:#050504}.fn-mahjong-root .mj-landscape-warning>div{text-align:center}.fn-mahjong-root .mj-landscape-warning b{display:block;color:#e2c46d;font:900 30px Orbitron;letter-spacing:.16em}.fn-mahjong-root .mj-landscape-warning span{display:block;margin-top:12px;color:#aba087;font:800 11px Orbitron;letter-spacing:.08em}.fn-mahjong-root .mj-table,.fn-mahjong-root .mj-topbar>*:not(:first-child){visibility:hidden}}
+@media (max-height:620px) and (orientation:landscape){.mj-topbar{top:5px;height:44px}.mj-topbar>div:first-child span{display:none}.mj-table{top:54px;bottom:7px;left:7px;right:7px;border-radius:20px}.mj-seat-self .mj-tile-img{height:clamp(38px,11vh,72px)}.mj-seat-south .mj-opponent-hand{top:13%}.mj-seat-west .mj-opponent-hand{top:26%}.mj-river-self{bottom:41%}.mj-river-top{top:46%;height:40%}.mj-center{height:18%;min-width:170px}.mj-action{min-width:76px;min-height:37px;font-size:9px;padding:0 8px}.mj-status{bottom:1%}}
+
+
+/* ===== MAHJONG v2 layout isolation / no-overlap ===== */
+.fn-mahjong-root{overflow:hidden!important}
+.fn-mahjong-root .mj-table{top:64px!important;bottom:10px!important;left:10px!important;right:10px!important;border-radius:24px!important;overflow:hidden!important}
+.fn-mahjong-root .mj-center{width:min(16vw,170px)!important;height:min(17vh,94px)!important;min-width:145px!important;min-height:78px!important;z-index:3!important;gap:3px!important}
+.fn-mahjong-root .mj-center-round{font-size:clamp(9px,1vw,13px)!important}
+.fn-mahjong-root .mj-center-meta{font-size:6px!important}
+.fn-mahjong-root .mj-dora .mj-tile-img{height:34px!important}
+.fn-mahjong-root .mj-stick-stack{position:absolute!important;right:-52px!important;top:50%!important;transform:translateY(-50%)!important}
+.fn-mahjong-root .mj-seat-south{top:2%!important;left:27%!important;right:19%!important;height:27%!important}
+.fn-mahjong-root .mj-seat-south .mj-opponent-hand{top:17%!important}
+.fn-mahjong-root .mj-seat-south .mj-melds{top:58%!important}
+.fn-mahjong-root .mj-seat-west{left:2%!important;top:18%!important;bottom:23%!important;width:18%!important}
+.fn-mahjong-root .mj-seat-west .mj-opponent-hand{left:7%!important;top:25%!important;height:38%!important;gap:2px!important}
+.fn-mahjong-root .mj-seat-west .mj-river{left:2%!important;top:45%!important;width:96%!important;height:42%!important;grid-template-columns:repeat(3,max-content)!important;justify-content:start!important;align-content:start!important}
+.fn-mahjong-root .mj-seat-self{left:4%!important;right:4%!important;bottom:2%!important;height:37%!important}
+.fn-mahjong-root .mj-seat-self .mj-player-label{left:0!important;bottom:44%!important}
+.fn-mahjong-root .mj-river-self{left:11%!important;right:31%!important;bottom:43%!important;height:22%!important;justify-content:center!important;align-content:end!important}
+.fn-mahjong-root .mj-hand-wrap{left:0!important;right:31%!important;bottom:0!important;height:42%!important;justify-content:center!important}
+.fn-mahjong-root .mj-hand{max-width:100%!important;gap:2px!important;padding-bottom:2px!important}
+.fn-mahjong-root .mj-seat-self .mj-tile-img{height:clamp(39px,9.6vh,76px)!important}
+.fn-mahjong-root .mj-actions{right:1%!important;left:auto!important;bottom:5%!important;width:28%!important;max-width:28%!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important;align-items:stretch!important;justify-content:stretch!important;z-index:35!important}
+.fn-mahjong-root .mj-action{min-width:0!important;width:100%!important;min-height:39px!important;height:39px!important;padding:0 4px!important;font-size:8px!important;letter-spacing:.02em!important;white-space:nowrap!important;box-shadow:0 4px 14px #000b!important}
+.fn-mahjong-root .mj-status{left:50%!important;bottom:.7%!important;z-index:36!important;white-space:nowrap!important}
+.fn-mahjong-root .mj-result{z-index:100!important}
+
+@media (max-height:620px) and (orientation:landscape){
+  .fn-mahjong-root .mj-table{top:53px!important;bottom:6px!important;left:6px!important;right:6px!important}
+  .fn-mahjong-root .mj-center{min-width:132px!important;width:15vw!important;height:78px!important}
+  .fn-mahjong-root .mj-seat-self{height:39%!important}
+  .fn-mahjong-root .mj-river-self{right:32%!important;bottom:44%!important;height:20%!important}
+  .fn-mahjong-root .mj-hand-wrap{right:32%!important;height:44%!important}
+  .fn-mahjong-root .mj-actions{right:1%!important;bottom:5%!important;width:30%!important;max-width:30%!important;gap:4px!important}
+  .fn-mahjong-root .mj-action{min-height:35px!important;height:35px!important;font-size:7.5px!important}
+  .fn-mahjong-root .mj-seat-self .mj-tile-img{height:clamp(37px,10vh,68px)!important}
+}

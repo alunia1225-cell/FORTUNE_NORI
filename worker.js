@@ -64,7 +64,7 @@ export default {async fetch(req,env){
   try{
     await ensureSchema(env);
     await env.DB.prepare('DELETE FROM rooms WHERE expires_at<?').bind(Date.now()).run();
-    if(path==='/health')return json({ok:true,service:'FORTUNE_NOIR_ADMIN_API',version:'1.25.0'},200,headers);
+    if(path==='/health')return json({ok:true,service:'FORTUNE_NOIR_ADMIN_API',version:'2.0.0'},200,headers);
 
     if(path==='/auth/login'&&req.method==='POST'){
       const b=await body(req);const username=String(b.username||'');const supplied=b.password_b64?decodePasswordB64(b.password_b64):String(b.password||'');

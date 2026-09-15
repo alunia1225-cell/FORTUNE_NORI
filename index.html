@@ -50,7 +50,7 @@
   <pre id="debugBody"></pre>
   <div class="dbg-footer"><span>WEB RUNTIME</span><span id="debugClock">--:--:--</span></div>
 </div>
-<script>window.FN_ADMIN_API_URL="https://fortune-noir-admin-api.alunia1225.workers.dev";</script><script src="fn-auth.js?v=1.25.0"></script><script src="app.js?v=1.25.0"></script>
+<script>window.FN_ADMIN_API_URL="https://fortune-noir-admin-api.alunia1225.workers.dev";</script><script src="fn-auth.js?v=1.25.0"></script><script src="mahjong.js?v=1.25.0"></script><script src="app.js?v=1.25.0"></script>
 <script>
 (function(){
   function tick(){var e=document.getElementById("debugClock");if(e)e.textContent=new Date().toLocaleTimeString();requestAnimationFrame(tick)}
@@ -82,6 +82,7 @@
    <button data-game="chohan" data-cat="classic"><i class="gameEmoji"><img src="chohan.png" alt=""></i><b>CHO-HAN</b><small>ODD / EVEN • DICE TABLE</small><em>PLAY →</em></button>
    <button data-game="coin" data-cat="classic"><i class="gameEmoji"><img src="coin.png" alt=""></i><b>COIN FLIP</b><small>HEADS • TAILS</small><em>PLAY →</em></button>
    <button data-game="dice" data-cat="table"><i class="gameEmoji"><img src="highdice.png" alt=""></i><b>HIGH DICE</b><small>HIGH • LOW • EXACT</small><em>PLAY →</em></button>
+   <button data-game="mahjong" data-cat="table"><i class="gameEmoji mahjong-game-icon"><img src="mahjong.png" alt="MAHJONG"></i><b>MAHJONG</b><small>3 PLAYER • SANMA</small><em>PLAY →</em></button>
    <button data-game="lottery" data-cat="reward"><i class="gameEmoji"><img src="lottery.png" alt=""></i><b>LOTTERY</b><small>JACKPOT</small><em>PLAY →</em></button><button data-game="shop" data-cat="shop"><i class="gameEmoji shop-game-icon"><img src="shop.png" alt="SHOP"></i><b>SHOP</b><small>REWARDS • EXCHANGE</small><em>OPEN →</em></button>
   </section>
   <section class="lobbyFriends"><button id="friendsCardLobby" type="button"><small>SOCIAL</small><b>FRIENDS</b><span>SEARCH • REQUESTS • ONLINE →</span></button></section>
