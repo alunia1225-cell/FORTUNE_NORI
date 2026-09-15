@@ -61,8 +61,7 @@
   function standardWin(tiles,openMelds=0){
     const all=sortHand(tiles.map(baseTile));
     if(all.length!==14-openMelds*3)return false;
-    const c=counts(all);
-    const keys=Object.keys(c);
+    const c=counts(all),keys=Object.keys(c);
     for(const pair of keys){
       if(c[pair]<2)continue;
       c[pair]-=2;
@@ -81,35 +80,122 @@
     }
     return false;
   }
-  function chiitoi(tiles){const c=counts(tiles);return tiles.length===14&&Object.values(c).filter(v=>v===2).length===7&&Object.values(c).every(v=>v===2)}
+  function chiitoi(tiles){const c=counts(tiles);return tiles.length===14&&Object.keys(c).length===7&&Object.values(c).every(v=>v===2)}
   function kokushi(tiles){
     if(tiles.length!==14)return false;
     const need=['m1','m9','p1','p9','s1','s9','z1','z2','z3','z4','z5','z6','z7'],c=counts(tiles);
     return need.every(t=>(c[t]||0)>=1)&&need.some(t=>(c[t]||0)>=2);
   }
   function isWinning(tiles,openMelds=0){return standardWin(tiles,openMelds)||chiitoi(tiles)||kokushi(tiles)}
-  function isTanyao(tiles){return tiles.every(t=>!isHonor(t)&&num(t)>=2&&num(t)<=8)}
-  function hasYakuhai(tiles){const c=counts(tiles);return ['z1','z2','z3','z4','z5','z6','z7'].some(t=>(c[t]||0)>=3)}
-  function isToitoi(tiles){const c=counts(tiles);let trip=0;for(const n of Object.values(c))if(n>=3)trip++;return trip>=4}
+  function allTiles(p,winTiles){
+    const a=[];
+    (p.melds||[]).forEach(m=>m.tiles.forEach(t=>a.push(baseTile(t))));
+    winTiles.forEach(t=>a.push(baseTile(t)));
+    return a;
+  }
+  function groupsFor(tiles, melds){
+    const c=counts(tiles.map(baseTile)),out=[];
+    for(const m of (melds||[])){
+      const mt=m.tiles.map(baseTile); out.push({type:m.type==='ankan'?'kan':m.type==='pon'?'pon':'kan',tiles:mt,open:m.type!=='ankan'});
+    }
+    function rec(x,pair,groups){
+      const keys=Object.keys(x).filter(k=>x[k]>0).sort((a,b)=>(TILE_ORDER.get(a)??99)-(TILE_ORDER.get(b)??99));
+      if(!keys.length){if(pair)return groups.concat([{type:'pair',tiles:[pair,pair]}]);return groups}
+      const k=keys[0];
+      if(!pair&&x[k]>=2){x[k]-=2;const r=rec(x,k,groups);x[k]+=2;if(r)return r}
+      if(x[k]>=3){x[k]-=3;const r=rec(x,pair,groups.concat([{type:'triplet',tiles:[k,k,k]}]));x[k]+=3;if(r)return r}
+      if(!isHonor(k)){
+        const n=num(k),s=suit(k),a=s+n,b=s+(n+1),d=s+(n+2);
+        if(n<=7&&x[a]>0&&x[b]>0&&x[d]>0){x[a]--;x[b]--;x[d]--;const r=rec(x,pair,groups.concat([{type:'sequence',tiles:[a,b,d]}]));x[a]++;x[b]++;x[d]++;if(r)return r}
+      }
+      return null;
+    }
+    const r=rec(c,null,[]); return r||[];
+  }
+  function terminalsHonors(tiles){return tiles.some(t=>isHonor(t)||num(t)===1||num(t)===9)}
+  function hasOnlySuit(tiles,s){return tiles.every(t=>isHonor(t)||suit(t)===s)}
+  function hasNoHonors(tiles){return tiles.every(t=>!isHonor(t))}
+  function isPinfu(tiles, melds){
+    if((melds||[]).length)return false;
+    const g=groupsFor(tiles,[]), seq=g.filter(x=>x.type==='sequence'), pair=g.find(x=>x.type==='pair');
+    if(seq.length!==4||!pair)return false;
+    const b=pair.tiles[0]; if(isHonor(b))return false;
+    return true;
+  }
+  function sequenceCounts(tiles){
+    const c=counts(tiles),out={};
+    for(const s of ['m','p','s'])for(let n=1;n<=7;n++)if(c[`${s}${n}`]&&c[`${s}${n+1}`]&&c[`${s}${n+2}`])out[`${s}${n}`]=(out[`${s}${n}`]||0)+1;
+    return out;
+  }
   function yaku(tiles,p,winType){
-    const n=[];let han=0;
+    const hand=tiles.map(baseTile), melds=p.melds||[], full=allTiles(p,hand), n=[], add=(name,han)=>{n.push(name);return han};
+    let han=0;
+    const closed=melds.length===0;
+    const g=groupsFor(hand,melds), sets=g.filter(x=>x.type!=='pair'), pair=g.find(x=>x.type==='pair');
+    const c=counts(full), suits=new Set(full.map(t=>isHonor(t)?'z':suit(t))), non=[...suits].filter(x=>x!=='z');
+
     if(p.riichi){n.push('リーチ');han++}
-    if(winType==='tsumo'){n.push('メンゼンツモ');han++}
-    if(isTanyao(tiles)){n.push('タンヤオ');han++}
-    if(hasYakuhai(tiles)){n.push('役牌');han++}
-    if(isToitoi(tiles)){n.push('トイトイ');han+=2}
-    if(chiitoi(tiles)){n.push('チートイツ');han+=2}
-    if(kokushi(tiles)){n.push('コクシムソウ');han=13}
-    const suits=new Set(tiles.map(t=>isHonor(t)?'z':suit(t))),non=[...suits].filter(x=>x!=='z');
-    if(non.length===1&&suits.has('z')){n.push('ホンイツ');han+=3}
-    if(non.length===1&&!suits.has('z')){n.push('チンイツ');han+=6}
-    const d=tiles.reduce((v,t)=>v+(['p5','s5'].includes(baseTile(t))?1:0),0)+p.nuki;
-    if(d){n.push(`ドラ${d}`);han+=d}
+    if(p.ippatsu&&p.riichi&&winType){n.push('一発');han++}
+    if(winType==='tsumo'&&closed){n.push('門前清自摸和');han++}
+
+    if(kokushi(hand)){n.push('国士無双');return {names:n,han:13}}
+    if(chiitoi(hand)){n.push('七対子');han+=2}
+
+    if(isTanyao(full)){n.push('断么九');han++}
+    if(hasYakuhai(full)){n.push('役牌');han++}
+    if(isPinfu(hand,melds)){n.push('平和');han++}
+
+    if(sets.length){
+      const trip=sets.filter(x=>x.type==='triplet'||x.type==='pon').length;
+      const kans=sets.filter(x=>x.type==='kan').length;
+      if(trip===4){n.push('対々和');han+=2}
+      if(trip>=3&&sets.filter(x=>x.type==='triplet').length>=3){n.push('三暗刻');han+=2}
+      if(kans===3){n.push('三槓子');han+=2}
+      const seqs=sets.filter(x=>x.type==='sequence').map(x=>x.tiles.join(','));
+      if(seqs.length>=2&&new Set(seqs).size<seqs.length&&closed){n.push('一盃口');han++}
+      if(seqs.length>=4&&seqs.filter(x=>seqs.filter(y=>y===x).length>=2).length>=2&&closed){n.push('二盃口');han+=3}
+      const byNum={}; for(const q of sets.filter(x=>x.type==='sequence')){const z=num(q.tiles[0]);byNum[z]=(byNum[z]||new Set());byNum[z].add(suit(q.tiles[0]))}
+      if(Object.values(byNum).some(v=>v.size===3)){n.push('三色同順');han+=closed?2:1}
+      const runs=sets.filter(x=>x.type==='sequence');
+      if(['m','p','s'].some(s=>runs.some(x=>x.tiles[0]===s+'1')&&runs.some(x=>x.tiles[0]===s+'4')&&runs.some(x=>x.tiles[0]===s+'7'))){n.push('一気通貫');han+=closed?2:1}
+    }
+
+    const hasYao=terminalsHonors(full);
+    const allSetsTerm=sets.length>0&&sets.every(x=>x.type==='triplet'||x.type==='pon'||x.type==='kan'? (isHonor(x.tiles[0])||num(x.tiles[0])===1||num(x.tiles[0])===9) : terminalsHonors(x.tiles));
+    const hasSequence=sets.some(x=>x.type==='sequence');
+    if(hasYao&&allSetsTerm&&!hasSequence){n.push('混老頭');han+=2}
+    if(hasYao&&!hasNoHonors(full)&&hasSequence){n.push('混全帯么九');han+=closed?2:1}
+    if(hasYao&&hasNoHonors(full)&&hasSequence){n.push('純全帯么九');han+=closed?3:2}
+    if(non.length===1&&suits.has('z')){n.push('混一色');han+=closed?3:2}
+    if(non.length===1&&!suits.has('z')){n.push('清一色');han+=closed?6:5}
+
+    const dragons=['z5','z6','z7'].filter(t=>(c[t]||0)>=3).length;
+    const winds=['z1','z2','z3','z4'].filter(t=>(c[t]||0)>=3).length;
+    if(dragons===3){n.push('大三元');han=13}
+    else if(dragons===2&&pair&&['z5','z6','z7'].includes(pair.tiles[0])){n.push('小三元');han+=2}
+    if(winds===4){n.push('大四喜');han=13}
+    else if(winds===3&&pair&&['z1','z2','z3','z4'].includes(pair.tiles[0])){n.push('小四喜');han=13}
+    if(full.every(isHonor)){n.push('字一色');han=13}
+    if(full.every(t=>!isHonor(t)&&[1,9].includes(num(t)))){n.push('清老頭');han=13}
+    if((melds.length+sets.filter(x=>x.type==='kan').length)>=4&&sets.filter(x=>x.type==='kan').length===4){n.push('四槓子');han=13}
+    if(winType==='tsumo'&&state.lastDiscard===null&&state.message==='嶺上ツモ'){n.push('嶺上開花');han++}
+    if(winType==='ron'&&state.message==='槍槓'){n.push('槍槓');han++}
+    if(winType==='tsumo'&&state.wall.length===0){n.push('海底撈月');han++}
+    if(winType==='ron'&&state.wall.length===0){n.push('河底撈魚');han++}
+
+    const quads=sets.filter(x=>x.type==='kan').length;
+    const dragonTrip=dragons;
+    if(closed&&full.length===14&&!n.includes('七対子')&&!n.includes('国士無双')){
+      const suitCounts={m:0,p:0,s:0,z:0};full.forEach(t=>suitCounts[suit(t)]++);
+      if(suitCounts.m===14||suitCounts.p===14||suitCounts.s===14){const cc=counts(full);if((cc.m1||0)>=3&&(cc.m9||0)>=3){}}
+    }
+    const dora=doraCount(full);
+    if(dora){n.push(`ドラ${dora}`);han+=dora}
     return {names:n,han};
   }
   function canRon(tile,from){
     if(from===0)return false;
-    const p=state.players[0]; const hand=p.hand.concat(tile);
+    const p=state.players[0],hand=p.hand.concat(tile);
     return isWinning(hand,p.melds.length)&&yaku(hand,p,'ron').han>0;
   }
   function canTsumo(){
@@ -117,13 +203,17 @@
     return !!state.drawn&&isWinning(h,p.melds.length)&&yaku(h,p,'tsumo').han>0;
   }
   function waitingTiles(hand,p){
-    const waits=[];for(const t of TILE_TYPES){const h=hand.concat(t);if(isWinning(h,p.melds.length)&&yaku(h,p,'ron').han>0)waits.push(t)}return waits;
+    const waits=[];
+    for(const t of TILE_TYPES){
+      const h=hand.concat(t);
+      if(isWinning(h,p.melds.length))waits.push(t);
+    }
+    return waits;
   }
   function canRiichi(){
     const p=state.players[0];if(p.riichi||p.melds.length||p.nuki)return false;
     const h=p.hand.concat(state.drawn||[]);if(h.length!==14)return false;
-    for(let i=0;i<h.length;i++){const x=h.slice();x.splice(i,1);if(waitingTiles(x,p).length)return true}
-    return false;
+    return h.some((_,i)=>{const x=h.slice();x.splice(i,1);return waitingTiles(x,p).length>0});
   }
   function canAnkan(){
     const p=state.players[0],c=counts(p.hand.concat(state.drawn||[]));return Object.values(c).some(v=>v===4);
@@ -235,10 +325,78 @@
   function cpuPon(i,tile){const p=state.players[i],b=baseTile(tile);let need=2,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}if(need)return;p.hand=sortHand(keep);p.melds.push({type:'pon',tiles:[tile,tile,tile]});state.turn=i;state.drawn=null;state.message=`${p.name} ポン`;sfx('pon');render();autoTimer=setTimeout(cpuTurn,520)}
   function cpuDaiminkan(i,tile){const p=state.players[i],b=baseTile(tile);let need=3,keep=[];for(const x of p.hand){if(baseTile(x)===b&&need){need--;continue}keep.push(x)}if(need)return;p.hand=sortHand(keep);p.melds.push({type:'daiminkan',tiles:[tile,tile,tile,tile]});state.turn=i;state.drawn=null;state.message=`${p.name} カン`;sfx('kan');render();drawKang()}
   function drawKang(){if(state.dead.length===0){endDraw();return}state.drawn=state.dead.shift();state.dora=[state.dead[4]||state.dora[0]];state.message='嶺上ツモ';render();if(state.turn===0){if(canTsumo())return; if(state.players[0].riichi)autoTimer=setTimeout(discardDrawn,900)}else autoTimer=setTimeout(cpuTurn,520)}
-  function winTsumo(){if(!canTsumo())return;const p=state.players[0],h=p.hand.concat(state.drawn||[]),y=yaku(h,p,'tsumo');finishWin(0,'ツモ',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)))}
-  function winRon(){if(!state.pending?.ron||!canRon(state.pending.tile,state.pending.from))return;const p=state.players[0],h=p.hand.concat(state.pending.tile),y=yaku(h,p,'ron');finishWin(0,'ロン',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)),state.pending.from)}
-  function winCpuRon(i,tile,from){const p=state.players[i],h=p.hand.concat(tile),y=yaku(h,p,'ron');finishWin(i,'ロン',y,Math.min(32000,Math.max(1000,y.han>=13?32000:y.han*2000)),from)}
-  function finishWin(i,type,y,score,from=null){clearAuto();state.phase='result';state.result={winner:i,type,yaku:y.names,han:y.han,score,from};state.message=`${state.players[i].name} ${type}`;if(type==='ツモ')sfx('tsumo');else sfx('ron');render();playAnim('win')}
+  // Majiang-style Japanese scoring core, adapted to this client-only SANMA table.
+  // Fu is calculated from the actual winning shape; payments use standard 100-point rounding.
+  function nextDora(ind){
+    const t=baseTile(ind); if(!t)return null;
+    if(t[0]==='z') return 'z'+({1:2,2:3,3:4,4:1,5:6,6:7,7:5}[num(t)]||5);
+    const n=num(t); return t[0]+(n===9?1:n+1);
+  }
+  function doraCount(full){
+    let n=0; for(const ind of state.dora||[]){const d=nextDora(ind);if(d)n+=full.filter(t=>baseTile(t)===d).length}
+    n+=(full.filter(t=>t==='p0'||t==='s0').length);
+    return n+(state.players[0]?.nuki||0);
+  }
+  function isClosedHand(p){return !(p.melds||[]).some(m=>m.type!=='ankan')}
+  function winningGroups(p,hand){return groupsFor(hand,p.melds||[])}
+  function calcFu(p,hand,winType){
+    if(chiitoi(hand))return 25;
+    const g=winningGroups(p,hand), pair=g.find(x=>x.type==='pair'), closed=isClosedHand(p);
+    if(isPinfu(hand,p.melds||[])&&winType==='tsumo')return 20;
+    let fu=20;
+    if(winType==='tsumo')fu+=2;
+    if(winType==='ron'&&closed)fu+=10;
+    if(pair){const b=pair.tiles[0];if(isHonor(b))fu+=([`z1`,`z2`,`z3`,`z4`].includes(b)?2:2)}
+    const seatWind='z'+({東家:1,南家:2,西家:3}[p.wind]||1),roundWind='z'+(state.round==='東1'?1:state.round==='南1'?2:state.round==='西1'?3:4);
+    if(pair&&(pair.tiles[0]===seatWind||pair.tiles[0]===roundWind))fu+=2;
+    for(const x of g){if(x.type==='triplet'||x.type==='pon'||x.type==='kan'){
+      const b=x.tiles[0],term=isHonor(b)||num(b)===1||num(b)===9, open=x.open;
+      if(x.type==='kan')fu+=open?(term?16:8):(term?32:16);
+      else fu+=open?(term?4:2):(term?8:4);
+    }}
+    if(fu===20&&winType==='ron'&&!closed)fu=30;
+    return Math.ceil(fu/10)*10;
+  }
+  function limitBase(han,fu){
+    if(han>=13)return 8000;
+    if(han>=11)return 6000;
+    if(han>=8)return 4000;
+    if(han>=6)return 3000;
+    if(han===5||han>=4&&fu>=40||han>=3&&fu>=70)return 2000;
+    return Math.min(2000,fu*Math.pow(2,han+2));
+  }
+  function ceil100(x){return Math.ceil(x/100)*100}
+  function calcScore(p,y,winType,from){
+    const hand=p.hand.concat(winType==='tsumo'?(state.drawn||[]):(state.pending?.tile||''));
+    const fu=calcFu(p,hand,winType),base=limitBase(y.han,fu);
+    let points;
+    if(winType==='ron') points=ceil100(base*(p.wind==='東家'?6:4));
+    else if(p.wind==='東家') points=ceil100(base*2)*2; // two opponents each pay the dealer amount
+    else points=ceil100(base*2)+ceil100(base); // dealer + non-dealer
+    points=Math.max(100,points);
+    return {fu,base,points};
+  }
+  function winTsumo(){if(!canTsumo())return;const p=state.players[0],h=p.hand.concat(state.drawn||[]),y=yaku(h,p,'tsumo'),sc=calcScore(p,y,'tsumo');finishWin(0,'ツモ',y,sc.points,null,sc)}
+  function winRon(){if(!state.pending?.ron||!canRon(state.pending.tile,state.pending.from))return;const p=state.players[0],h=p.hand.concat(state.pending.tile),y=yaku(h,p,'ron'),sc=calcScore(p,y,'ron',state.pending.from);finishWin(0,'ロン',y,sc.points,state.pending.from,sc)}
+  function winCpuRon(i,tile,from){const p=state.players[i],h=p.hand.concat(tile),y=yaku(h,p,'ron'),sc=calcScore(p,y,'ron',from);finishWin(i,'ロン',y,sc.points,from,sc)}
+  function finishWin(i,type,y,score,from=null,sc=null){
+    clearAuto();
+    // Settle points immediately. This keeps the table state authoritative on the client
+    // while preserving the three-player SANMA payment pattern.
+    const honba=state.honba||0, kyotaku=state.kyotaku||0, w=state.players[i];
+    if(type==='ロン'&&from!=null){
+      const pay=score+honba*300; state.players[from].score-=pay; w.score+=pay+kyotaku*1000;
+    } else if(type==='ツモ'){
+      if(w.wind==='東家'){
+        for(let j=0;j<3;j++)if(j!==i){const pay=score+honba*100;state.players[j].score-=pay;w.score+=pay}
+      } else {
+        for(let j=0;j<3;j++)if(j!==i){const basePay=state.players[j].wind==='東家'?Math.ceil((sc?.base||score/2)*2/100)*100:Math.ceil((sc?.base||score/2)/100)*100;const pay=basePay+honba*100;state.players[j].score-=pay;w.score+=pay}
+      }
+      w.score+=kyotaku*1000;
+    }
+    state.kyotaku=0;
+    state.phase='result';state.result={winner:i,type,yaku:y.names,han:y.han,fu:sc?.fu||0,score,from};state.message=`${state.players[i].name} ${type}`;if(type==='ツモ')sfx('tsumo');else sfx('ron');render();playAnim('win')
+  }
   function endDraw(){clearAuto();state.phase='result';state.result={type:'流局',yaku:[],han:0,score:0};state.message='流局';render()}
 
   function render(){
@@ -289,7 +447,7 @@
     if(p.hand.includes('z4')||state.drawn==='z4')add('北抜き',nuki,'dark');
     if(canAnkan())add('カン',ankan,'dark');
   }
-  function renderResult(el){const r=state.result||{},box=el.querySelector('#mjResult');if(!box)return;box.hidden=false;el.querySelector('#mjResultTitle').textContent=r.type||'';el.querySelector('#mjResultSub').textContent=r.yaku?.join(' ・ ')||'牌局終了';el.querySelector('#mjResultScore').textContent=r.score?`${r.score.toLocaleString()}点`:'-'}
+  function renderResult(el){const r=state.result||{},box=el.querySelector('#mjResult');if(!box)return;box.hidden=false;el.querySelector('#mjResultTitle').textContent=r.type||'';el.querySelector('#mjResultSub').textContent=(r.yaku?.join(' ・ ')||'牌局終了')+(r.fu?` / ${r.han}翻 ${r.fu}符`:r.han?` / ${r.han}翻`:'');el.querySelector('#mjResultScore').textContent=r.score?`${r.score.toLocaleString()}点`:'-'}
   function playAnim(type,done){const r=document.getElementById('fnMahjongRoot');if(!r){done&&done();return}r.classList.remove('draw-anim','discard-anim','nuki-anim','win-anim');void r.offsetWidth;r.classList.add(type+'-anim');setTimeout(()=>{r.classList.remove(type+'-anim');done&&done()},280)}
   function nextHand(){setupDeal();render()}
 
