@@ -1,4 +1,4 @@
-/* FORTUNE NOIR unified authentication gate v8.0.0 */
+/* FORTUNE NOIR unified authentication gate v1.25.0 */
 (function(){
   'use strict';
   const API='https://fortune-noir-admin-api.alunia1225.workers.dev';
