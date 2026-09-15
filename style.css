@@ -4022,3 +4022,141 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
   .fn-mahjong-root .mj-action{min-height:35px!important;height:35px!important;font-size:7.5px!important}
   .fn-mahjong-root .mj-seat-self .mj-tile-img{height:clamp(37px,10vh,68px)!important}
 }
+
+/* ===== Mahjong UI restore: Majiang-style / sanma ===== */
+.fn-mahjong-root .mj-table{
+  left:0!important;right:0!important;top:54px!important;bottom:0!important;
+  border:0!important;border-radius:0!important;
+  background:#154!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+.fn-mahjong-root .mj-table:before{display:none!important}
+.fn-mahjong-root .mj-seat{z-index:4!important}
+.fn-mahjong-root .mj-seat-south{top:2%!important;left:24%!important;right:24%!important;height:28%!important}
+.fn-mahjong-root .mj-seat-west{left:2%!important;top:17%!important;bottom:27%!important;width:22%!important}
+.fn-mahjong-root .mj-seat-self{left:2%!important;right:2%!important;bottom:1%!important;height:39%!important}
+
+.fn-mahjong-root .mj-player-label{
+  color:#fff!important;text-shadow:2px 2px 4px #000!important;
+  font-family:system-ui,sans-serif!important;gap:7px!important;
+}
+.fn-mahjong-root .mj-player-label b,
+.fn-mahjong-root .mj-player-label span{
+  color:#fff!important;font-family:system-ui,sans-serif!important;
+  font-size:12px!important;letter-spacing:0!important;
+}
+.fn-mahjong-root .riichi-mini{
+  color:#fff!important;background:#111!important;border-radius:4px!important;
+  padding:2px 5px!important;font:700 9px system-ui,sans-serif!important;
+}
+
+.fn-mahjong-root .mj-opponent-hand{gap:1px!important}
+.fn-mahjong-root .mj-seat-south .mj-opponent-hand{
+  top:22%!important;left:50%!important;transform:translateX(-50%)!important;
+}
+.fn-mahjong-root .mj-seat-west .mj-opponent-hand{
+  left:5%!important;top:23%!important;height:42%!important;
+}
+.fn-mahjong-root .mj-seat-west .opponent-tile{transform:rotate(90deg)!important}
+
+.fn-mahjong-root .mj-melds{gap:2px!important}
+.fn-mahjong-root .mj-seat-south .mj-melds{top:58%!important}
+.fn-mahjong-root .mj-seat-west .mj-melds{top:52%!important;left:35%!important}
+.fn-mahjong-root .mj-meld .mj-tile-img{height:34px!important}
+
+.fn-mahjong-root .mj-river{
+  gap:2px!important;padding:2px!important;
+  z-index:5!important;
+}
+.fn-mahjong-root .mj-river-top{
+  left:25%!important;right:25%!important;top:42%!important;height:28%!important;
+  grid-template-columns:repeat(6,max-content)!important;
+  justify-content:center!important;align-content:start!important;
+}
+.fn-mahjong-root .mj-river-left{
+  left:20%!important;top:28%!important;width:64%!important;height:42%!important;
+  grid-template-columns:repeat(4,max-content)!important;
+}
+.fn-mahjong-root .mj-river-self{
+  left:12%!important;right:12%!important;bottom:40%!important;height:22%!important;
+  grid-template-columns:repeat(6,max-content)!important;
+  justify-content:center!important;align-content:end!important;
+}
+.fn-mahjong-root .mj-discard-tile .mj-tile-img{
+  height:clamp(23px,3.8vh,42px)!important;
+  filter:none!important;
+}
+.fn-mahjong-root .mj-discard-tile.last:after{
+  border:2px solid #fff!important;box-shadow:none!important;
+}
+
+.fn-mahjong-root .mj-center{
+  width:190px!important;height:105px!important;min-width:0!important;min-height:0!important;
+  border:0!important;border-radius:4px!important;
+  background:rgba(0,0,0,.72)!important;
+  box-shadow:none!important;z-index:3!important;
+}
+.fn-mahjong-root .mj-center-round{
+  color:#fff!important;font:700 14px system-ui,sans-serif!important;letter-spacing:0!important;
+}
+.fn-mahjong-root .mj-center-meta,
+.fn-mahjong-root .mj-dora{color:#fff!important;font-family:system-ui,sans-serif!important}
+.fn-mahjong-root .mj-center-meta b{color:#fff!important}
+.fn-mahjong-root .mj-dora .mj-tile-img{height:34px!important}
+.fn-mahjong-root .mj-stick-stack{right:-42px!important}
+
+.fn-mahjong-root .mj-hand-wrap{
+  left:0!important;right:0!important;bottom:0!important;height:43%!important;
+}
+.fn-mahjong-root .mj-hand{
+  max-width:92%!important;gap:2px!important;padding-bottom:2px!important;
+}
+.fn-mahjong-root .mj-seat-self .mj-tile-img{
+  height:clamp(42px,9.5vh,78px)!important;
+}
+.fn-mahjong-root .mj-hand-tile:hover{transform:translateY(-7px)!important}
+.fn-mahjong-root .mj-drawn-gap{width:clamp(12px,1.3vw,22px)!important}
+.fn-mahjong-root .mj-drawn-tile{margin-left:clamp(5px,1vw,12px)!important}
+
+.fn-mahjong-root .self-melds{
+  left:2%!important;right:2%!important;bottom:43%!important;height:15%!important;
+  justify-content:flex-start!important;
+}
+.fn-mahjong-root .mj-actions{
+  right:2%!important;left:auto!important;
+  top:51%!important;bottom:auto!important;
+  width:auto!important;max-width:none!important;
+  display:flex!important;flex-direction:column!important;
+  gap:5px!important;z-index:30!important;
+}
+.fn-mahjong-root .mj-action{
+  min-width:76px!important;width:76px!important;height:34px!important;min-height:34px!important;
+  padding:0 6px!important;border:0!important;border-radius:4px!important;
+  background:#111!important;color:#fff!important;
+  font:700 12px system-ui,sans-serif!important;letter-spacing:0!important;
+  box-shadow:none!important;
+}
+.fn-mahjong-root .mj-action.gold{
+  background:#111!important;color:#fff!important;border:0!important;
+}
+.fn-mahjong-root .mj-status{
+  left:50%!important;bottom:1%!important;z-index:31!important;
+  color:#fff!important;text-shadow:2px 2px 4px #000!important;
+  font-family:system-ui,sans-serif!important;
+}
+.fn-mahjong-root .mj-result{z-index:100!important}
+.fn-mahjong-root .mj-result-card{
+  background:rgba(0,0,0,.9)!important;border:0!important;border-radius:4px!important;
+  color:#fff!important;
+}
+
+@media (max-height:620px) and (orientation:landscape){
+  .fn-mahjong-root .mj-table{top:48px!important}
+  .fn-mahjong-root .mj-seat-self{height:40%!important}
+  .fn-mahjong-root .mj-hand-wrap{height:44%!important}
+  .fn-mahjong-root .mj-seat-self .mj-tile-img{height:clamp(36px,9.5vh,68px)!important}
+  .fn-mahjong-root .mj-actions{top:50%!important;right:1.5%!important}
+  .fn-mahjong-root .mj-action{width:68px!important;min-width:68px!important;height:31px!important;min-height:31px!important;font-size:11px!important}
+  .fn-mahjong-root .mj-river-self{bottom:41%!important}
+}
