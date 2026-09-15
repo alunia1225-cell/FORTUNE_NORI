@@ -295,63 +295,38 @@
 
   function template(){
     return `<div id="fnMahjongRoot" class="fn-mahjong-root">
-      <div class="mj-board-wrap">
-        <div id="mjBoard" class="mj-board">
-          <div class="mj-score">
-            <div class="mj-roundbox"><b id="mjRound">東1局 0本場</b><span>残り <strong id="mjWallCount">0</strong></span><span id="mjKyotaku">リーチ棒 0</span></div>
-            <div class="mj-dora-box"><small>ドラ</small><span id="mjDoraTile"></span></div>
-            <div class="mj-score-main" id="mjScore0">35,000</div>
-            <div class="mj-score-south" id="mjScore1">35,000</div>
-            <div class="mj-score-west" id="mjScore2">35,000</div>
-          </div>
-
-          <div class="mj-player main"><b id="mjName0">YOU</b><span id="mjRiichi0" class="mj-riichi-label" hidden>立直</span></div>
-          <div class="mj-player xiajia"><b id="mjName1">CPU 南</b><span id="mjRiichi1" class="mj-riichi-label" hidden>立直</span></div>
-          <div class="mj-player duimian"><b id="mjName2">CPU 西</b><span id="mjRiichi2" class="mj-riichi-label" hidden>立直</span></div>
-
-          <div id="mjHand1" class="mj-shoupai xiajia"></div>
-          <div id="mjHand2" class="mj-shoupai duimian"></div>
-          <div id="mjHandSelf" class="mj-shoupai main"></div>
-
-          <div id="mjMelds1" class="mj-melds xiajia"></div>
-          <div id="mjMelds2" class="mj-melds duimian"></div>
-          <div id="mjMeldsSelf" class="mj-melds main self"></div>
-
-          <div id="mjRiverSouth" class="mj-he xiajia"></div>
-          <div id="mjRiverWest" class="mj-he duimian"></div>
-          <div id="mjRiverSelf" class="mj-he main"></div>
-
-          <div class="mj-say main" id="mjMessage"></div>
-          <div class="mj-status"><small id="mjStatusAuto" hidden>ツモ切り中</small></div>
-
-          <div id="mjActions" class="mj-player-button"></div>
-
-          <div class="mj-result-overlay" id="mjResult" hidden>
-            <div class="mj-hule-dialog">
-              <div class="mj-hule-card">
-                <div class="mj-hule-title">GAME RESULT</div>
-                <h2 id="mjResultTitle">ツモ</h2>
-                <p id="mjResultSub">-</p>
-                <strong id="mjResultScore">-</strong>
-                <button id="mjNextHand" type="button">次局</button>
-              </div>
-            </div>
-          </div>
+      <div class="mj-landscape-warning"><div><b>MAHJONG</b><span>横画面でプレイしてください</span></div></div>
+      <div class="mj-topbar"><div><b>MAHJONG</b><span>FORTUNE NOIR / SANMA</span></div><div class="mj-top-info"><span id="mjRound">東1局 0本場</span><span>残り <strong id="mjWallCount">0</strong></span><span id="mjKyotaku">リーチ棒 0</span></div><button class="mj-close" id="mjClose" type="button">×</button></div>
+      <div class="mj-table">
+        <div class="mj-seat mj-seat-south"><div class="mj-player-label"><b id="mjName1">CPU 南</b><span id="mjScore1">35,000</span><i id="mjRiichi1" class="riichi-mini" hidden>RIICHI</i></div><div id="mjHand1" class="mj-opponent-hand"></div><div id="mjMelds1" class="mj-melds"></div><div id="mjRiverSouth" class="mj-river mj-river-top"></div></div>
+        <div class="mj-seat mj-seat-west"><div class="mj-player-label"><b id="mjName2">CPU 西</b><span id="mjScore2">35,000</span><i id="mjRiichi2" class="riichi-mini" hidden>RIICHI</i></div><div id="mjHand2" class="mj-opponent-hand vertical"></div><div id="mjMelds2" class="mj-melds vertical-melds"></div><div id="mjRiverWest" class="mj-river mj-river-left"></div></div>
+        <div class="mj-center">
+          <div class="mj-center-round" id="mjRoundCenter">東1局 0本場</div>
+          <div class="mj-center-meta"><span>残り <b id="mjWallCenter">0</b></span><span>親 YOU</span></div>
+          <div class="mj-dora"><small>ドラ</small><span id="mjDoraTile"></span></div>
+          <div id="mjStickStack" class="mj-stick-stack"></div>
         </div>
+        <div class="mj-seat mj-seat-self"><div class="mj-player-label"><b id="mjName0">YOU</b><span id="mjScore0">35,000</span><i id="mjRiichi0" class="riichi-mini" hidden>RIICHI</i></div><div id="mjRiverSelf" class="mj-river mj-river-self"></div><div id="mjMeldsSelf" class="mj-melds self-melds"></div><div class="mj-hand-wrap"><div id="mjHandSelf" class="mj-hand"></div></div><div id="mjActions" class="mj-actions"></div></div>
+        <div class="mj-status"><span id="mjMessage">配牌完了</span><small id="mjStatusAuto" hidden>ツモ切り中</small></div>
       </div>
+      <div id="mjResult" class="mj-result" hidden><div class="mj-result-card"><small>GAME RESULT</small><h2 id="mjResultTitle">ツモ</h2><p id="mjResultSub">-</p><strong id="mjResultScore">-</strong><button id="mjNextHand" type="button">次局</button></div></div>
     </div>`
   }
+  function fitBoard(){
+    const root=document.getElementById('fnMahjongRoot');
+    const board=root?.querySelector('.mj-table');
+    if(!root||!board)return;
+    const scale=Math.min(window.innerWidth/800, window.innerHeight/450);
+    board.style.transform=`scale(${Math.max(0.1,scale)})`;
+    board.style.transformOrigin='center center';
+  }
+
   function start(){
-    document.body.classList.add('fn-mahjong-active');
-    const modal=document.getElementById('modal');
-    if(!modal) throw new Error('MAHJONG modal unavailable');
-    modal.classList.remove('hidden');
-    const tabletop=modal.querySelector('.tabletop'); if(tabletop) tabletop.classList.add('fn-mahjong-modal');
-    const content=modal.querySelector('#modalContent'); if(!content) throw new Error('MAHJONG modalContent unavailable');
-    content.innerHTML=template();
-    state.token++; setupDeal();
+    document.body.classList.add('fn-mahjong-active');const modal=document.getElementById('modal');modal.classList.remove('hidden');modal.querySelector('.tabletop').classList.add('fn-mahjong-modal');modal.querySelector('#modalContent').innerHTML=template();state.token++;setupDeal();
+    fitBoard();
     document.getElementById('mjClose').addEventListener('click',()=>stop(true));document.getElementById('mjNextHand').addEventListener('click',nextHand);render();
   }
   function stop(closeModal){clearAuto();document.body.classList.remove('fn-mahjong-active');const modal=document.getElementById('modal');modal.querySelector('.tabletop').classList.remove('fn-mahjong-modal');if(closeModal)window.closeGame()}
+  window.addEventListener('resize',fitBoard);
   window.FN_MAHJONG_START=start;window.FN_MAHJONG_STOP=()=>stop(false);
 })();
