@@ -19,10 +19,10 @@
 
   const BASE = './';
   const CDN = {
-    core: 'https://esm.sh/@kobalab/majiang-core@1.3.5?bundle',
-    ai:   'https://esm.sh/@kobalab/majiang-ai@1.2.0?bundle',
-    ui:   'https://esm.sh/@kobalab/majiang-ui@1.6.1?bundle',
-    jq:   'https://esm.sh/jquery@3.7.1'
+    core: 'https://cdn.jsdelivr.net/npm/@kobalab/majiang-core@1.3.5/+esm',
+    ai:   'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ai@1.2.0/+esm',
+    ui:   'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/+esm',
+    jq:   'https://cdn.jsdelivr.net/npm/jquery@3.7.1/+esm'
   };
 
   const tileNames = [
