@@ -3,7 +3,7 @@
 
   /*
    * FORTUNE NOIR / MAHJONG
-   * Local client-only 4-player mahjong adapter using assets from Majiang-master.
+   * Local client-only 3-player mahjong adapter using assets from Majiang-master.
    * No network/API calls are made by this module.
    */
   const ROOT = './';
@@ -15,7 +15,7 @@
     'z1','z2','z3','z4','z5','z6','z7'
   ];
   const HONORS = new Set(['z1','z2','z3','z4','z5','z6','z7']);
-  const RED_BASE = {m5:'m0',p5:'p0',s5:'s0'};
+  const RED_BASE = {m5:'m0', p5:'p0', s5:'s0'};
   const TILE_ORDER = new Map(TILE_TYPES.map((t,i)=>[t,i]));
   const audioCache = Object.create(null);
   let autoTimer = null;
@@ -31,7 +31,7 @@
     turn: 0, dealer: 0, round:'東1', honba:0, kyotaku:0,
     phase:'lobby', drawn:null, pending:null, selected:null,
     riichiSelect:false, lastDiscard:null, message:'ルーム準備中',
-    result:null, cpuCount:2
+    result:null, cpuCount:3
   };
 
   function mkPlayer(name,wind){
@@ -54,7 +54,9 @@
   function buildWall(){
     const w=[];
     for(const t of TILE_TYPES){for(let i=0;i<4;i++)w.push(t)}
-    for(const [base,red] of Object.entries(RED_BASE)){const i=w.indexOf(base);if(i>=0)w[i]=red;}
+    const mi=w.indexOf('m5'); if(mi>=0)w[mi]='m0';
+    const pi=w.indexOf('p5'); if(pi>=0)w[pi]='p0';
+    const si=w.indexOf('s5'); if(si>=0)w[si]='s0';
     return shuffle(w);
   }
 
@@ -84,7 +86,7 @@
   function chiitoi(tiles){const c=counts(tiles);return tiles.length===14&&Object.values(c).filter(v=>v===2).length===7&&Object.values(c).every(v=>v===2)}
   function kokushi(tiles){
     if(tiles.length!==14)return false;
-    const need=['m1','m2','m3','m4','m5','m6','m7','m8','m9','p1','p9','s1','s9','z1','z2','z3','z4','z5','z6','z7'],c=counts(tiles);
+    const need=['m1','m9','p1','p9','s1','s9','z1','z2','z3','z4','z5','z6','z7'],c=counts(tiles);
     return need.every(t=>(c[t]||0)>=1)&&need.some(t=>(c[t]||0)>=2);
   }
   function isWinning(tiles,openMelds=0){return standardWin(tiles,openMelds)||chiitoi(tiles)||kokushi(tiles)}
@@ -139,7 +141,7 @@
 
   function setupDeal(){
     clearAuto(); state.wall=buildWall();state.dead=state.wall.splice(-14);state.dora=[state.dead[4]];
-    state.players.forEach((p,i)=>{p.hand=[];p.melds=[];p.discards=[];p.nuki=0;p.riichi=false;p.ippatsu=false;p.riichiStick=false;p.score=35000;p.name=i===0?'YOU':i===1?'CPU 南':'CPU 西'});
+    state.players.forEach((p,i)=>{p.hand=[];p.melds=[];p.discards=[];p.nuki=0;p.riichi=false;p.ippatsu=false;p.riichiStick=false;p.score=35000;p.name=i===0?'YOU':i===1?'CPU 南':i===2?'CPU 西':'CPU 北'});
     for(let i=0;i<13;i++)for(let s=0;s<4;s++)state.players[s].hand.push(state.wall.pop());
     state.players.forEach(p=>p.hand=sortHand(p.hand));
     state.turn=state.dealer;state.drawn=null;state.pending=null;state.selected=null;state.riichiSelect=false;state.phase='playing';state.result=null;state.message='配牌完了';state.lastDiscard=null;state.kyotaku=0;
@@ -215,7 +217,7 @@
   function declareRiichi(){if(!canRiichi())return;state.riichiSelect=true;state.message='リーチする牌を選択';render();}
   function riichiDiscardAny(idx){if(state.riichiSelect)discardIndex(idx)}
   function nuki(){
-    const p=state.players[0];if(p.riichi)return;let idx=p.hand.indexOf('z4');
+    const p=state.players[0];if(p.riichi)return;return; let idx=p.hand.indexOf('z4');
     if(idx<0&&state.drawn==='z4'){state.drawn=null;p.nuki++;state.message='北抜き';sfx('pon');playAnim('nuki',()=>drawForTurn());return}
     if(idx<0)return;p.hand.splice(idx,1);p.nuki++;state.message='北抜き';sfx('pon');render();playAnim('nuki',()=>{state.drawn=null;drawForTurn()});
   }
@@ -244,7 +246,7 @@
   function render(){
     const el=document.getElementById('fnMahjongRoot');if(!el)return;
     const r=el.querySelector('#mjRound'),w=el.querySelector('#mjWallCount'),k=el.querySelector('#mjKyotaku'),d=el.querySelector('#mjDoraTile');
-    if(r)r.textContent=`${state.round}局 ${state.honba}本場`;const rc=el.querySelector('#mjRoundCenter');if(rc)rc.textContent=`${state.round}局 ${state.honba}本場`;const wc=el.querySelector('#mjWallCenter');if(wc)wc.textContent=state.wall.length;if(w)w.textContent=`${state.wall.length}`;if(k)k.textContent=`リーチ棒 ${state.kyotaku}`;if(d)d.innerHTML=tileImg(state.dora[0]||'z5');const stack=el.querySelector('#mjStickStack');if(stack)stack.innerHTML=Array.from({length:Math.max(0,state.kyotaku)},()=>'<span class=\"mj-riichi-stick\"></span>').join('');
+    if(r)r.textContent=`${state.round}局 ${state.honba}本場`;if(w)w.textContent=`${state.wall.length}`;const rc=el.querySelector('#mjRoundCenter'),wc=el.querySelector('#mjWallCenter');if(rc)rc.textContent=`${state.round}局 ${state.honba}本場`;if(wc)wc.textContent=state.wall.length;if(k)k.textContent=`リーチ棒 ${state.kyotaku}`;if(d)d.innerHTML=tileImg(state.dora[0]||'z5');const stack=el.querySelector('#mjStickStack');if(stack)stack.innerHTML=Array.from({length:Math.max(0,state.kyotaku)},()=>'<span class=\"mj-riichi-stick\"></span>').join('');
     state.players.forEach((p,i)=>{const n=el.querySelector(`#mjName${i}`),s=el.querySelector(`#mjScore${i}`),rh=el.querySelector(`#mjRiichi${i}`);if(n)n.textContent=p.name;if(s)s.textContent=p.score.toLocaleString();if(rh)rh.hidden=!p.riichiStick});
     renderOpponents(el);renderRivers(el);renderHand(el);renderMelds(el);renderActions(el);
     const msg=el.querySelector('#mjMessage');if(msg)msg.textContent=state.message;
@@ -264,7 +266,7 @@
     [1,2,3].forEach(i=>{const b=el.querySelector(`#mjMelds${i}`);if(!b)return;b.innerHTML='';for(const m of state.players[i].melds){const w=document.createElement('span');w.className='mj-meld';w.innerHTML=m.tiles.map(t=>tileImg(t)).join('');b.appendChild(w)}})
   }
   function renderRivers(el){
-    [[0,'mjRiverSelf'],[1,'mjRiverSouth'],[2,'mjRiverWest'],[3,'mjRiverNorth']].forEach(([i,id])=>{const box=el.querySelector('#'+id);if(!box)return;box.innerHTML='';state.players[i].discards.forEach((t,n)=>{const d=document.createElement('span');d.className='mj-discard-tile';if(state.lastDiscard&&state.lastDiscard.seat===i&&state.lastDiscard.index===n)d.classList.add('last');d.innerHTML=tileImg(t);box.appendChild(d)})})
+    [[0,'mjRiverSelf'],[1,'mjRiverEast'],[2,'mjRiverNorth'],[3,'mjRiverWest']].forEach(([i,id])=>{const box=el.querySelector('#'+id);if(!box)return;box.innerHTML='';state.players[i].discards.forEach((t,n)=>{const d=document.createElement('span');d.className='mj-discard-tile';if(state.lastDiscard&&state.lastDiscard.seat===i&&state.lastDiscard.index===n)d.classList.add('last');d.innerHTML=tileImg(t);box.appendChild(d)})})
   }
   function renderActions(el){
     const a=el.querySelector('#mjActions');if(!a)return;a.innerHTML='';const p=state.players[0];
@@ -286,7 +288,6 @@
     }
     if(canTsumo())add('ツモ',winTsumo,'gold');
     if(canRiichi())add('リーチ',declareRiichi,'gold');
-    if(p.hand.includes('z4')||state.drawn==='z4')add('北抜き',nuki,'dark');
     if(canAnkan())add('カン',ankan,'dark');
   }
   function renderResult(el){const r=state.result||{},box=el.querySelector('#mjResult');if(!box)return;box.hidden=false;el.querySelector('#mjResultTitle').textContent=r.type||'';el.querySelector('#mjResultSub').textContent=r.yaku?.join(' ・ ')||'牌局終了';el.querySelector('#mjResultScore').textContent=r.score?`${r.score.toLocaleString()}点`:'-'}
@@ -296,26 +297,11 @@
   function template(){
     return `<div id="fnMahjongRoot" class="fn-mahjong-root">
       <div class="mj-landscape-warning"><div><b>MAHJONG</b><span>横画面でプレイしてください</span></div></div>
-      <div class="mj-topbar"><div><b>MAHJONG</b><span>FORTUNE NOIR / 4 PLAYER</span></div><div class="mj-top-info"><span id="mjRound">東1局 0本場</span><span>残り <strong id="mjWallCount">0</strong></span><span id="mjKyotaku">リーチ棒 0</span></div><button class="mj-close" id="mjClose" type="button">×</button></div>
       <div class="mj-table">
-        <div class="mj-seat mj-seat-north">
-          <div class="mj-player-label"><b id="mjName3">CPU 北</b><span id="mjScore3">35,000</span><i id="mjRiichi3" class="riichi-mini" hidden>RIICHI</i></div>
-          <div id="mjHand3" class="mj-opponent-hand"></div><div id="mjMelds3" class="mj-melds"></div><div id="mjRiverNorth" class="mj-river mj-river-north"></div>
-        </div>
-        <div class="mj-seat mj-seat-west">
-          <div class="mj-player-label"><b id="mjName2">CPU 西</b><span id="mjScore2">35,000</span><i id="mjRiichi2" class="riichi-mini" hidden>RIICHI</i></div>
-          <div id="mjHand2" class="mj-opponent-hand vertical"></div><div id="mjMelds2" class="mj-melds vertical-melds"></div><div id="mjRiverWest" class="mj-river mj-river-side"></div>
-        </div>
-        <div class="mj-seat mj-seat-east">
-          <div class="mj-player-label"><b id="mjName0">YOU</b><span id="mjScore0">35,000</span><i id="mjRiichi0" class="riichi-mini" hidden>RIICHI</i></div>
-          <div id="mjRiverSelf" class="mj-river mj-river-self"></div><div id="mjMeldsSelf" class="mj-melds self-melds"></div>
-          <div class="mj-hand-wrap"><div id="mjHandSelf" class="mj-hand"></div></div>
-          <div id="mjActions" class="mj-actions"></div>
-        </div>
-        <div class="mj-seat mj-seat-south">
-          <div class="mj-player-label"><b id="mjName1">CPU 南</b><span id="mjScore1">35,000</span><i id="mjRiichi1" class="riichi-mini" hidden>RIICHI</i></div>
-          <div id="mjHand1" class="mj-opponent-hand"></div><div id="mjMelds1" class="mj-melds"></div><div id="mjRiverSouth" class="mj-river mj-river-south"></div>
-        </div>
+        <div class="mj-seat mj-seat-main"><div class="mj-player-label"><b id="mjName0">YOU</b><span id="mjScore0">35,000</span><i id="mjRiichi0" class="riichi-mini" hidden>RIICHI</i></div><div id="mjRiverSelf" class="mj-river mj-river-main"></div><div id="mjMeldsSelf" class="mj-melds mj-melds-main"></div><div class="mj-hand-wrap"><div id="mjHandSelf" class="mj-hand"></div></div></div>
+        <div class="mj-seat mj-seat-east"><div class="mj-player-label"><b id="mjName1">CPU 南</b><span id="mjScore1">35,000</span><i id="mjRiichi1" class="riichi-mini" hidden>RIICHI</i></div><div id="mjHand1" class="mj-opponent-hand"></div><div id="mjMelds1" class="mj-melds"></div><div id="mjRiverEast" class="mj-river mj-river-east"></div></div>
+        <div class="mj-seat mj-seat-north"><div class="mj-player-label"><b id="mjName2">CPU 西</b><span id="mjScore2">35,000</span><i id="mjRiichi2" class="riichi-mini" hidden>RIICHI</i></div><div id="mjHand2" class="mj-opponent-hand"></div><div id="mjMelds2" class="mj-melds"></div><div id="mjRiverNorth" class="mj-river mj-river-north"></div></div>
+        <div class="mj-seat mj-seat-west"><div class="mj-player-label"><b id="mjName3">CPU 北</b><span id="mjScore3">35,000</span><i id="mjRiichi3" class="riichi-mini" hidden>RIICHI</i></div><div id="mjHand3" class="mj-opponent-hand"></div><div id="mjMelds3" class="mj-melds"></div><div id="mjRiverWest" class="mj-river mj-river-west"></div></div>
         <div class="mj-center">
           <div class="mj-center-round" id="mjRoundCenter">東1局 0本場</div>
           <div class="mj-center-meta"><span>残り <b id="mjWallCenter">0</b></span><span>親 YOU</span></div>
@@ -323,15 +309,37 @@
           <div id="mjStickStack" class="mj-stick-stack"></div>
         </div>
         <div class="mj-status"><span id="mjMessage">配牌完了</span><small id="mjStatusAuto" hidden>ツモ切り中</small></div>
+        <div id="mjActions" class="mj-actions"></div>
+        <div class="mj-mj-title">MAHJONG</div>
+        <div id="mjResult" class="mj-result" hidden><div class="mj-result-card"><small>GAME RESULT</small><h2 id="mjResultTitle">ツモ</h2><p id="mjResultSub">-</p><strong id="mjResultScore">-</strong><button id="mjNextHand" type="button">次局</button></div></div>
       </div>
-      <div id="mjResult" class="mj-result" hidden><div class="mj-result-card"><small>GAME RESULT</small><h2 id="mjResultTitle">ツモ</h2><p id="mjResultSub">-</p><strong id="mjResultScore">-</strong><button id="mjNextHand" type="button">次局</button></div></div>
     </div>`
   }
-  function start(){
-    if(document.getElementById('fnMahjongRoot')) return;
-    document.body.classList.add('fn-mahjong-active');const modal=document.getElementById('modal');modal.classList.remove('hidden');modal.querySelector('.tabletop').classList.add('fn-mahjong-modal');modal.querySelector('#modalContent').innerHTML=template();state.token++;setupDeal();
-    document.getElementById('mjClose').addEventListener('click',()=>stop(true));document.getElementById('mjNextHand').addEventListener('click',nextHand);render();
+  function fitBoard(){
+    const board=document.querySelector('#fnMahjongRoot .mj-table');
+    if(!board)return;
+    const s=Math.min(window.innerWidth/800, window.innerHeight/450);
+    board.style.setProperty('--mj-scale', String(Math.max(0.1, s)));
   }
+  function start(){
+    document.body.classList.add('fn-mahjong-active');
+    const modal=document.getElementById('modal');
+    if(!modal)return;
+    modal.classList.remove('hidden');
+    const tabletop=modal.querySelector('.tabletop');
+    if(!tabletop)throw new Error('MAHJONG tabletop unavailable');
+    tabletop.classList.add('fn-mahjong-modal');
+    const content=modal.querySelector('#modalContent');
+    if(!content)throw new Error('MAHJONG modal content unavailable');
+    content.innerHTML=template();
+    state.token++;
+    setupDeal();
+    document.getElementById('mjClose').addEventListener('click',()=>stop(true));
+    document.getElementById('mjNextHand').addEventListener('click',nextHand);
+    fitBoard();
+    render();
+  }
+  window.addEventListener('resize',fitBoard);
   function stop(closeModal){clearAuto();document.body.classList.remove('fn-mahjong-active');const modal=document.getElementById('modal');modal.querySelector('.tabletop').classList.remove('fn-mahjong-modal');if(closeModal)window.closeGame()}
   window.FN_MAHJONG_START=start;window.FN_MAHJONG_STOP=()=>stop(false);
 })();
