@@ -19,10 +19,16 @@
 
   const BASE = './';
   const CDN = {
-    core: 'https://cdn.jsdelivr.net/npm/@kobalab/majiang-core@1.3.5/+esm',
-    ai:   'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ai@1.2.0/+esm',
-    ui:   'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/+esm',
-    jq:   'https://cdn.jsdelivr.net/npm/jquery@3.7.1/+esm'
+    core:   'https://cdn.jsdelivr.net/npm/@kobalab/majiang-core@1.3.5/+esm',
+    ai:     'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ai@1.2.0/+esm',
+    // Do NOT import @kobalab/majiang-ui/index.js here. Its index exports
+    // PaipuFile/PaipuEditor, which pull jquery-ui/sortable into the browser
+    // bundle. The actual table UI used by this game only needs these three
+    // official Majiang UI modules.
+    uiPai:  'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/lib/pai.js/+esm',
+    uiBoard:'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/lib/board.js/+esm',
+    uiPlayer:'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/lib/player.js/+esm',
+    jq:     'https://cdn.jsdelivr.net/npm/jquery@3.7.1/+esm'
   };
 
   const tileNames = [
@@ -119,11 +125,17 @@
   async function loadStack(){
     if (loading) return loading;
     loading = Promise.all([
-      import(CDN.core), import(CDN.ai), import(CDN.ui), import(CDN.jq)
-    ]).then(([coreMod, aiMod, uiMod, jqMod])=>({
+      import(CDN.core), import(CDN.ai),
+      import(CDN.uiPai), import(CDN.uiBoard), import(CDN.uiPlayer),
+      import(CDN.jq)
+    ]).then(([coreMod, aiMod, paiMod, boardMod, playerMod, jqMod])=>({
       Majiang: coreMod.default || coreMod,
       AI: aiMod.default || aiMod,
-      UI: uiMod.default || uiMod,
+      UI: {
+        pai: paiMod.default || paiMod,
+        Board: boardMod.default || boardMod,
+        Player: playerMod.default || playerMod
+      },
       $: jqMod.default || jqMod
     }));
     return loading;
