@@ -179,7 +179,6 @@
     view.open_he=true;
     view.no_player_name=false;
     view.dummy_name=0;
-    view.redraw();
     game.kaiju();
 
     // Keep Majiang's real game flow, but fit its 800x450 tablet board to the
