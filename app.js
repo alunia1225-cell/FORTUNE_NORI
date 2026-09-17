@@ -419,6 +419,7 @@ function gbAlive(t){return t===GB_GAME_TOKEN&&window.GB_RUNTIME&&window.GB_RUNTI
 function openGame(g){
  if(g==='mahjong') {
   const lobby=document.getElementById("appLobby");
+  document.body.classList.add("fn-mahjong-active");
   if(lobby)lobby.classList.add("hidden");
   document.getElementById("modal").classList.remove("hidden");
   if(typeof window.FN_MAHJONG_START!=="function") throw new Error("MAHJONG module unavailable");
@@ -438,7 +439,7 @@ function openGame(g){
  try{if(typeof games[g]!=="function")throw new Error("Unknown game: "+g);games[g]();debugLog("GAME","Launch success",{game:g,token})}
  catch(e){debugLog("ERROR","Game launch failed",{game:g,error:String(e),stack:e.stack});$("modalContent").innerHTML=`<div class="game"><h2>GAME ERROR</h2><pre class="debug-error">${String(e.stack||e)}</pre></div>`}
 }
-function closeGame(){if(typeof window.FN_MAHJONG_STOP==="function") window.FN_MAHJONG_STOP();fnStopPuchun();GB_GAME_TOKEN++;debugLog("RUNTIME","STOP",{game:GB_RUNTIME.game});window.GB_stopGameRuntime();$("modal").classList.add("hidden");const lobby=document.getElementById("appLobby");if(lobby)lobby.classList.remove("hidden");sfx("click")}
+function closeGame(){if(typeof window.FN_MAHJONG_STOP==="function") window.FN_MAHJONG_STOP();document.body.classList.remove("fn-mahjong-active");fnStopPuchun();GB_GAME_TOKEN++;debugLog("RUNTIME","STOP",{game:GB_RUNTIME.game});window.GB_stopGameRuntime();$("modal").classList.add("hidden");const lobby=document.getElementById("appLobby");if(lobby)lobby.classList.remove("hidden");sfx("click")}
 function betbox(min=10,hideMax=false){
   const max=Math.max(min,S.coins||0);
   const step=max<=1000?10:max<=10000?100:500;
