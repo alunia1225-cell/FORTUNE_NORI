@@ -4,15 +4,15 @@
   // Game state/rules are delegated to Kobalab Majiang. No Sanma engine.
   let runtime=null, loading=null;
   const BASE='./';
-  const CDN={
-    core:'https://cdn.jsdelivr.net/npm/@kobalab/majiang-core@1.3.5/+esm',
-    ai:'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ai@1.2.0/+esm',
-    pai:'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/lib/pai.js/+esm',
-    audio:'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/lib/audio.js/+esm',
-    board:'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/lib/board.js/+esm',
-    player:'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/lib/player.js/+esm',
-    gamectl:'https://cdn.jsdelivr.net/npm/@kobalab/majiang-ui@1.6.1/lib/gamectl.js/+esm',
-    jq:'https://cdn.jsdelivr.net/npm/jquery@3.7.1/+esm'
+  // Browser-safe package loader. The official packages are CommonJS; do not import
+  // individual CJS files through jsDelivr +esm (that leaves require() unresolved).
+  // esm.unpkg performs the CommonJS -> browser-module conversion and rewrites the
+  // package dependency graph as one coherent module graph.
+  const PKG={
+    core:'https://esm.unpkg.com/@kobalab/majiang-core@1.3.5',
+    ai:'https://esm.unpkg.com/@kobalab/majiang-ai@1.2.0',
+    ui:'https://esm.unpkg.com/@kobalab/majiang-ui@1.6.1',
+    jq:'https://esm.unpkg.com/jquery@3.7.1'
   };
   const tiles=['m0','m1','m2','m3','m4','m5','m6','m7','m8','m9','p0','p1','p2','p3','p4','p5','p6','p7','p8','p9','s0','s1','s2','s3','s4','s5','s6','s7','s8','s9','z1','z2','z3','z4','z5','z6','z7','pai'];
   const sounds=[['dapai','dahai11.wav'],['chi','chii.wav'],['peng','pon.wav'],['gang','kan.wav'],['rong','ron.wav'],['zimo','tsumo.wav'],['lizhi','richi.wav'],['gong','nc43994.wav'],['beep','beep.wav']];
@@ -33,7 +33,37 @@
   }
   async function loadStack(){
     if(loading)return loading;
-    loading=Promise.all([import(CDN.core),import(CDN.ai),import(CDN.pai),import(CDN.audio),import(CDN.board),import(CDN.player),import(CDN.gamectl),import(CDN.jq)]).then(([core,ai,pai,audio,board,player,gamectl,jq])=>({Majiang:core.default||core,AI:ai.default||ai,pai:pai.default||pai,audio:audio.default||audio,Board:board.default||board,Player:player.default||player,GameCtl:gamectl.default||gamectl,$:jq.default||jq}));
+    loading=(async()=>{
+      // jQuery must exist as a global because the official Majiang UI modules use
+      // the historical global $/jQuery convention.
+      const jqmod=await import(PKG.jq);
+      const $=jqmod.default||jqmod.jQuery||jqmod;
+      window.jQuery=$;
+      window.$=$;
+
+      // Load each official package root, not individual lib/*.js files. This is
+      // critical: Board/Player/GameCtl are CommonJS modules with relative require()
+      // dependencies. The package-level browser conversion resolves that graph.
+      const [core,ai,ui]=await Promise.all([
+        import(PKG.core),
+        import(PKG.ai),
+        import(PKG.ui)
+      ]);
+      const Majiang=core.default||core;
+      const AI=ai.default||ai;
+      const UI=ui.default||ui;
+      Majiang.UI=UI;
+      return {
+        Majiang,
+        AI,
+        pai:UI.pai,
+        audio:UI.audio,
+        Board:UI.Board,
+        Player:UI.Player,
+        GameCtl:UI.GameCtl,
+        $
+      };
+    })();
     return loading;
   }
   function fit(){const b=document.querySelector('#fnMahjongRoot #board'),h=document.getElementById('modalContent');if(!b||!h)return;const w=h.clientWidth||innerWidth,hh=h.clientHeight||innerHeight,s=Math.min(w/800,hh/450);b.style.width='800px';b.style.height='450px';b.style.transformOrigin='0 0';b.style.transform=`scale(${s})`;b.style.left=`${(w-800*s)/2/s}px`;b.style.top=`${(hh-450*s)/2/s}px`;}
