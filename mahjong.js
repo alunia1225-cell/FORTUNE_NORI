@@ -58,58 +58,98 @@
       `<audio data-name="${name}" src="${BASE}${file}" preload></audio>`
     ).join('');
 
+    // This is the official Majiang table DOM shape (board/player/score/dialog/
+    // summary/kaiju), kept inside the FORTUNE NOIR Mahjong root.
     return `<div class="fn-mahjong-root" id="fnMahjongRoot">
       <div id="space"></div>
       <div id="board">
         <div class="board">
           <div class="score">
-            <div class="juchang"><div class="jushu"></div><div class="jicun">
-              <img class="chouma" src="${BASE}100.gif" alt="本場"> : <span class="changbang"></span><br>
-              <img class="chouma" src="${BASE}1000.gif" alt="供託"> : <span class="lizhibang"></span>
-            </div></div>
+            <div class="juchang">
+              <div class="jushu"></div>
+              <div class="jicun">
+                <img class="chouma" src="${BASE}100.gif" alt="本場"> : <span class="changbang"></span><br>
+                <img class="chouma" src="${BASE}1000.gif" alt="供託"> : <span class="lizhibang"></span>
+              </div>
+            </div>
             <div class="shan"><div class="baopai"></div><div>牌数: <span class="paishu"></span></div></div>
             <div class="defen"><div class="main"></div><div class="xiajia"></div><div class="duimian"></div><div class="shangjia"></div></div>
           </div>
 
-          <div class="player main"></div><div class="player xiajia"></div>
-          <div class="player duimian"></div><div class="player shangjia"></div>
-
-          <div class="shoupai main"><div class="bingpai"></div><div class="fulou"></div></div>
-          <div class="shoupai xiajia"><div class="bingpai"></div><div class="fulou"></div></div>
-          <div class="shoupai duimian"><div class="bingpai"></div><div class="fulou"></div></div>
-          <div class="shoupai shangjia"><div class="bingpai"></div><div class="fulou"></div></div>
-
-          <div class="he main"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div>
-          <div class="he xiajia"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div>
-          <div class="he duimian"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div>
-          <div class="he shangjia"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div>
-
-          <div class="say main"></div><div class="say xiajia"></div><div class="say duimian"></div><div class="say shangjia"></div>
-
           <div class="timer hide"></div>
           <div class="player-button hide">
-            <span class="button cansel">×</span><span class="button daopai">ノー聴</span>
-            <span class="button chi">チー</span><span class="button peng">ポン</span>
-            <span class="button gang">カン</span><span class="button lizhi">リーチ</span>
-            <span class="button rong">ロン</span><span class="button zimo">ツモ</span>
+            <span class="button cansel" aria-label="キャンセル">×</span>
+            <span class="button daopai">ノー聴</span>
+            <span class="button chi">チー</span>
+            <span class="button peng">ポン</span>
+            <span class="button gang">カン</span>
+            <span class="button lizhi">リーチ</span>
+            <span class="button rong">ロン</span>
+            <span class="button zimo">ツモ</span>
             <span class="button pingju">流局</span>
           </div>
           <div class="select-mianzi hide"></div>
 
+          <div class="player main"></div>
+          <div class="shoupai main"><div class="bingpai"></div><div class="fulou"></div></div>
+          <div class="he main"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div>
+          <div class="say main"></div>
+
+          <div class="player xiajia"></div>
+          <div class="shoupai xiajia"><div class="bingpai"></div><div class="fulou"></div></div>
+          <div class="he xiajia"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div>
+          <div class="say xiajia"></div>
+
+          <div class="player duimian"></div>
+          <div class="shoupai duimian"><div class="bingpai"></div><div class="fulou"></div></div>
+          <div class="he duimian"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div>
+          <div class="say duimian"></div>
+
+          <div class="player shangjia"></div>
+          <div class="shoupai shangjia"><div class="bingpai"></div><div class="fulou"></div></div>
+          <div class="he shangjia"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div>
+          <div class="say shangjia"></div>
+
           <div class="hule-dialog hide">
-            <div><div><div class="hule">
-              <div class="shan baopai"><span class="baopai"></span></div>
-              <div class="shan fubaopai"><span class="fubaopai"></span></div>
-              <div class="shoupai"><div class="bingpai"></div><div class="fulou"></div></div>
-              <table class="hupai"><tr class="r_hupai"><td class="name"></td><td class="fanshu"></td></tr>
-                <tr class="r_defen"><td class="defen" colspan="2"></td></tr></table>
-              <div class="jicun"><img class="chouma" src="${BASE}100.gif"> : <span class="changbang"></span>
-                <img class="chouma" src="${BASE}1000.gif"> : <span class="lizhibang"></span></div>
-            </div><div class="pingju"></div><div class="fenpei"></div></div></div>
+            <div><div>
+              <div class="hule">
+                <div class="shan baopai"><span class="baopai"></span></div>
+                <div class="shan fubaopai"><span class="fubaopai"></span></div>
+                <div class="shoupai"><div class="bingpai"></div><div class="fulou"></div></div>
+                <table class="hupai">
+                  <tr class="r_hupai"><td class="name"></td><td class="fanshu"></td></tr>
+                  <tr class="r_defen"><td class="defen" colspan="2"></td></tr>
+                </table>
+                <div class="jicun">
+                  <img class="chouma" src="${BASE}100.gif" alt="本場"> : <span class="changbang"></span>
+                  <img class="chouma" src="${BASE}1000.gif" alt="供託"> : <span class="lizhibang"></span>
+                </div>
+              </div>
+              <div class="pingju"></div>
+              <div class="fenpei">
+                <div class="main"><span class="feng"></span>: <span class="player"></span><span class="defen"></span><span class="diff"></span></div>
+                <div class="xiajia"><span class="feng"></span>: <span class="player"></span><span class="defen"></span><span class="diff"></span></div>
+                <div class="duimian"><span class="feng"></span>: <span class="player"></span><span class="defen"></span><span class="diff"></span></div>
+                <div class="shangjia"><span class="feng"></span>: <span class="player"></span><span class="defen"></span><span class="diff"></span></div>
+              </div>
+            </div></div>
           </div>
 
-          <div class="summary"><div><div><table><tbody class="body"></tbody></table></div></div></div>
-          <div class="kaiju"><div><div class="title"></div><div class="player"><div class="main"></div><div class="xiajia"></div><div class="duimian"></div><div class="shangjia"></div></div></div></div>
+          <div class="summary">
+            <div><div>
+              <table>
+                <thead><tr class="r_player"><td colspan="3"></td><th class="player"></th><th class="player"></th><th class="player"></th><th class="player"></th></tr></thead>
+                <tbody class="body"><tr class="r_diff"><th class="jushu"></th><th class="changbang"></th><th class="last"></th><td class="back"><span class="diff"></span><span class="lizhi"></span></td><td class="back"><span class="diff"></span><span class="lizhi"></span></td><td class="back"><span class="diff"></span><span class="lizhi"></span></td><td class="back"><span class="diff"></span><span class="lizhi"></span></td></tr></tbody>
+                <tfoot><tr class="r_defen"><td colspan="3"></td><td class="defen"></td><td class="defen"></td><td class="defen"></td><td class="defen"></td></tr><tr class="r_point"><td colspan="3"></td><td class="point"></td><td class="point"></td><td class="point"></td><td class="point"></td></tr></tfoot>
+              </table>
+            </div></div>
+          </div>
+
+          <div class="kaiju"><div>
+            <div class="title"></div>
+            <div class="player"><div class="main"></div><div class="xiajia"></div><div class="duimian"></div><div class="shangjia"></div></div>
+          </div></div>
+          <div class="suspend hide"></div>
         </div>
       </div>
       <div id="loaddata" class="fn-mj-loaddata">${tiles}${audio}</div>
@@ -175,7 +215,7 @@
     const game=new Majiang.Game(players,end,rule);
     const view=new UI.Board(boardRoot,pai,audio,game.model);
     game.view=view;
-    view.open_shoupai=true;
+    view.open_shoupai=false;
     view.open_he=true;
     view.no_player_name=false;
     view.dummy_name=0;
@@ -184,15 +224,20 @@
     // Keep Majiang's real game flow, but fit its 800x450 tablet board to the
     // existing FORTUNE NOIR modal viewport.
     function fit(){
-      const space=document.getElementById('space');
+      const host=document.getElementById('modalContent');
       const b=document.querySelector('#fnMahjongRoot #board');
-      if(!b||!space)return;
-      const w=Math.max(320,space.clientWidth||window.innerWidth);
-      const h=Math.max(260,space.clientHeight||window.innerHeight);
+      if(!host||!b)return;
+      const w=Math.max(320,host.clientWidth||window.innerWidth);
+      const h=Math.max(260,host.clientHeight||window.innerHeight);
       const scale=Math.min(w/800,h/450);
+      b.style.width='800px';
+      b.style.height='450px';
+      b.style.transformOrigin='0 0';
       b.style.transform=`scale(${scale})`;
       b.style.left=`${Math.max(0,(w-800*scale)/2)/scale}px`;
       b.style.top=`${Math.max(0,(h-450*scale)/2)/scale}px`;
+      const root=document.getElementById('fnMahjongRoot');
+      if(root){root.style.width=w+'px';root.style.height=h+'px';}
     }
     fit();
     window.addEventListener('resize',fit);
