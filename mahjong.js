@@ -6,7 +6,11 @@
     jq:'jquery',
     core:'@kobalab/majiang-core',
     ai:'@kobalab/majiang-ai',
-    ui:'@kobalab/majiang-ui'
+    player:'https://esm.sh/@kobalab/majiang-ui@1.6.1/lib/player?external=jquery,@kobalab/majiang-core&target=es2022',
+    board:'https://esm.sh/@kobalab/majiang-ui@1.6.1/lib/board?external=jquery,@kobalab/majiang-core&target=es2022',
+    gamectl:'https://esm.sh/@kobalab/majiang-ui@1.6.1/lib/gamectl?external=jquery,@kobalab/majiang-core&target=es2022',
+    pai:'https://esm.sh/@kobalab/majiang-ui@1.6.1/lib/pai?external=jquery&target=es2022',
+    audio:'https://esm.sh/@kobalab/majiang-ui@1.6.1/lib/audio?external=jquery&target=es2022'
   };
   function html(){
     const p=[
@@ -37,12 +41,24 @@
       const jqmod=await import(URLS.jq);
       const $=jqmod.default||jqmod.jQuery||jqmod;
       window.jQuery=$; window.$=$;
-      const [core,ai,ui]=await Promise.all([
-        import(URLS.core), import(URLS.ai), import(URLS.ui)
+      const [core,ai,paiMod,audioMod,playerMod,boardMod,gamectlMod]=await Promise.all([
+        import(URLS.core),
+        import(URLS.ai),
+        import(URLS.pai),
+        import(URLS.audio),
+        import(URLS.player),
+        import(URLS.board),
+        import(URLS.gamectl)
       ]);
       const Majiang=core.default||core;
       Majiang.AI=ai.default||ai;
-      Majiang.UI=ui.default||ui;
+      Majiang.UI={
+        pai:paiMod.default||paiMod,
+        audio:audioMod.default||audioMod,
+        Player:playerMod.default||playerMod,
+        Board:boardMod.default||boardMod,
+        GameCtl:gamectlMod.default||gamectlMod
+      };
       return {Majiang,$};
     })();
     return loading;
