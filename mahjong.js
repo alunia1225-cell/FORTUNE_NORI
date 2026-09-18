@@ -6,7 +6,9 @@
     jq:'jquery',
     core:'@kobalab/majiang-core',
     ai:'@kobalab/majiang-ai',
-    ui:'@kobalab/majiang-ui'
+    uiPlayer:'@kobalab/majiang-ui/lib/player.js',
+    uiBoard:'@kobalab/majiang-ui/lib/board.js',
+    uiGameCtl:'@kobalab/majiang-ui/lib/gamectl.js'
   };
   function html(){
     const p=[
@@ -35,15 +37,20 @@
       const jqmod=await import(URLS.jq);
       const $=jqmod.default||jqmod.jQuery||jqmod;
       window.jQuery=$; window.$=$;
-      const [core,ai,uiMod]=await Promise.all([
+      const [core,ai,uiPlayer,uiBoard,uiGameCtl]=await Promise.all([
         import(URLS.core),
         import(URLS.ai),
-        import(URLS.ui)
+        import(URLS.uiPlayer),
+        import(URLS.uiBoard),
+        import(URLS.uiGameCtl)
       ]);
       const Majiang=core.default||core;
       Majiang.AI=ai.default||ai;
-      const UI=uiMod.default||uiMod;
-      Majiang.UI=UI;
+      Majiang.UI={
+        Player: uiPlayer.default||uiPlayer,
+        Board: uiBoard.default||uiBoard,
+        GameCtl: uiGameCtl.default||uiGameCtl
+      };
       return {Majiang,$};
     })();
     return loading;
