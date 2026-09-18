@@ -64,9 +64,11 @@
 
   class SafeGameCtl{
     constructor(root, storage, game, ...view){
+      this.$=window.jQuery||window.$;
+      if(!this.$) throw new Error('Mahjong jQuery instance not initialized');
       this._node={
-        controller:$('.controller',root),
-        download:$('.download',root)
+        controller:this.this.$('.controller',root),
+        download:this.this.$('.download',root)
       };
       this._root=root;
       this._game=game;
@@ -86,7 +88,7 @@
       try{ window.localStorage.setItem('Majiang.pref',JSON.stringify(this._pref)); }catch(_){}
     }
     redraw(){
-      $('.speed span',this._node.controller).css('visibility','visible');
+      this.$('.speed span',this._node.controller).css('visibility','visible');
       this.sound(this._pref.sound_on);
       this.speed(this._pref.speed);
       this.set_handler();
@@ -95,8 +97,8 @@
       if(!this._game)return false;
       speed=Math.max(1,Math.min(5,Number(speed)||3));
       this._game.speed=speed;
-      $('.speed span',this._node.controller).each((i,n)=>{
-        $(n).css('visibility',i<speed?'visible':'hidden');
+      this.$('.speed span',this._node.controller).each((i,n)=>{
+        this.$(n).css('visibility',i<speed?'visible':'hidden');
       });
       this._pref.speed=speed;
       this.save();
@@ -106,11 +108,11 @@
       on=!!on;
       this._view.forEach(v=>v.sound_on=on);
       if(on){
-        hide($('.sound.off',this._node.controller));
-        show($('.sound.on',this._node.controller));
+        hide(this.$('.sound.off',this._node.controller));
+        show(this.$('.sound.on',this._node.controller));
       }else{
-        hide($('.sound.on',this._node.controller));
-        show($('.sound.off',this._node.controller));
+        hide(this.$('.sound.on',this._node.controller));
+        show(this.$('.sound.off',this._node.controller));
       }
       this._pref.sound_on=on;
       this.save();
@@ -119,23 +121,23 @@
     set_handler(){
       this.clear_handler();
       const ctl=this._node.controller;
-      $('.sound',ctl).on('click',()=>this.sound(!this._pref.sound_on));
-      $('.minus',ctl).on('click',()=>this.speed(this._game.speed-1));
-      $('.plus',ctl).on('click',()=>this.speed(this._game.speed+1));
-      $(window).on('keyup.controler',ev=>{
+      this.$('.sound',ctl).on('click',()=>this.sound(!this._pref.sound_on));
+      this.$('.minus',ctl).on('click',()=>this.speed(this._game.speed-1));
+      this.$('.plus',ctl).on('click',()=>this.speed(this._game.speed+1));
+      this.$(window).on('keyup.controler',ev=>{
         if(ev.key==='a')this.sound(!this._pref.sound_on);
         else if(ev.key==='-')this.speed(this._game.speed-1);
         else if(ev.key==='+')this.speed(this._game.speed+1);
       });
     }
     clear_handler(){
-      $('.sound, .minus, .plus',this._node.controller).off('click');
-      $(window).off('.controler');
+      this.$('.sound, .minus, .plus',this._node.controller).off('click');
+      this.$(window).off('.controler');
     }
     stop(){
       this._game.stop();
       let blob=new Blob([JSON.stringify(this._game._paipu)],{type:'application/json'});
-      $('a',this._node.download).attr('href',URL.createObjectURL(blob)).attr('download','牌譜.json');
+      this.$('a',this._node.download).attr('href',URL.createObjectURL(blob)).attr('download','牌譜.json');
       show(this._node.download);
       this.stoped=true;
     }
