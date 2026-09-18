@@ -66,8 +66,23 @@
     const root=$('#fnMahjongRoot');
     const board=$('#board',root);
     const assetRoot=$('#loaddata',root);
-    const pai=Majiang.UI.pai(assetRoot);
-    const audio=Majiang.UI.audio(assetRoot);
+    // Use the exact DOM/jQuery instance created by this page for assets.
+    // The esm.sh-transformed UI audio helper can receive a different jQuery
+    // realm on Safari, so keep the asset adapters local and dependency-free.
+    const pai=(p)=>{
+      const key=String(p).slice(0,2);
+      const node=assetRoot.find(`.pai[data-pai=\"${key}\"]`).get(0);
+      if(!node) throw new Error(`Missing Mahjong tile asset: ${key}`);
+      return $(node).clone();
+    };
+    const audio=(name)=>{
+      const node=assetRoot.find(`audio[data-name=\"${name}\"]`).get(0);
+      if(!node) throw new Error(`Missing Mahjong audio asset: ${name}`);
+      const clone=node.cloneNode(true);
+      const volume=node.getAttribute('volume');
+      if(volume!=null && volume!=='') clone.volume=Number(volume);
+      return clone;
+    };
     const players=[new Majiang.UI.Player(board,pai,audio),new Majiang.AI(),new Majiang.AI(),new Majiang.AI()];
     const rule=Majiang.rule({});
     const end=paipu=>{if(runtime)runtime.paipu=paipu||null;window.dispatchEvent(new CustomEvent('fn-mahjong-end',{detail:{paipu:paipu||null}}));};
