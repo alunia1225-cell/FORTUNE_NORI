@@ -107,16 +107,26 @@
     // FORTUNE NOIR is a standalone single-human vs 3-AI table.
     // Keep Kobalab's Player implementation intact, but skip its optional
     // standalone seat-confirmation screen so the human is always seat 0.
-    class FortunePlayer extends Majiang.UI.Player {
-      action_kaiju(kaiju){ this.callback(); }
-    }
-    const players=[new FortunePlayer(board,pai,audio),new Majiang.AI(),new Majiang.AI(),new Majiang.AI()];
+    // FORTUNE NOIR: the standalone Kobalab kaiju seat-confirmation UI is not
+    // used here. Force the official Player implementation to acknowledge
+    // kaiju immediately so the Game can proceed to qipai.
+    Majiang.UI.Player.prototype.action_kaiju=function(){ this.callback(); };
+    const players=[new Majiang.UI.Player(board,pai,audio),new Majiang.AI(),new Majiang.AI(),new Majiang.AI()];
     const rule=Majiang.rule({});
     const end=paipu=>{if(runtime)runtime.paipu=paipu||null;window.dispatchEvent(new CustomEvent('fn-mahjong-end',{detail:{paipu:paipu||null}}));};
     const game=new Majiang.Game(players,end,rule);
     game.view=new Majiang.UI.Board($('.board',board),pai,audio,game.model);
     runtime={game,players,view:game.view,paipu:null};
-    const resize=fit;runtime.resize=resize;window.addEventListener('resize',resize,{passive:true});fit();game.kaiju();
+    const resize=fit;runtime.resize=resize;window.addEventListener('resize',resize,{passive:true});
+    fit();
+    game.kaiju(0);
+    // Safari/mobile cache or timing can leave the official kaiju notification
+    // waiting. The official Game state is safe to advance only while it is
+    // still in kaiju, so this is a one-shot guard rather than a replacement
+    // game loop.
+    setTimeout(()=>{
+      try{ if(runtime===null) return; if(game._status==='kaiju') game.reply_kaiju(); }catch(e){ console.error('[FORTUNE NOIR] Mahjong kaiju guard',e); }
+    },100);
     return runtime;
   }
   window.FN_MAHJONG_START=()=>start().catch(err=>{console.error('[FORTUNE NOIR] Mahjong 4P start failed',err);const host=document.getElementById('modalContent');if(host)host.innerHTML='<div class="fn-mj-error"><h2>MAHJONG LOAD ERROR</h2><pre>'+String(err.stack||err).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</pre></div>';});
