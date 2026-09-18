@@ -83,12 +83,28 @@
       return $(node).clone();
     };
     const audio=(name)=>{
-      const node=assetRoot.find(`audio[data-name=\"${name}\"]`).get(0);
-      if(!node) throw new Error(`Missing Mahjong audio asset: ${name}`);
-      const clone=node.cloneNode(true);
-      const volume=node.getAttribute('volume');
-      if(volume!=null && volume!=='') clone.volume=Number(volume);
-      return clone;
+      // Do not depend on a jQuery lookup for audio on Safari.  The official
+      // Player/Board classes only require an HTMLAudioElement, so construct
+      // one directly from the same local asset names used by the UI.
+      const files={
+        dapai:'dahai11.wav',
+        chi:'chii.wav',
+        peng:'pon.wav',
+        gang:'kan.wav',
+        rong:'ron.wav',
+        zimo:'tsumo.wav',
+        lizhi:'richi.wav',
+        gong:'nc43994.wav',
+        beep:'beep.wav'
+      };
+      const volumes={dapai:.2,chi:.2,peng:.2,gang:.2,rong:.2,zimo:.2,lizhi:.2,gong:1,beep:.2};
+      const file=files[name];
+      if(!file) throw new Error(`Unknown Mahjong audio asset: ${name}`);
+      const el=document.createElement('audio');
+      el.src=BASE+file;
+      el.preload='auto';
+      el.volume=volumes[name] ?? 1;
+      return el;
     };
     const players=[new Majiang.UI.Player(board,pai,audio),new Majiang.AI(),new Majiang.AI(),new Majiang.AI()];
     const rule=Majiang.rule({});
