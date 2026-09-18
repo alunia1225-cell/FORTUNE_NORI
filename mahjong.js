@@ -12,6 +12,7 @@
   // resolved server-side. GameCtl is intentionally NOT loaded; it was the source
   // of the previous runtime failure shown in the browser stack trace.
   const PKG={
+    jq:'https://esm.sh/jquery@3.7.1?bundle',
     core:'https://esm.sh/@kobalab/majiang-core@1.3.5?bundle',
     ai:'https://esm.sh/@kobalab/majiang-ai@1.2.0?bundle',
     pai:'https://esm.sh/@kobalab/majiang-ui@1.6.1/lib/pai.js?bundle',
@@ -38,15 +39,17 @@
   async function loadStack(){
     if(loading)return loading;
     loading=(async()=>{
-      const [core,ai,pai,board,player]=await Promise.all([
-        import(PKG.core),import(PKG.ai),import(PKG.pai),import(PKG.board),import(PKG.player)
+      const [jqmod,core,ai,pai,board,player]=await Promise.all([
+        import(PKG.jq),import(PKG.core),import(PKG.ai),import(PKG.pai),import(PKG.board),import(PKG.player)
       ]);
+      const $=jqmod.default||jqmod.jQuery||jqmod;
+      window.jQuery=$; window.$=$;
       const Majiang=core.default||core;
       const AI=ai.default||ai;
       const paiFn=pai.default||pai;
       const Board=board.default||board;
       const Player=player.default||player;
-      return {Majiang,AI,pai:paiFn,Board,Player};
+      return {Majiang,AI,pai:paiFn,Board,Player,$};
     })();
     return loading;
   }
@@ -55,12 +58,14 @@
     if(runtime)return runtime;
     const host=document.getElementById('modalContent');if(!host)throw new Error('FORTUNE NOIR modalContent not found');
     host.innerHTML=boardHTML();
-    const {Majiang,AI,pai,Board,Player}=await loadStack();
-    const board=host.querySelector('#board');
-    const boardInner=host.querySelector('#board .board');
-    const assetRoot=host.querySelector('#loaddata');
+    const {Majiang,AI,pai,Board,Player,$}=await loadStack();
+    // Kobalab UI's fadein/selector helpers operate on jQuery objects, not raw DOM nodes.
+    // Official Majiang passes $('#board') / $('#board .board') here.
+    const board=$('#board',host);
+    const boardInner=$('#board .board',host);
+    const assetRoot=$('#loaddata',host);
     const paiView=pai(assetRoot);
-    const audioView=name=>assetRoot.querySelector(`audio[data-name="${name}"]`)||new Audio();
+    const audioView=name=>assetRoot.find(`audio[data-name="${name}"]`)[0]||new Audio();
     const players=[new Player(board,paiView,audioView),new AI(),new AI(),new AI()];
     const rule=Majiang.rule({});
     const end=paipu=>{if(runtime)runtime.paipu=paipu||null;window.dispatchEvent(new CustomEvent('fn-mahjong-end',{detail:{paipu:paipu||null}}));};
