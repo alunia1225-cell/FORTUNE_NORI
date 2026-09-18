@@ -62,107 +62,6 @@
     board.style.top=`${Math.max(0,(h-450*s)/2/s)}px`;
   }
 
-  class SafeGameCtl{
-    constructor(root, storage, game, ...view){
-      this.$=window.jQuery||window.$;
-      if(!this.$) throw new Error('Mahjong jQuery instance not initialized');
-      this._node={
-        controller:this.$('.controller',root),
-        download:this.$('.download',root)
-      };
-      this._root=root;
-      this._game=game;
-      this._view=view;
-      this._pref={sound_on:true,speed:3};
-      try{
-        const raw=window.localStorage && window.localStorage.getItem(storage);
-        if(raw){
-          const parsed=JSON.parse(raw);
-          if(parsed && typeof parsed==='object') this._pref=Object.assign(this._pref,parsed);
-        }
-      }catch(_){}
-      if(game) game._view.no_player_name=true;
-      this.redraw();
-    }
-    save(){
-      try{ window.localStorage.setItem('Majiang.pref',JSON.stringify(this._pref)); }catch(_){}
-    }
-    redraw(){
-      this.$('.speed span',this._node.controller).css('visibility','visible');
-      this.sound(this._pref.sound_on);
-      this.speed(this._pref.speed);
-      this.set_handler();
-    }
-    speed(speed){
-      if(!this._game)return false;
-      speed=Math.max(1,Math.min(5,Number(speed)||3));
-      this._game.speed=speed;
-      this.$('.speed span',this._node.controller).each((i,n)=>{
-        this.$(n).css('visibility',i<speed?'visible':'hidden');
-      });
-      this._pref.speed=speed;
-      this.save();
-      return false;
-    }
-    sound(on){
-      on=!!on;
-      const views=Array.isArray(this._view)?this._view:[this._view];
-      views.filter(Boolean).forEach(v=>{v.sound_on=on;});
-      if(on){
-        hide(this.$('.sound.off',this._node.controller));
-        show(this.$('.sound.on',this._node.controller));
-      }else{
-        hide(this.$('.sound.on',this._node.controller));
-        show(this.$('.sound.off',this._node.controller));
-      }
-      this._pref.sound_on=on;
-      this.save();
-      return false;
-    }
-    set_handler(){
-      this.clear_handler();
-      const ctl=this._node.controller;
-      this.$('.sound',ctl).on('click',()=>this.sound(!this._pref.sound_on));
-      this.$('.minus',ctl).on('click',()=>this.speed(this._game.speed-1));
-      this.$('.plus',ctl).on('click',()=>this.speed(this._game.speed+1));
-      this.$(window).on('keyup.controler',ev=>{
-        if(ev.key==='a')this.sound(!this._pref.sound_on);
-        else if(ev.key==='-')this.speed(this._game.speed-1);
-        else if(ev.key==='+')this.speed(this._game.speed+1);
-      });
-    }
-    clear_handler(){
-      this.$('.sound, .minus, .plus',this._node.controller).off('click');
-      this.$(window).off('.controler');
-    }
-    stop(){
-      this._game.stop();
-      let blob=new Blob([JSON.stringify(this._game._paipu)],{type:'application/json'});
-      this.$('a',this._node.download).attr('href',URL.createObjectURL(blob)).attr('download','牌譜.json');
-      show(this._node.download);
-      this.stoped=true;
-    }
-    start(){
-      this.stoped=false;
-      hide(this._node.download);
-      this._game.start();
-    }
-    shoupai(){
-      const game=this._game;
-      if(game._status==='hule'||game._status==='pingju'||game._status==='jieju')return true;
-      game._view.open_shoupai=!game._view.open_shoupai;
-      game._view.redraw();
-      return false;
-    }
-    he(){
-      const game=this._game;
-      if(game._status==='hule'||game._status==='pingju'||game._status==='jieju')return true;
-      game._view.open_he=!game._view.open_he;
-      game._view.redraw();
-      return false;
-    }
-  }
-
   async function start(){
     if(runtime)return runtime;
     const host=document.getElementById('modalContent');
@@ -210,7 +109,6 @@
     const end=paipu=>{if(runtime)runtime.paipu=paipu||null;window.dispatchEvent(new CustomEvent('fn-mahjong-end',{detail:{paipu:paipu||null}}));};
     const game=new Majiang.Game(players,end,rule);
     game.view=new Majiang.UI.Board($('.board',board),pai,audio,game.model);
-    new SafeGameCtl(board,'Majiang.pref',game,game.view);
     runtime={game,players,view:game.view,paipu:null};
     const resize=fit;runtime.resize=resize;window.addEventListener('resize',resize,{passive:true});fit();game.kaiju();
     return runtime;
