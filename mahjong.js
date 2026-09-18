@@ -104,7 +104,13 @@
       el.volume=volumes[name] ?? 1;
       return el;
     };
-    const players=[new Majiang.UI.Player(board,pai,audio),new Majiang.AI(),new Majiang.AI(),new Majiang.AI()];
+    // FORTUNE NOIR is a standalone single-human vs 3-AI table.
+    // Keep Kobalab's Player implementation intact, but skip its optional
+    // standalone seat-confirmation screen so the human is always seat 0.
+    class FortunePlayer extends Majiang.UI.Player {
+      action_kaiju(kaiju){ this.callback(); }
+    }
+    const players=[new FortunePlayer(board,pai,audio),new Majiang.AI(),new Majiang.AI(),new Majiang.AI()];
     const rule=Majiang.rule({});
     const end=paipu=>{if(runtime)runtime.paipu=paipu||null;window.dispatchEvent(new CustomEvent('fn-mahjong-end',{detail:{paipu:paipu||null}}));};
     const game=new Majiang.Game(players,end,rule);
