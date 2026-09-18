@@ -67,8 +67,8 @@
       this.$=window.jQuery||window.$;
       if(!this.$) throw new Error('Mahjong jQuery instance not initialized');
       this._node={
-        controller:this.this.$('.controller',root),
-        download:this.this.$('.download',root)
+        controller:this.$('.controller',root),
+        download:this.$('.download',root)
       };
       this._root=root;
       this._game=game;
