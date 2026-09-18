@@ -106,7 +106,8 @@
     }
     sound(on){
       on=!!on;
-      this._view.forEach(v=>v.sound_on=on);
+      const views=Array.isArray(this._view)?this._view:[this._view];
+      views.filter(Boolean).forEach(v=>{v.sound_on=on;});
       if(on){
         hide(this.$('.sound.off',this._node.controller));
         show(this.$('.sound.on',this._node.controller));
