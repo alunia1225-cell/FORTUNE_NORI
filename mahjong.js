@@ -1,141 +1,391 @@
-(function(){
-  'use strict';
-  let runtime=null, loading=null;
-  const BASE='./';
-  const URLS={
-    jq:'https://esm.sh/jquery@3.7.1?bundle&target=es2020',
-    core:'https://esm.sh/@kobalab/majiang-core@1.3.5?bundle&target=es2020',
-    ai:'https://esm.sh/@kobalab/majiang-ai@1.2.0?bundle&target=es2020',
-    // Import only the official Kobalab Player/Board modules. Do not load
-    // @kobalab/majiang-ui's package root: that root also exposes optional
-    // editor modules whose dependency graph includes jquery-ui/sortable.
-    uiPlayer:'https://esm.sh/@kobalab/majiang-ui@1.6.1/lib/player.js?bundle&target=es2020',
-    uiBoard:'https://esm.sh/@kobalab/majiang-ui@1.6.1/lib/board.js?bundle&target=es2020',
+(() => {
+  "use strict";
+
+  const CORE_URL = "https://esm.sh/@kobalab/majiang-core@1.3.5?bundle&target=es2020";
+  const AI_URL   = "https://esm.sh/@kobalab/majiang-ai@1.2.0?bundle&target=es2020";
+
+  let loading = null;
+  let runtime = null;
+
+  const TILE_NAME = {
+    m1:"一萬",m2:"二萬",m3:"三萬",m4:"四萬",m5:"五萬",m6:"六萬",m7:"七萬",m8:"八萬",m9:"九萬",m0:"赤五萬",
+    p1:"一筒",p2:"二筒",p3:"三筒",p4:"四筒",p5:"五筒",p6:"六筒",p7:"七筒",p8:"八筒",p9:"九筒",p0:"赤五筒",
+    s1:"一索",s2:"二索",s3:"三索",s4:"四索",s5:"五索",s6:"六索",s7:"七索",s8:"八索",s9:"九索",s0:"赤五索",
+    z1:"東",z2:"南",z3:"西",z4:"北",z5:"白",z6:"發",z7:"中"
   };
-  function html(){
-    const p=[
-      ['m1','イーワン'],['m2','リャンワン'],['m3','サンワン'],['m4','スーワン'],['m5','ウーワン'],['m6','ローワン'],['m7','チーワン'],['m8','パーワン'],['m9','キューワン'],['m0','赤ウーワン'],
-      ['p1','イーピン'],['p2','リャンピン'],['p3','サンピン'],['p4','スーピン'],['p5','ウーピン'],['p6','ローピン'],['p7','チーピン'],['p8','パーピン'],['p9','キューピン'],['p0','赤ウーピン'],
-      ['s1','イーソー'],['s2','リャンソー'],['s3','サンソー'],['s4','スーソー'],['s5','ウーソー'],['s6','ローソー'],['s7','チーソー'],['s8','パーソー'],['s9','キューソー'],['s0','赤ウーソー'],
-      ['z1','トン'],['z2','ナン'],['z3','シャー'],['z4','ペー'],['z5','ハク'],['z6','ハツ'],['z7','チュン'],['_','']
-    ];
-    const imgs=p.map(([id,alt])=>`<img class="pai" data-pai="${id}" src="${BASE}${id==='_'?'pai':id}.gif" alt="${alt}">`).join('');
-    const audio=[['dapai','dahai11.wav',.2],['chi','chii.wav',.2],['peng','pon.wav',.2],['gang','kan.wav',.2],['rong','ron.wav',.2],['zimo','tsumo.wav',.2],['lizhi','richi.wav',.2],['gong','nc43994.wav',1],['beep','beep.wav',.2]].map(([n,f,v])=>`<audio data-name="${n}" src="${BASE}${f}" volume="${v}" preload></audio>`).join('');
-    return `<div id="fnMahjongRoot" class="fn-mahjong-root"><div id="space"></div><div id="board"><div class="board">
-      <div class="score"><div class="juchang"><div class="jushu"></div><div class="jicun"><img class="chouma" src="${BASE}100.gif" alt="本場"> : <span class="changbang"></span><br><img class="chouma" src="${BASE}1000.gif" alt="供託"> : <span class="lizhibang"></span></div></div><div class="shan"><div class="baopai"></div><div>牌数: <span class="paishu"></span></div></div><div class="defen"><div class="main"></div><div class="xiajia"></div><div class="duimian"></div><div class="shangjia"></div></div></div>
-      <div class="timer hide"></div><div class="player-button hide"><span class="button cansel" aria-label="キャンセル">×</span><span class="button daopai">ノー聴</span><span class="button chi">チー</span><span class="button peng">ポン</span><span class="button gang">カン</span><span class="button lizhi">リーチ</span><span class="button rong">ロン</span><span class="button zimo">ツモ</span><span class="button pingju">流局</span></div><div class="select-mianzi hide"></div>
-      <div class="player main"></div><div class="shoupai main"><div class="bingpai"></div><div class="fulou"></div></div><div class="he main"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div><div class="say main"></div>
-      <div class="player xiajia"></div><div class="shoupai xiajia"><div class="bingpai"></div><div class="fulou"></div></div><div class="he xiajia"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div><div class="say xiajia"></div>
-      <div class="player duimian"></div><div class="shoupai duimian"><div class="bingpai"></div><div class="fulou"></div></div><div class="he duimian"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div><div class="say duimian"></div>
-      <div class="player shangjia"></div><div class="shoupai shangjia"><div class="bingpai"></div><div class="fulou"></div></div><div class="he shangjia"><div class="lizhi"><img class="chouma hide" src="${BASE}1000.gif"></div><div class="dapai"></div></div><div class="say shangjia"></div>
-      <div class="hule-dialog hide"><div><div><div class="hule"><div class="shan baopai"><span class="baopai"></span></div><div class="shan fubaopai"><span class="fubaopai"></span></div><div class="shoupai"><div class="bingpai"></div><div class="fulou"></div></div><table class="hupai"><tr class="r_hupai"><td class="name"></td><td class="fanshu"></td></tr><tr class="r_defen"><td class="defen" colspan="2"></td></tr></table><div class="jicun"><img class="chouma" src="${BASE}100.gif" alt="本場"> : <span class="changbang"></span> <img class="chouma" src="${BASE}1000.gif" alt="供託"> : <span class="lizhibang"></span></div></div><div class="pingju"></div><div class="fenpei"><div class="main"><span class="feng"></span> : <span class="player"></span><span class="defen"></span><span class="diff"></span></div><div class="xiajia"><span class="feng"></span> : <span class="player"></span><span class="defen"></span><span class="diff"></span></div><div class="duimian"><span class="feng"></span> : <span class="player"></span><span class="defen"></span><span class="diff"></span></div><div class="shangjia"><span class="feng"></span> : <span class="player"></span><span class="defen"></span><span class="diff"></span></div></div></div></div></div>
-      <div class="summary"><div><div><table><thead><tr class="r_player"><td colspan="3"></td><th class="player"></th><th class="player"></th><th class="player"></th><th class="player"></th></tr></thead><tbody class="body"><tr class="r_diff"><th class="jushu"></th><th class="changbang"></th><th class="last"></th><td class="back"><span class="diff"></span><span class="lizhi"></span></td><td class="back"><span class="diff"></span><span class="lizhi"></span></td><td class="back"><span class="diff"></span><span class="lizhi"></span></td><td class="back"><span class="diff"></span><span class="lizhi"></span></td></tr></tbody><tfoot><tr class="r_defen"><td colspan="3"></td><td class="defen"></td><td class="defen"></td><td class="defen"></td><td class="defen"></td></tr><tr class="r_point"><td colspan="3"></td><td class="point"></td><td class="point"></td><td class="point"></td><td class="point"></td></tr></tfoot></table></div></div></div>
-      <div class="kaiju"><div><div class="title"></div><div class="player"><div class="main"></div><div class="xiajia"></div><div class="duimian"></div><div class="shangjia"></div></div></div></div><div class="suspend hide"></div><div class="tenhou-dialog hide"><form><ul><li><label><input name="type" type="radio" value="URL" checked>URL形式</label></li><li><label><input name="type" type="radio" value="JSON">JSON形式</label></li><li><label><input name="limited" type="checkbox" value="1">この局のみ</label></li></ul><textarea rows="5" disabled></textarea><div class="button"><input type="button" value="閉じる"><input type="submit" value="コピー"></div></form></div>
-    </div><div class="analyzer"></div><div class="download hide"></div><div class="controller"><img class="exit" src="${BASE}icon-exit.png" title="終了 [q]"><img class="summary" src="${BASE}icon-list.png" title="集計表示 [?]"><img class="sound on" src="${BASE}icon-volume-up.png" title="音声OFF [a]"><img class="sound off" src="${BASE}icon-mutealt.png" title="音声ON [a]"><img class="analyzer" src="${BASE}icon-lightbulb-idea.png" title="検討ON/OFF [i]"><img class="export" src="${BASE}icon-export.png" title="天鳳牌譜 [t]"><div></div><img class="first" src="${BASE}icon-step-backward.png" title="配牌/前局 [←]"><img class="prev" src="${BASE}icon-backward.png" title="戻る [↑]"><img class="play on" src="${BASE}icon-play.png" title="再開 [space]"><img class="play off" src="${BASE}icon-pause.png" title="停止 [space]"><img class="next" src="${BASE}icon-forward.png" title="進む [↓]"><img class="last" src="${BASE}icon-step-forward.png" title="結果/次局 [→]"><div class="speed"><img class="minus" src="${BASE}icon-minus-sign.png" title="速度- [-]"><span></span><span></span><span></span><span></span><span></span><img class="plus" src="${BASE}icon-plus-sign.png" title="速度+ [+]"></div></div></div></div><div id="loaddata" class="fn-mahjong-assets">${imgs}<br>${audio}</div></div>`;
+
+  function tileKey(p) {
+    if (!p) return "";
+    return p[0] + (p[1] === "0" ? "0" : p[1]);
   }
-  async function load(){
-    if(loading)return loading;
-    loading=(async()=>{
-      const jqmod=await import(URLS.jq);
-      const $=jqmod.default||jqmod.jQuery||jqmod;
-      window.jQuery=$; window.$=$;
-      const [core,ai,uiPlayer,uiBoard,uiGameCtl]=await Promise.all([
-        import(URLS.core),
-        import(URLS.ai),
-        import(URLS.uiPlayer),
-        import(URLS.uiBoard),
-      ]);
-      const Majiang=core.default||core;
-      Majiang.AI=ai.default||ai;
-      Majiang.UI={
-        Player: uiPlayer.default||uiPlayer,
-        Board: uiBoard.default||uiBoard
-      };
-      return {Majiang,$};
+
+  function tileFile(p) {
+    const k = tileKey(p);
+    return k ? `./${k}.gif` : "";
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"]/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
+    }[c]));
+  }
+
+  function tileImg(p, cls = "") {
+    const k = tileKey(p);
+    if (!k) return "";
+    return `<img class="fnmj-tile ${cls}" src="${tileFile(k)}" alt="${esc(TILE_NAME[k] || k)}" data-tile="${k}">`;
+  }
+
+  function hiddenTile(count = 1, cls = "") {
+    return `<span class="fnmj-back-row ${cls}">${Array.from({length: count}, () => '<i class="fnmj-back"></i>').join("")}</span>`;
+  }
+
+  function audio(name, volume = 0.22) {
+    const map = {
+      dapai:"dahai11.wav", chi:"chii.wav", peng:"pon.wav", gang:"kan.wav",
+      rong:"ron.wav", zimo:"tsumo.wav", lizhi:"richi.wav", beep:"beep.wav"
+    };
+    const src = map[name];
+    if (!src) return null;
+    const a = new Audio(`./${src}`);
+    a.preload = "auto";
+    a.volume = volume;
+    return a;
+  }
+
+  function play(name) {
+    try {
+      const a = audio(name);
+      if (a) { a.currentTime = 0; a.play().catch(() => {}); }
+    } catch (_) {}
+  }
+
+  function makeHumanClass(Majiang, ui) {
+    class Human extends Majiang.Player {}
+    const base = Majiang.Player.prototype;
+
+    Human.prototype.kaiju = function(k) {
+      base.kaiju.call(this, k);
+      if (this._callback) this.action_kaiju(k);
+    };
+    Human.prototype.qipai = function(q) {
+      base.qipai.call(this, q);
+      if (this._callback) this.action_qipai(q);
+    };
+    Human.prototype.zimo = function(z, g) {
+      base.zimo.call(this, z, g);
+      if (this._callback) this.action_zimo(z, g);
+    };
+    Human.prototype.dapai = function(d) {
+      base.dapai.call(this, d);
+      if (this._callback) this.action_dapai(d);
+    };
+    Human.prototype.fulou = function(f) {
+      base.fulou.call(this, f);
+      if (this._callback) this.action_fulou(f);
+    };
+    Human.prototype.gang = function(g) {
+      base.gang.call(this, g);
+      if (this._callback) this.action_gang(g);
+    };
+    Human.prototype.kaigang = function(k) { base.kaigang.call(this, k); };
+    Human.prototype.hule = function(h) { base.hule.call(this, h); this.action_hule(h); };
+    Human.prototype.pingju = function(p) { base.pingju.call(this, p); this.action_pingju(p); };
+    Human.prototype.jieju = function(p) { base.jieju.call(this, p); this.action_jieju(p); };
+
+    Human.prototype.action_kaiju = function() { this._callback(); };
+    Human.prototype.action_qipai = function() { this._callback(); };
+
+    Human.prototype.action_zimo = function(z, gangzimo) {
+      if (z.l !== this._menfeng) return this._callback();
+      ui.humanTurn(this, gangzimo);
+    };
+
+    Human.prototype.action_dapai = function(d) {
+      if (d.l === this._menfeng) return this._callback();
+      ui.opponentDiscard(this, d);
+    };
+
+    Human.prototype.action_fulou = function(f) {
+      if (f.l !== this._menfeng) return this._callback();
+      ui.humanTurn(this, false, true);
+    };
+
+    Human.prototype.action_gang = function(g) {
+      if (g.l !== this._menfeng) return this._callback();
+      ui.humanTurn(this, true);
+    };
+
+    Human.prototype.action_hule = function() {
+      ui.showResult("和了", null);
+      this._callback();
+    };
+    Human.prototype.action_pingju = function(p) {
+      ui.showResult(p?.name || "流局", p);
+      this._callback();
+    };
+    Human.prototype.action_jieju = function(p) {
+      ui.showResult("対局終了", p);
+      this._callback();
+    };
+
+    return Human;
+  }
+
+  class TableUI {
+    constructor(root, Majiang) {
+      this.root = root;
+      this.Majiang = Majiang;
+      this.game = null;
+      this.human = null;
+      this.message = "";
+      this.actions = [];
+      this.seat = 0;
+      this.timer = null;
+      this.renderTimer = null;
+      root.innerHTML = `
+        <div class="fnmj-shell">
+          <div class="fnmj-topbar">
+            <div><small>FORTUNE NOIR</small><strong>4 PLAYER MAHJONG</strong></div>
+            <div class="fnmj-round" id="fnmjRound">東1局</div>
+            <div class="fnmj-wall">残り <b id="fnmjWall">--</b></div>
+          </div>
+          <div class="fnmj-table">
+            <div class="fnmj-seat fnmj-seat-top"><span class="name" id="fnmjName2">AI 2</span><span class="score" id="fnmjScore2">25000</span><div class="hand hidden-hand" id="fnmjHand2"></div><div class="river" id="fnmjRiver2"></div></div>
+            <div class="fnmj-seat fnmj-seat-left"><span class="name" id="fnmjName3">AI 3</span><span class="score" id="fnmjScore3">25000</span><div class="hand hidden-hand" id="fnmjHand3"></div><div class="river" id="fnmjRiver3"></div></div>
+            <div class="fnmj-seat fnmj-seat-right"><span class="name" id="fnmjName1">AI 1</span><span class="score" id="fnmjScore1">25000</span><div class="hand hidden-hand" id="fnmjHand1"></div><div class="river" id="fnmjRiver1"></div></div>
+            <div class="fnmj-center">
+              <div class="fnmj-status" id="fnmjStatus">対局開始中…</div>
+              <div class="fnmj-center-info"><span id="fnmjTurn">東家</span><span id="fnmjHonba">0本場</span></div>
+            </div>
+            <div class="fnmj-seat fnmj-seat-bottom"><span class="name" id="fnmjName0">YOU</span><span class="score" id="fnmjScore0">25000</span><div class="river" id="fnmjRiver0"></div><div class="hand my-hand" id="fnmjHand0"></div></div>
+          </div>
+          <div class="fnmj-actions" id="fnmjActions"></div>
+          <div class="fnmj-result hidden" id="fnmjResult"><div><strong id="fnmjResultTitle"></strong><pre id="fnmjResultText"></pre><button id="fnmjResultClose">CONTINUE</button></div></div>
+        </div>`;
+      this.resultClose = root.querySelector("#fnmjResultClose");
+      this.resultClose.addEventListener("click", () => {
+        this.root.querySelector("#fnmjResult").classList.add("hidden");
+        if (this.game && this.game._status === "jieju") this.stop();
+      });
+    }
+
+    setSeat(seat) { this.seat = seat; }
+
+    bind(game, human) {
+      this.game = game;
+      this.human = human;
+      this.renderTimer = setInterval(() => this.render(), 120);
+      this.render();
+    }
+
+    stop() {
+      if (this.renderTimer) clearInterval(this.renderTimer);
+      this.renderTimer = null;
+      this.clearActions();
+    }
+
+    clearActions() {
+      this.actions = [];
+      const a = this.root.querySelector("#fnmjActions");
+      if (a) a.innerHTML = "";
+    }
+
+    actionButton(label, fn, cls = "") {
+      this.actions.push({label, fn, cls});
+    }
+
+    drawActions() {
+      const box = this.root.querySelector("#fnmjActions");
+      box.innerHTML = this.actions.map((a,i) => `<button class="${a.cls}" data-action="${i}">${esc(a.label)}</button>`).join("");
+      box.querySelectorAll("button").forEach((b,i) => b.addEventListener("click", () => this.actions[i].fn()));
+    }
+
+    humanTurn(player, gangzimo = false, afterFulou = false) {
+      this.clearActions();
+      const sp = player.shoupai;
+      if (player.allow_hule(null, gangzimo)) this.actionButton("ツモ", () => { play("zimo"); player.callback({hule:"-"}); });
+      if (player.allow_pingju(sp)) this.actionButton("九種九牌", () => player.callback({daopai:"-"}));
+      const gangs = player.get_gang_mianzi();
+      gangs.forEach(m => this.actionButton(`カン ${m}`, () => { play("gang"); player.callback({gang:m}); }));
+      const riichi = player.allow_lizhi();
+      if (riichi) {
+        this.actionButton("リーチ", () => this.selectDiscard(player, riichi, true), "primary");
+      }
+      if (afterFulou) {
+        this.selectDiscard(player, player.get_dapai(), false);
+      } else if (!riichi) {
+        this.selectDiscard(player, player.get_dapai(), false);
+      }
+      this.message = "あなたのツモ";
+      this.drawActions();
+      this.render();
+    }
+
+    selectDiscard(player, tiles, riichi) {
+      this.root.querySelectorAll(".fnmj-selectable").forEach(e => e.classList.remove("fnmj-selectable"));
+      const hand = this.root.querySelector("#fnmjHand0");
+      const nodes = [...hand.querySelectorAll(".fnmj-tile-wrap[data-raw]")];
+      const wanted = new Set(tiles.map(tileKey));
+      nodes.forEach(n => {
+        const tile = tileKey(n.dataset.raw);
+        if (wanted.has(tile)) {
+          n.classList.add("fnmj-selectable");
+          n.onclick = () => {
+            const raw = n.dataset.raw;
+            const p = riichi ? `${raw.replace(/_$/, "")}*` : raw;
+            player.callback({dapai: p});
+            this.clearActions();
+          };
+        }
+      });
+      this.drawActions();
+    }
+
+    opponentDiscard(player, d) {
+      this.clearActions();
+      const p = d.p;
+      if (player.allow_hule(p)) this.actionButton("ロン", () => { play("rong"); player.callback({hule:"-"}); }, "danger");
+      const peng = player.get_peng_mianzi(p);
+      peng.forEach(m => this.actionButton(`ポン ${m}`, () => { play("peng"); player.callback({fulou:m}); }));
+      const gang = player.get_gang_mianzi(p);
+      gang.forEach(m => this.actionButton(`カン ${m}`, () => { play("gang"); player.callback({fulou:m}); }));
+      const chi = d.l === (player._menfeng + 3) % 4 ? player.get_chi_mianzi(p) : [];
+      chi.forEach(m => this.actionButton(`チー ${m}`, () => { play("chi"); player.callback({fulou:m}); }));
+      this.actionButton("パス", () => player.callback({}), "secondary");
+      this.message = `${TILE_NAME[tileKey(p)] || p} が捨てられました`;
+      this.drawActions();
+      this.render();
+    }
+
+    render() {
+      if (!this.game) return;
+      const m = this.game.model;
+      const root = this.root;
+      const wind = ["東","南","西","北"];
+      root.querySelector("#fnmjRound").textContent = `${wind[m.zhuangfeng]}${m.jushu + 1}局`;
+      root.querySelector("#fnmjWall").textContent = m.shan ? m.shan.paishu : "--";
+      root.querySelector("#fnmjHonba").textContent = `${m.changbang}本場`;
+      root.querySelector("#fnmjTurn").textContent = m.lunban >= 0 ? `${wind[m.player_id[m.lunban]]}家の番` : "配牌";
+      root.querySelector("#fnmjStatus").textContent = this.message || (m.lunban >= 0 ? `${wind[m.player_id[m.lunban]]}家の番` : "配牌中…");
+
+      for (let l=0;l<4;l++) {
+        const id = m.player_id[l];
+        root.querySelector(`#fnmjScore${id}`).textContent = (m.defen[id] ?? 0).toLocaleString();
+        root.querySelector(`#fnmjName${id}`).textContent = id === this.seat ? "YOU" : `AI ${id}`;
+        const hand = root.querySelector(`#fnmjHand${id}`);
+        if (id === this.seat) {
+          const sp = m.shoupai[l];
+          if (sp) hand.innerHTML = renderOpenHand(sp);
+        } else {
+          const sp = m.shoupai[l];
+          const count = sp ? countTiles(sp) : 13;
+          hand.innerHTML = hiddenTile(Math.max(0, count), "");
+        }
+        const river = root.querySelector(`#fnmjRiver${id}`);
+        river.innerHTML = renderRiver(m.he[l]);
+      }
+      this.drawActions();
+    }
+
+    showResult(title, data) {
+      this.root.querySelector("#fnmjResultTitle").textContent = title;
+      this.root.querySelector("#fnmjResultText").textContent =
+        data?.name ? data.name : "局が終了しました。";
+      this.root.querySelector("#fnmjResult").classList.remove("hidden");
+      this.message = title;
+      this.render();
+    }
+  }
+
+  function countTiles(sp) {
+    const s = sp.toString().replace(/[^mpsz0-9]/g, "");
+    return Math.min(14, (s.match(/[mpsz]\d/g) || []).length);
+  }
+
+  function parseTiles(sp) {
+    const s = sp.toString();
+    const out = [];
+    for (const m of s.matchAll(/([mpsz])([0-9])/g)) out.push(m[1] + m[2]);
+    return out;
+  }
+
+  function renderOpenHand(sp) {
+    const tiles = parseTiles(sp);
+    const zimo = sp._zimo;
+    const zimoKey = zimo ? tileKey(zimo) : "";
+    return tiles.map((p,i) => {
+      const extra = zimoKey && i === tiles.length - 1 ? " zimo-tile" : "";
+      return `<span class="fnmj-tile-wrap${extra}">${tileImg(p)}</span>`;
+    }).join("");
+  }
+
+  function renderRiver(he) {
+    if (!he || !he._pai) return "";
+    return he._pai.map(p => tileImg(p)).join("");
+  }
+
+  async function load() {
+    if (loading) return loading;
+    loading = (async () => {
+      const [coreMod, aiMod] = await Promise.all([import(CORE_URL), import(AI_URL)]);
+      const Majiang = coreMod.default || coreMod;
+      Majiang.AI = aiMod.default || aiMod;
+      if (!Majiang.Game || !Majiang.Player || !Majiang.rule) {
+        throw new Error("Kobalab Majiang core のロードに失敗しました");
+      }
+      return Majiang;
     })();
     return loading;
   }
-  function fit(){
-    const root=document.getElementById('fnMahjongRoot'),board=document.querySelector('#fnMahjongRoot #board');
-    if(!root||!board)return;
-    const w=root.clientWidth||innerWidth,h=root.clientHeight||innerHeight;
-    const s=Math.min(w/800,h/450);
-    board.style.transform=`scale(${s})`;
-    board.style.left=`${Math.max(0,(w-800*s)/2/s)}px`;
-    board.style.top=`${Math.max(0,(h-450*s)/2/s)}px`;
-  }
 
-  async function start(){
-    if(runtime)return runtime;
-    const host=document.getElementById('modalContent');
-    if(!host)throw new Error('FORTUNE NOIR modalContent not found');
-    host.innerHTML=html();
-    const {Majiang,$}=await load();
-    const root=$('#fnMahjongRoot');
-    const board=$('#board',root);
-    const assetRoot=$('#loaddata',root);
-    // Use the exact DOM/jQuery instance created by this page for assets.
-    // The esm.sh-transformed UI audio helper can receive a different jQuery
-    // realm on Safari, so keep the asset adapters local and dependency-free.
-    const pai=(p)=>{
-      const key=String(p).slice(0,2);
-      const node=assetRoot.find(`.pai[data-pai=\"${key}\"]`).get(0);
-      if(!node) throw new Error(`Missing Mahjong tile asset: ${key}`);
-      return $(node).clone();
-    };
-    const audio=(name)=>{
-      // Do not depend on a jQuery lookup for audio on Safari.  The official
-      // Player/Board classes only require an HTMLAudioElement, so construct
-      // one directly from the same local asset names used by the UI.
-      const files={
-        dapai:'dahai11.wav',
-        chi:'chii.wav',
-        peng:'pon.wav',
-        gang:'kan.wav',
-        rong:'ron.wav',
-        zimo:'tsumo.wav',
-        lizhi:'richi.wav',
-        gong:'nc43994.wav',
-        beep:'beep.wav'
-      };
-      const volumes={dapai:.2,chi:.2,peng:.2,gang:.2,rong:.2,zimo:.2,lizhi:.2,gong:1,beep:.2};
-      const file=files[name];
-      if(!file) throw new Error(`Unknown Mahjong audio asset: ${name}`);
-      const el=document.createElement('audio');
-      el.src=BASE+file;
-      el.preload='auto';
-      el.volume=volumes[name] ?? 1;
-      return el;
-    };
-    // FORTUNE NOIR is a standalone 4-player table: seat 0 is the human and
-    // seats 1-3 are the official Kobalab AI players.  The Kobalab Game flow
-    // itself is retained; only its optional standalone kaiju confirmation
-    // screen is bypassed.  Player callbacks still go through Game.reply(),
-    // so the normal kaiju -> qipai -> zimo sequence remains intact.
-    Majiang.UI.Player.prototype.action_kaiju=function(){ this.callback(); };
-    const players=[new Majiang.UI.Player(board,pai,audio),new Majiang.AI(),new Majiang.AI(),new Majiang.AI()];
-    const rule=Majiang.rule({});
-    const end=paipu=>{if(runtime)runtime.paipu=paipu||null;window.dispatchEvent(new CustomEvent('fn-mahjong-end',{detail:{paipu:paipu||null}}));};
-    const game=new Majiang.Game(players,end,rule);
-    game.view=new Majiang.UI.Board($('.board',board),pai,audio,game.model);
-    runtime={game,players,view:game.view,paipu:null};
-    const resize=fit;runtime.resize=resize;window.addEventListener('resize',resize,{passive:true});
-    fit();
-    // Kobalab's Game.kaiju() is retained, but its optional kaiju view is
-    // deliberately not rendered in this embedded table.  The official
-    // player callbacks still receive the kaiju message and Game.reply()
-    // advances the normal kaiju -> qipai -> zimo flow.
-    const view=game.view;
-    game.view=null;
+  async function start() {
+    if (runtime) return runtime;
+    const host = document.getElementById("modalContent");
+    if (!host) throw new Error("modalContent が見つかりません");
+
+    host.innerHTML = `<div id="fnMahjongRoot" class="fn-mahjong-root"></div>`;
+    const Majiang = await load();
+    const ui = new TableUI(host.querySelector("#fnMahjongRoot"), Majiang);
+    const Human = makeHumanClass(Majiang, ui);
+    const human = new Human();
+    const players = [human, new Majiang.AI(), new Majiang.AI(), new Majiang.AI()];
+    const rule = Majiang.rule({});
+    const game = new Majiang.Game(
+      players,
+      paipu => {
+        ui.showResult("対局終了", paipu);
+      },
+      rule,
+      "FORTUNE NOIR 4 PLAYER MAHJONG"
+    );
+
+    // UIは独自実装。KobalabのGame / Player / AI / ルールエンジンだけを使用し、
+    // 旧majiang-uiのBoard/Player/kaiju画面は一切ロードしない。
+    game.view = null;
+    game.speed = 0;
+    game.dwell = 0;
+
+    runtime = { game, human, ui };
+    ui.bind(game, human);
     game.kaiju(0);
-    game.view=view;
-    // In case the four kaiju callbacks completed before the view was restored,
-    // let the official Game transition continue immediately.
-    if (game._status === 'kaiju' && game._reply.filter(x=>x).length === 4) {
-      game.reply_kaiju();
-    }
     return runtime;
   }
-  window.FN_MAHJONG_START=()=>start().catch(err=>{console.error('[FORTUNE NOIR] Mahjong 4P start failed',err);const host=document.getElementById('modalContent');if(host)host.innerHTML='<div class="fn-mj-error"><h2>MAHJONG LOAD ERROR</h2><pre>'+String(err.stack||err).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</pre></div>';});
-  window.FN_MAHJONG_STOP=()=>{if(!runtime)return;try{runtime.game.stop&&runtime.game.stop()}catch(_){}window.removeEventListener('resize',runtime.resize);runtime=null;};
+
+  function stop() {
+    if (!runtime) return;
+    try { runtime.game.stop(); } catch (_) {}
+    runtime.ui.stop();
+    runtime = null;
+  }
+
+  window.FN_MAHJONG_START = () => start().catch(err => {
+    console.error("[FORTUNE NOIR] Mahjong start failed", err);
+    const host = document.getElementById("modalContent");
+    if (host) {
+      host.innerHTML = `<div class="fnmj-fatal"><h2>MAHJONG LOAD ERROR</h2><pre>${esc(err.stack || err)}</pre></div>`;
+    }
+  });
+
+  window.FN_MAHJONG_STOP = stop;
 })();
