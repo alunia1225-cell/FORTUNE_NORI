@@ -1,100 +1,28 @@
-/* FORTUNE NOIR — Mahjong UI rebuilt from scratch.
-   Kobalab core/AI provide the game engine; this file owns the visual layout. */
-.fn-mahjong-root{
-  position:absolute; inset:0; width:100%; height:100%;
-  overflow:hidden; background:#07110f; color:#f4f1e8;
-  font-family:Georgia,"Times New Roman",serif;
-}
-.fn-mahjong-root *{box-sizing:border-box}
-.fn-mahjong-root .hidden{display:none!important}
-.fnmj-shell{position:absolute;inset:0;display:flex;flex-direction:column;min-width:0;min-height:0}
-.fnmj-topbar{
-  flex:0 0 46px; display:flex; align-items:center; justify-content:space-between;
-  padding:0 18px; background:#080b0a; border-bottom:1px solid #6d5a24;
-  letter-spacing:.04em;
-}
-.fnmj-topbar small{display:block;color:#c8a84e;font-size:9px;letter-spacing:.18em}
-.fnmj-topbar strong{display:block;font-size:14px;letter-spacing:.12em}
-.fnmj-round{font-size:18px}
-.fnmj-wall{font-size:12px;color:#cfcac0}
-.fnmj-wall b{color:#fff;font-size:15px}
-.fnmj-table{
-  position:relative; flex:1 1 auto; min-height:0; margin:10px 14px 8px;
-  border:1px solid #5f4d21; border-radius:10px;
-  background:radial-gradient(circle at center,#0c5a49 0,#074234 48%,#042d25 100%);
-  overflow:hidden;
-}
-.fnmj-table:before{
-  content:""; position:absolute; left:22%; right:22%; top:24%; bottom:22%;
-  border:2px solid rgba(210,185,104,.38); border-radius:50%;
-}
-.fnmj-seat{position:absolute;z-index:2;text-align:center}
-.fnmj-seat .name{display:inline-block;font-size:12px;font-weight:bold;padding:3px 8px;border-radius:10px;background:#06120fdd}
-.fnmj-seat .score{display:inline-block;margin-left:5px;font-size:11px;color:#dfc36a}
-.fnmj-seat-top{left:50%;top:8px;transform:translateX(-50%);width:55%}
-.fnmj-seat-bottom{left:50%;bottom:7px;transform:translateX(-50%);width:68%}
-.fnmj-seat-left{left:7px;top:50%;transform:translateY(-50%);width:24%}
-.fnmj-seat-right{right:7px;top:50%;transform:translateY(-50%);width:24%}
-.hand{display:flex;justify-content:center;align-items:flex-end;min-height:34px;margin-top:4px;gap:2px}
-.my-hand{min-height:58px}
-.fnmj-tile-wrap{display:inline-flex;align-items:flex-end}
-.fnmj-tile{display:block;width:28px;height:39px;object-fit:contain;user-select:none}
-.my-hand .fnmj-tile{width:35px;height:49px}
-.fnmj-seat-left .fnmj-tile,.fnmj-seat-right .fnmj-tile{width:20px;height:28px}
-.hidden-hand{gap:2px}
-.fnmj-back{display:inline-block;width:20px;height:28px;border:1px solid #baa85e;border-radius:2px;background:linear-gradient(135deg,#233b36,#0b1714)}
-.fnmj-back-row{display:flex;justify-content:center;flex-wrap:nowrap}
-.river{display:flex;justify-content:center;align-content:flex-start;flex-wrap:wrap;gap:1px;margin:4px auto 0;max-width:270px;min-height:30px}
-.river .fnmj-tile{width:18px;height:25px}
-.fnmj-seat-left .river,.fnmj-seat-right .river{max-width:170px}
-.fnmj-center{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  z-index:1;text-align:center;min-width:150px;
-}
-.fnmj-status{font-size:14px;min-height:22px;text-shadow:0 1px 3px #000}
-.fnmj-center-info{display:flex;gap:10px;justify-content:center;color:#d2bf78;font-size:11px;margin-top:3px}
-.fnmj-actions{
-  flex:0 0 auto; min-height:52px; display:flex; justify-content:center; align-items:center;
-  flex-wrap:wrap; gap:6px; padding:6px 12px; background:#080b0a;
-  border-top:1px solid #6d5a24;
-}
-.fnmj-actions button{
-  appearance:none;border:1px solid #9b8440;background:#141b18;color:#fff;
-  border-radius:5px;padding:8px 12px;font:600 12px Georgia,serif;min-width:70px;
-}
-.fnmj-actions button.primary{background:#705b1f;border-color:#d2b75b}
-.fnmj-actions button.danger{background:#632b2b;border-color:#c97979}
-.fnmj-actions button.secondary{background:#0d1412}
-.fnmj-selectable{cursor:pointer;filter:brightness(1.25);transform:translateY(-7px)}
-.fnmj-result{
-  position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:#0009;
-}
-.fnmj-result>div{width:min(480px,90%);padding:24px;border:1px solid #a48639;border-radius:8px;background:#0b100e;text-align:center}
-.fnmj-result strong{display:block;font-size:25px;color:#e0c467;margin-bottom:10px}
-.fnmj-result pre{white-space:pre-wrap;color:#ddd;font:13px/1.5 Georgia,serif}
-.fnmj-result button{margin-top:12px;padding:9px 18px;border:1px solid #a48639;border-radius:5px;background:#171b18;color:#fff}
-.fnmj-fatal{position:absolute;inset:0;overflow:auto;padding:30px;background:#080808;color:#fff}
-.fnmj-fatal h2{color:#d7bd63}
-.fnmj-fatal pre{white-space:pre-wrap;color:#ffb4b4}
-@media (max-width:900px){
-  .fnmj-topbar{padding:0 10px}
-  .fnmj-topbar strong{font-size:11px}
-  .fnmj-round{font-size:15px}
-  .fnmj-table{margin:6px 7px 4px}
-  .fnmj-seat-top{width:70%}
-  .fnmj-seat-bottom{width:82%}
-  .fnmj-seat-left,.fnmj-seat-right{width:23%}
-  .fnmj-seat-left .fnmj-tile,.fnmj-seat-right .fnmj-tile{width:17px;height:24px}
-  .my-hand .fnmj-tile{width:31px;height:44px}
-  .fnmj-seat-top .fnmj-tile{width:22px;height:31px}
-  .river{max-width:235px}
-  .fnmj-actions{min-height:48px}
-}
-@media (orientation:portrait){
-  .fnmj-shell:after{
-    content:"横向きにしてください";
-    position:absolute;inset:0;z-index:100;
-    display:grid;place-items:center;background:#050807;color:#d9bd61;
-    font:700 22px Georgia,serif;letter-spacing:.08em;
-  }
-}
+/* FORTUNE NOIR Mahjong — original four-player table layout, arranged with online-mahjong conventions as reference. */
+.fn-mahjong-root{position:relative!important;width:100%!important;height:100%!important;min-height:560px;overflow:hidden!important;background:#07100e;color:#f5f2e9;font-family:Georgia,"Times New Roman",serif}
+.fn-mahjong-root *{box-sizing:border-box}.fn-mahjong-root .hidden{display:none!important}
+.fnmj-shell{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.fnmj-topbar{flex:0 0 42px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#090b0a;border-bottom:1px solid #7a6428}
+.fnmj-brand small{display:block;color:#cdb15a;font-size:8px;letter-spacing:.2em}.fnmj-brand strong{display:block;font-size:13px;letter-spacing:.1em}
+.fnmj-round{font-size:19px;font-weight:700}.fnmj-wall-count{font-size:12px;color:#cfc7b5}.fnmj-wall-count b{font-size:17px;color:#fff}
+.fnmj-table{position:relative;flex:1 1 auto;min-height:0;margin:8px 10px 5px;border:1px solid #735f29;border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 50%,#0d624e 0,#07503f 45%,#063b30 100%)}
+.fnmj-table:before{content:"";position:absolute;left:24%;right:24%;top:23%;bottom:21%;border:2px solid rgba(201,174,90,.48);border-radius:50%}
+.fnmj-wall{position:absolute;z-index:1;display:flex;gap:2px;opacity:.9}.fnmj-wall-top{left:27%;right:27%;top:8px;height:14px;justify-content:center}.fnmj-wall-bottom{left:27%;right:27%;bottom:8px;height:14px;justify-content:center}.fnmj-wall-left{left:9px;top:27%;bottom:27%;width:14px;flex-direction:column;justify-content:center}.fnmj-wall-right{right:9px;top:27%;bottom:27%;width:14px;flex-direction:column;justify-content:center}
+.fnmj-wall-tile{display:block;width:14px;height:9px;border:1px solid #c8ab56;border-radius:2px;background:linear-gradient(135deg,#1c322e,#091411);box-shadow:0 1px 0 #d9bf6c inset}.fnmj-wall-left .fnmj-wall-tile,.fnmj-wall-right .fnmj-wall-tile{width:9px;height:14px}
+.fnmj-seat{position:absolute;z-index:4;text-align:center}.fnmj-seat-top{top:25px;left:50%;width:55%;transform:translateX(-50%)}.fnmj-seat-bottom{bottom:24px;left:50%;width:72%;transform:translateX(-50%)}.fnmj-seat-left{left:21px;top:50%;width:24%;transform:translateY(-50%)}.fnmj-seat-right{right:21px;top:50%;width:24%;transform:translateY(-50%)}
+.fnmj-player-card{display:flex;justify-content:center;align-items:center;gap:5px;white-space:nowrap;margin:2px auto 3px;font-size:11px}.fnmj-player-card .name{font-weight:700;background:#061713e8;border:1px solid #395b51;border-radius:10px;padding:2px 7px}.fnmj-player-card .wind{color:#d8bd62;font-weight:700}.fnmj-player-card .score{color:#f4df94}
+.hand{display:flex;justify-content:center;align-items:flex-end;min-height:32px;gap:2px}.my-hand{min-height:56px}.fnmj-concealed{display:flex;align-items:flex-end;gap:2px}.fnmj-tile-wrap{display:inline-flex;align-items:flex-end}.fnmj-tile{display:block;width:27px;height:38px;object-fit:contain;user-select:none}.my-hand .fnmj-tile{width:34px;height:48px}.fnmj-tile-wrap.zimo-tile{margin-left:7px}
+.fnmj-meld{display:flex;gap:1px;margin-left:7px;padding-left:5px;border-left:1px solid rgba(220,196,112,.55)}.hidden-hand{gap:2px}.fnmj-back{display:inline-block;width:19px;height:27px;border:1px solid #c5a954;border-radius:2px;background:linear-gradient(135deg,#1b332e,#091612)}
+.fnmj-seat-top .fnmj-back{width:18px;height:25px}.fnmj-seat-left .fnmj-back,.fnmj-seat-right .fnmj-back{width:14px;height:20px}
+.fnmj-seat-left .hand,.fnmj-seat-right .hand{justify-content:center}.fnmj-seat-left .fnmj-tile,.fnmj-seat-right .fnmj-tile{width:17px;height:24px}
+.fnmj-river{display:flex;justify-content:center;align-content:flex-start;flex-wrap:wrap;gap:1px;max-width:245px;min-height:54px;margin:4px auto 0}.fnmj-river .fnmj-tile{width:18px;height:25px}
+.fnmj-seat-left .fnmj-river,.fnmj-seat-right .fnmj-river{max-width:160px;min-height:120px}.fnmj-seat-left .fnmj-river .fnmj-tile,.fnmj-seat-right .fnmj-river .fnmj-tile{width:16px;height:22px}.fnmj-seat-bottom .fnmj-river{min-height:48px}
+.fnmj-center{position:absolute;z-index:3;left:50%;top:50%;transform:translate(-50%,-50%);width:180px;text-align:center}.fnmj-center-board{background:rgba(4,19,15,.78);border:1px solid rgba(205,178,88,.5);border-radius:8px;padding:7px 8px;box-shadow:0 5px 18px #00140f88}
+.fnmj-dora-title{font-size:9px;color:#d9bd62;letter-spacing:.08em;margin-bottom:3px}.fnmj-dora{display:flex;justify-content:center;gap:2px;min-height:29px}.fnmj-dora .fnmj-tile{width:21px;height:29px}
+.fnmj-center-score{margin-top:3px;display:flex;justify-content:center;align-items:baseline;gap:7px}.fnmj-center-score span{font-size:14px;font-weight:700}.fnmj-center-score strong{font-size:15px;color:#e9d27d}.fnmj-center-score small{font-size:9px;color:#c9c1ad}.fnmj-status{min-height:17px;margin-top:3px;font-size:10px;color:#eee8db}
+.fnmj-actions{flex:0 0 auto;min-height:50px;display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:5px;padding:5px 10px;background:#090b0a;border-top:1px solid #735f29}
+.fnmj-actions button{appearance:none;border:1px solid #a58b42;background:#131b18;color:#fff;border-radius:5px;padding:7px 11px;font:600 12px Georgia,serif;min-width:62px}.fnmj-actions button.primary{background:#715b1e;border-color:#d6b95d}.fnmj-actions button.danger{background:#652e2e;border-color:#ce7d7d}.fnmj-actions button.secondary{background:#0e1512}
+.fnmj-selectable{cursor:pointer;filter:brightness(1.3);transform:translateY(-7px)}.fnmj-called-discard{outline:1px solid #d6b95d;outline-offset:1px}
+.fnmj-result{position:absolute;inset:0;z-index:30;display:grid;place-items:center;background:#000b}.fnmj-result>div{width:min(460px,88%);padding:22px;border:1px solid #a78a3c;border-radius:8px;background:#0b100e;text-align:center}.fnmj-result strong{display:block;font-size:24px;color:#e1c56b;margin-bottom:10px}.fnmj-result pre{white-space:pre-wrap;color:#ddd;font:13px/1.5 Georgia,serif}.fnmj-result button{margin-top:12px;padding:9px 18px;border:1px solid #a78a3c;border-radius:5px;background:#171b18;color:#fff}
+.fnmj-fatal{position:absolute;inset:0;overflow:auto;padding:30px;background:#080808;color:#fff}.fnmj-fatal h2{color:#d7bd63}.fnmj-fatal pre{white-space:pre-wrap;color:#ffb4b4}
+@media (max-width:900px){.fnmj-topbar{padding:0 9px}.fnmj-brand strong{font-size:11px}.fnmj-round{font-size:16px}.fnmj-table{margin:5px 5px 3px}.fnmj-center{width:155px}.fnmj-seat-top{width:68%}.fnmj-seat-bottom{width:84%}.fnmj-tile{width:23px;height:32px}.my-hand .fnmj-tile{width:30px;height:43px}.fnmj-seat-top .fnmj-back{width:16px;height:23px}.fnmj-seat-left,.fnmj-seat-right{width:23%}.fnmj-seat-left{left:13px}.fnmj-seat-right{right:13px}.fnmj-seat-left .fnmj-tile,.fnmj-seat-right .fnmj-tile{width:15px;height:21px}.fnmj-river{max-width:220px}.fnmj-seat-left .fnmj-river,.fnmj-seat-right .fnmj-river{max-width:145px}.fnmj-actions{min-height:47px}}

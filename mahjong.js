@@ -146,19 +146,45 @@
       root.innerHTML = `
         <div class="fnmj-shell">
           <div class="fnmj-topbar">
-            <div><small>FORTUNE NOIR</small><strong>4 PLAYER MAHJONG</strong></div>
+            <div class="fnmj-brand"><small>FORTUNE NOIR</small><strong>4 PLAYER MAHJONG</strong></div>
             <div class="fnmj-round" id="fnmjRound">東1局</div>
-            <div class="fnmj-wall">残り <b id="fnmjWall">--</b></div>
+            <div class="fnmj-wall-count">残り <b id="fnmjWall">--</b></div>
           </div>
           <div class="fnmj-table">
-            <div class="fnmj-seat fnmj-seat-top"><span class="name" id="fnmjName2">AI 2</span><span class="score" id="fnmjScore2">25000</span><div class="hand hidden-hand" id="fnmjHand2"></div><div class="river" id="fnmjRiver2"></div></div>
-            <div class="fnmj-seat fnmj-seat-left"><span class="name" id="fnmjName3">AI 3</span><span class="score" id="fnmjScore3">25000</span><div class="hand hidden-hand" id="fnmjHand3"></div><div class="river" id="fnmjRiver3"></div></div>
-            <div class="fnmj-seat fnmj-seat-right"><span class="name" id="fnmjName1">AI 1</span><span class="score" id="fnmjScore1">25000</span><div class="hand hidden-hand" id="fnmjHand1"></div><div class="river" id="fnmjRiver1"></div></div>
-            <div class="fnmj-center">
-              <div class="fnmj-status" id="fnmjStatus">対局開始中…</div>
-              <div class="fnmj-center-info"><span id="fnmjTurn">東家</span><span id="fnmjHonba">0本場</span></div>
+            <div class="fnmj-wall fnmj-wall-top" id="fnmjWallTop"></div>
+            <div class="fnmj-wall fnmj-wall-right" id="fnmjWallRight"></div>
+            <div class="fnmj-wall fnmj-wall-bottom" id="fnmjWallBottom"></div>
+            <div class="fnmj-wall fnmj-wall-left" id="fnmjWallLeft"></div>
+
+            <div class="fnmj-seat fnmj-seat-top">
+              <div class="fnmj-player-card"><span class="name" id="fnmjName2">AI 2</span><span class="wind" id="fnmjWind2">南</span><span class="score" id="fnmjScore2">25000</span></div>
+              <div class="hand hidden-hand" id="fnmjHand2"></div><div class="river" id="fnmjRiver2"></div>
             </div>
-            <div class="fnmj-seat fnmj-seat-bottom"><span class="name" id="fnmjName0">YOU</span><span class="score" id="fnmjScore0">25000</span><div class="river" id="fnmjRiver0"></div><div class="hand my-hand" id="fnmjHand0"></div></div>
+            <div class="fnmj-seat fnmj-seat-left">
+              <div class="fnmj-player-card"><span class="name" id="fnmjName3">AI 3</span><span class="wind" id="fnmjWind3">北</span><span class="score" id="fnmjScore3">25000</span></div>
+              <div class="hand hidden-hand" id="fnmjHand3"></div><div class="river" id="fnmjRiver3"></div>
+            </div>
+            <div class="fnmj-seat fnmj-seat-right">
+              <div class="fnmj-player-card"><span class="name" id="fnmjName1">AI 1</span><span class="wind" id="fnmjWind1">西</span><span class="score" id="fnmjScore1">25000</span></div>
+              <div class="hand hidden-hand" id="fnmjHand1"></div><div class="river" id="fnmjRiver1"></div>
+            </div>
+            <div class="fnmj-seat fnmj-seat-bottom">
+              <div class="river" id="fnmjRiver0"></div>
+              <div class="hand my-hand" id="fnmjHand0"></div>
+              <div class="fnmj-player-card"><span class="name" id="fnmjName0">YOU</span><span class="wind" id="fnmjWind0">東</span><span class="score" id="fnmjScore0">25000</span></div>
+            </div>
+
+            <div class="fnmj-center">
+              <div class="fnmj-center-board">
+                <div class="fnmj-dora-title">ドラ表示</div>
+                <div class="fnmj-dora" id="fnmjDora"></div>
+                <div class="fnmj-center-score">
+                  <div><span id="fnmjCenterWind">東</span><span id="fnmjTurn">東家</span></div>
+                  <strong id="fnmjCenterScore">25000</strong><small id="fnmjHonba">0本場</small>
+                </div>
+                <div class="fnmj-status" id="fnmjStatus">対局開始中…</div>
+              </div>
+            </div>
           </div>
           <div class="fnmj-actions" id="fnmjActions"></div>
           <div class="fnmj-result hidden" id="fnmjResult"><div><strong id="fnmjResultTitle"></strong><pre id="fnmjResultText"></pre><button id="fnmjResultClose">CONTINUE</button></div></div>
@@ -267,12 +293,23 @@
       root.querySelector("#fnmjWall").textContent = m.shan ? m.shan.paishu : "--";
       root.querySelector("#fnmjHonba").textContent = `${m.changbang}本場`;
       root.querySelector("#fnmjTurn").textContent = m.lunban >= 0 ? `${wind[m.player_id[m.lunban]]}家の番` : "配牌";
+      root.querySelector("#fnmjCenterWind").textContent = wind[m.zhuangfeng];
+      root.querySelector("#fnmjCenterScore").textContent = (m.defen[this.seat] ?? 0).toLocaleString();
       root.querySelector("#fnmjStatus").textContent = this.message || (m.lunban >= 0 ? `${wind[m.player_id[m.lunban]]}家の番` : "配牌中…");
+
+      const dora = m.shan?.baopai || [];
+      root.querySelector("#fnmjDora").innerHTML = dora.map(p => tileImg(p)).join("");
+      const wallHtml = renderWall(m.shan ? m.shan.paishu : 70);
+      root.querySelector("#fnmjWallTop").innerHTML = wallHtml;
+      root.querySelector("#fnmjWallBottom").innerHTML = wallHtml;
+      root.querySelector("#fnmjWallLeft").innerHTML = wallHtml;
+      root.querySelector("#fnmjWallRight").innerHTML = wallHtml;
 
       for (let l=0;l<4;l++) {
         const id = m.player_id[l];
         root.querySelector(`#fnmjScore${id}`).textContent = (m.defen[id] ?? 0).toLocaleString();
         root.querySelector(`#fnmjName${id}`).textContent = id === this.seat ? "YOU" : `AI ${id}`;
+        root.querySelector(`#fnmjWind${id}`).textContent = wind[l];
         const hand = root.querySelector(`#fnmjHand${id}`);
         if (id === this.seat) {
           const sp = m.shoupai[l];
@@ -299,30 +336,70 @@
   }
 
   function countTiles(sp) {
-    const s = sp.toString().replace(/[^mpsz0-9]/g, "");
-    return Math.min(14, (s.match(/[mpsz]\d/g) || []).length);
+    if (!sp) return 0;
+    let n = 0;
+    for (const suit of ["m","p","s","z"]) {
+      const a = sp._bingpai?.[suit];
+      if (!a) continue;
+      for (let i=1;i<a.length;i++) n += a[i] || 0;
+    }
+    return n + (sp._fulou || []).length * 3;
   }
 
-  function parseTiles(sp) {
-    const s = sp.toString();
-    const out = [];
-    for (const m of s.matchAll(/([mpsz])([0-9])/g)) out.push(m[1] + m[2]);
+  function concealedTiles(sp) {
+    const out=[];
+    if (!sp) return out;
+    for (const suit of ["m","p","s","z"]) {
+      const a=sp._bingpai?.[suit];
+      if (!a) continue;
+      for (let n=1;n<a.length;n++) {
+        let c=a[n]||0;
+        if (n===5 && suit!=="z") {
+          const red=a[0]||0;
+          for(let i=0;i<red;i++) out.push(suit+"0");
+          c-=red;
+        }
+        for(let i=0;i<c;i++) out.push(suit+n);
+      }
+    }
+    const z=sp._zimo;
+    if(z && z.length<=2 && z!=="_"){
+      const k=tileKey(z);
+      const i=out.findIndex(p=>tileKey(p)===k);
+      if(i>=0) out.splice(i,1);
+      out.push(k);
+    }
     return out;
   }
 
   function renderOpenHand(sp) {
-    const tiles = parseTiles(sp);
-    const zimo = sp._zimo;
-    const zimoKey = zimo ? tileKey(zimo) : "";
-    return tiles.map((p,i) => {
-      const extra = zimoKey && i === tiles.length - 1 ? " zimo-tile" : "";
-      return `<span class="fnmj-tile-wrap${extra}">${tileImg(p)}</span>`;
+    if(!sp) return "";
+    const tiles=concealedTiles(sp);
+    const z=sp._zimo;
+    const zk=z && z.length<=2 ? tileKey(z) : "";
+    const concealed=tiles.map((p,i)=>{
+      const sep=zk && i===tiles.length-1 ? " zimo-tile" : "";
+      return `<span class="fnmj-tile-wrap${sep}" data-raw="${p}">${tileImg(p)}</span>`;
     }).join("");
+    const melds=(sp._fulou||[]).map(m=>{
+      const suit=m[0], nums=m.match(/\d/g)||[];
+      return `<span class="fnmj-meld">${nums.map(n=>tileImg(suit+n)).join("")}</span>`;
+    }).join("");
+    return `<span class="fnmj-concealed">${concealed}</span>${melds}`;
   }
 
   function renderRiver(he) {
-    if (!he || !he._pai) return "";
-    return he._pai.map(p => tileImg(p)).join("");
+    if(!he || !he._pai) return "";
+    return he._pai.map(p=>{
+      const raw=p.replace(/[\+\=\-]$/,"");
+      const called=/[\+\=\-]$/.test(p) ? " fnmj-called-discard" : "";
+      return `<span class="fnmj-river-tile${called}">${tileImg(raw)}</span>`;
+    }).join("");
+  }
+
+  function renderWall(count) {
+    const n=Math.max(0,Math.min(17,Math.ceil((count+14)/8)));
+    return Array.from({length:n},()=>'<i class="fnmj-wall-tile"></i>').join("");
   }
 
   async function load() {
@@ -344,6 +421,10 @@
     const host = document.getElementById("modalContent");
     if (!host) throw new Error("modalContent が見つかりません");
 
+    host.style.width = "100%";
+    host.style.height = "100%";
+    host.style.minHeight = "560px";
+    host.style.overflow = "hidden";
     host.innerHTML = `<div id="fnMahjongRoot" class="fn-mahjong-root"></div>`;
     const Majiang = await load();
     const ui = new TableUI(host.querySelector("#fnMahjongRoot"), Majiang);
