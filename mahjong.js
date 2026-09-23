@@ -107,12 +107,11 @@
       el.volume=volumes[name] ?? 1;
       return el;
     };
-    // FORTUNE NOIR is a standalone single-human vs 3-AI table.
-    // Keep Kobalab's Player implementation intact, but skip its optional
-    // standalone seat-confirmation screen so the human is always seat 0.
-    // FORTUNE NOIR: the standalone Kobalab kaiju seat-confirmation UI is not
-    // used here. Force the official Player implementation to acknowledge
-    // kaiju immediately so the Game can proceed to qipai.
+    // FORTUNE NOIR is a standalone 4-player table: seat 0 is the human and
+    // seats 1-3 are the official Kobalab AI players.  The Kobalab Game flow
+    // itself is retained; only its optional standalone kaiju confirmation
+    // screen is bypassed.  Player callbacks still go through Game.reply(),
+    // so the normal kaiju -> qipai -> zimo sequence remains intact.
     Majiang.UI.Player.prototype.action_kaiju=function(){ this.callback(); };
     const players=[new Majiang.UI.Player(board,pai,audio),new Majiang.AI(),new Majiang.AI(),new Majiang.AI()];
     const rule=Majiang.rule({});
@@ -123,13 +122,19 @@
     const resize=fit;runtime.resize=resize;window.addEventListener('resize',resize,{passive:true});
     fit();
     game.kaiju(0);
-    // Safari/mobile cache or timing can leave the official kaiju notification
-    // waiting. The official Game state is safe to advance only while it is
-    // still in kaiju, so this is a one-shot guard rather than a replacement
-    // game loop.
+    // Do not leave the standalone Kobalab seat-confirmation overlay visible
+    // while Game.call_players completes. The overlay is presentation only;
+    // qipai/redraw is performed by the official Game transition.
+    $('.kaiju',board).hide();
     setTimeout(()=>{
-      try{ if(runtime===null) return; if(game._status==='kaiju') game.reply_kaiju(); }catch(e){ console.error('[FORTUNE NOIR] Mahjong kaiju guard',e); }
-    },100);
+      try {
+        if (runtime && game._status === 'kaiju' && game._reply.filter(x=>x).length === 4) {
+          game.reply_kaiju();
+        }
+      } catch(e) {
+        console.error('[FORTUNE NOIR] Mahjong kaiju transition',e);
+      }
+    },50);
     return runtime;
   }
   window.FN_MAHJONG_START=()=>start().catch(err=>{console.error('[FORTUNE NOIR] Mahjong 4P start failed',err);const host=document.getElementById('modalContent');if(host)host.innerHTML='<div class="fn-mj-error"><h2>MAHJONG LOAD ERROR</h2><pre>'+String(err.stack||err).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</pre></div>';});
