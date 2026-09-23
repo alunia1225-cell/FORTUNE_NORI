@@ -121,20 +121,19 @@
     runtime={game,players,view:game.view,paipu:null};
     const resize=fit;runtime.resize=resize;window.addEventListener('resize',resize,{passive:true});
     fit();
+    // Kobalab's Game.kaiju() is retained, but its optional kaiju view is
+    // deliberately not rendered in this embedded table.  The official
+    // player callbacks still receive the kaiju message and Game.reply()
+    // advances the normal kaiju -> qipai -> zimo flow.
+    const view=game.view;
+    game.view=null;
     game.kaiju(0);
-    // Do not leave the standalone Kobalab seat-confirmation overlay visible
-    // while Game.call_players completes. The overlay is presentation only;
-    // qipai/redraw is performed by the official Game transition.
-    $('.kaiju',board).hide();
-    setTimeout(()=>{
-      try {
-        if (runtime && game._status === 'kaiju' && game._reply.filter(x=>x).length === 4) {
-          game.reply_kaiju();
-        }
-      } catch(e) {
-        console.error('[FORTUNE NOIR] Mahjong kaiju transition',e);
-      }
-    },50);
+    game.view=view;
+    // In case the four kaiju callbacks completed before the view was restored,
+    // let the official Game transition continue immediately.
+    if (game._status === 'kaiju' && game._reply.filter(x=>x).length === 4) {
+      game.reply_kaiju();
+    }
     return runtime;
   }
   window.FN_MAHJONG_START=()=>start().catch(err=>{console.error('[FORTUNE NOIR] Mahjong 4P start failed',err);const host=document.getElementById('modalContent');if(host)host.innerHTML='<div class="fn-mj-error"><h2>MAHJONG LOAD ERROR</h2><pre>'+String(err.stack||err).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</pre></div>';});
