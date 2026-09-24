@@ -1,9 +1,8 @@
 (() => {
   "use strict";
 
-  // Mahjong engine: Kobalab core + AI.  UI is intentionally custom.
+  // Mahjong engine: Kobalab core with a lightweight mobile-safe CPU and a custom Mahjong Soul-style table UI.
   const CORE_URL = "https://esm.sh/@kobalab/majiang-core@1.3.5?bundle&target=es2020";
-  const AI_URL   = "https://esm.sh/@kobalab/majiang-ai@1.2.0?bundle&target=es2020";
 
   const WIND = ["東", "南", "西", "北"];
   const TILE_NAME = {
@@ -136,8 +135,9 @@
         this.root.querySelector("#fnmjResult").classList.add("hidden");
       });
 
-      // iOS/Safari-safe delegated tile input. Do not rely on an onclick
-      // attached to an <img>/<span> that is recreated every render tick.
+      // iOS/Safari-safe delegated tile input. IMPORTANT: use exactly one
+      // pointer event path. Listening to pointerup + touchend + click at once
+      // causes a single physical tap to be delivered multiple times on iOS.
       const tileTap = (ev) => {
         const node = ev.target && ev.target.closest ? ev.target.closest(".fnmj-tile-wrap[data-raw]") : null;
         if (!node || !this.root.contains(node)) return;
@@ -146,9 +146,9 @@
         ev.stopPropagation();
         this.handleDiscardTile(node);
       };
-      this.root.addEventListener("pointerup", tileTap, {passive:false});
-      this.root.addEventListener("touchend", tileTap, {passive:false});
-      this.root.addEventListener("click", tileTap, {passive:false});
+      this._tileTap = tileTap;
+      if (window.PointerEvent) this.root.addEventListener("pointerup", tileTap, {passive:false});
+      else this.root.addEventListener("touchend", tileTap, {passive:false});
     }
 
     bind(game, human) {
@@ -201,13 +201,13 @@
       const normalDapai = player.get_dapai(sp);
 
       if (player.allow_hule(sp, null, gangzimo)) {
-        this.addAction("ツモ", () => { play("zimo"); if (typeof player._callback === "function") player._callback({hule:"-"}); this.clearActions(); }, "primary");
+        this.addAction("ツモ", () => { this.clearActions(); play("zimo"); this.respond(player, {hule:"-"}); }, "primary");
       }
       if (!gangzimo && player.allow_pingju(sp)) {
-        this.addAction("九種九牌", () => { if (typeof player._callback === "function") player._callback({daopai:"-"}); }, "secondary");
+        this.addAction("九種九牌", () => { this.clearActions(); this.respond(player, {daopai:"-"}); }, "secondary");
       }
       for (const m of (player.get_gang_mianzi(sp, null) || [])) {
-        this.addAction(`カン ${m}`, () => { play("gang"); if (typeof player._callback === "function") player._callback({gang:m}); this.clearActions(); }, "call");
+        this.addAction(`カン ${m}`, () => { this.clearActions(); play("gang"); this.respond(player, {gang:m}); }, "call");
       }
 
       const riichi = player.allow_lizhi(sp);
@@ -233,15 +233,25 @@
       if (!this.discardChoices) return;
       const player = this.discardChoices.player;
       const raw = node.dataset.raw;
-      if (!raw) return;
+      const index = Number(node.dataset.index);
+      if (!raw || !Number.isInteger(index)) return;
       if (!this.discardChoices.tiles.includes(tileKey(raw))) return;
 
+      // Match Mahjong Soul's mobile input: first tap selects/lifts the tile,
+      // second tap on that same tile confirms the discard.
+      if (this.selectedDiscardIndex !== index) {
+        this.selectedDiscardIndex = index;
+        this.message = "もう一度タップで打牌";
+        this.render();
+        return;
+      }
+
       const p = this.riichiSelecting ? `${raw.replace(/\*$/, "")}*` : raw;
-      play("dapai");
       this.discardChoices = null;
       this.riichiSelecting = false;
       this.selectedDiscardIndex = null;
       this.clearActions();
+      play("dapai");
 
       try {
         this.respond(player, {dapai:p});
@@ -271,27 +281,27 @@
         if (player.allow_hule(sp, reaction, false)) {
           canCall = true;
           this.addAction("ロン", () => {
+            this.clearActions();
             play("rong");
             this.respond(player, {hule:"-"});
-            this.clearActions();
           }, "danger");
         }
 
         for (const m of (player.get_peng_mianzi(sp, reaction) || [])) {
           canCall = true;
           this.addAction("ポン", () => {
+            this.clearActions();
             play("peng");
             this.respond(player, {fulou:m});
-            this.clearActions();
           }, "call");
         }
 
         for (const m of (player.get_gang_mianzi(sp, reaction) || [])) {
           canCall = true;
           this.addAction("カン", () => {
+            this.clearActions();
             play("gang");
             this.respond(player, {fulou:m});
-            this.clearActions();
           }, "call");
         }
 
@@ -299,9 +309,9 @@
           for (const m of (player.get_chi_mianzi(sp, reaction) || [])) {
             canCall = true;
             this.addAction("チー", () => {
+              this.clearActions();
               play("chi");
               this.respond(player, {fulou:m});
-              this.clearActions();
             }, "call");
           }
         }
@@ -325,8 +335,8 @@
       }
 
       this.addAction("パス", () => {
-        this.respond(player, {});
         this.clearActions();
+        this.respond(player, {});
       }, "secondary");
       this.render();
     }
@@ -339,13 +349,18 @@
       const round = `${WIND[m.zhuangfeng] || "東"}${(m.jushu || 0) + 1}局`;
       const wall = m.shan ? m.shan.paishu : 70;
       const turnSeat = m.lunban >= 0 ? m.player_id[m.lunban] : -1;
+      const turnCount = Math.max(0, ...(m.he || []).map(h => h?._pai?.length || 0));
 
       this.root.querySelector("#fnmjRound").textContent = round;
       this.root.querySelector("#fnmjCenterRound").textContent = round;
       this.root.querySelector("#fnmjWall").textContent = wall;
       this.root.querySelector("#fnmjHonba").textContent = `${m.changbang || 0}本場`;
       this.root.querySelector("#fnmjCenterHonba").textContent = `${m.changbang || 0}本場`;
-      this.root.querySelector("#fnmjTurn").textContent = turnSeat >= 0 ? `${WIND[this.seatWind(m, turnSeat)]}家の番` : "配牌中";
+      this.root.querySelector("#fnmjTurn").textContent = turnSeat < 0 ? "配牌中" : (turnSeat === this.seat ? "あなたの番" : `${WIND[this.seatWind(m, turnSeat)]}家の番`);
+      this.root.querySelector("#fnmjCount").textContent = `${turnCount}巡目`;
+      if (turnSeat !== this.seat && this.game._status === "zimo" && !this.discardChoices) {
+        this.message = `${WIND[this.seatWind(m, turnSeat)]}家のツモを処理中`;
+      }
       this.root.querySelector("#fnmjStatus").textContent = this.message || "";
       this.root.querySelector("#fnmjCenterScore").textContent = (m.defen[this.seat] ?? 0).toLocaleString();
 
@@ -501,19 +516,120 @@
 
   async function load() {
     if (loading) return loading;
-    loading = Promise.all([import(CORE_URL), import(AI_URL)]).then(([core, ai]) => {
+    loading = import(CORE_URL).then(core => {
       const Majiang = core.default || core;
-      Majiang.AI = ai.default || ai;
       if (!Majiang.Game || !Majiang.Player || !Majiang.rule) throw new Error("Kobalab Majiang core のロードに失敗しました");
       return Majiang;
     });
     return loading;
   }
 
+  // Lightweight mobile-safe CPU.  Kobalab AI performs a deep hand evaluation
+  // on every draw, which can block Safari/iPhone for a long time.  The game
+  // rules, legal move generation and scoring remain Kobalab core; only the
+  // decision policy is intentionally bounded for realtime web play.
+  function makeCpuClass(Majiang) {
+    class Cpu extends Majiang.Player {
+      action(msg, callback) {
+        this._cpu_timer && clearTimeout(this._cpu_timer);
+        this._cpu_timer = setTimeout(() => {
+          if (typeof this._callback === "function") {
+            console.error("[FORTUNE NOIR] CPU callback watchdog released a stalled action", msg);
+            this._safeReply({});
+          }
+        }, 3500);
+        super.action(msg, callback);
+      }
+
+      _safeReply(payload = {}) {
+        this._cpu_timer && clearTimeout(this._cpu_timer);
+        this._cpu_timer = null;
+        const cb = this._callback;
+        if (typeof cb !== "function") return;
+        this._callback = null;
+        cb(payload || {});
+      }
+
+      action_kaiju() { this._safeReply({}); }
+      action_qipai() { this._safeReply({}); }
+
+      action_zimo(z, gangzimo) {
+        if (z.l !== this._menfeng) return this._safeReply({});
+        try {
+          if (this.allow_hule(this.shoupai, null, !!gangzimo)) {
+            return this._safeReply({ hule: "-" });
+          }
+          const dapai = this.get_dapai(this.shoupai) || [];
+          if (!dapai.length) return this._safeReply({});
+          // Preserve xiangting first; tie-break toward honors/terminals.
+          const base = Majiang.Util.xiangting(this.shoupai);
+          let best = dapai[0], bestScore = Infinity;
+          for (const p of dapai) {
+            const next = this.shoupai.clone().dapai(p);
+            const x = Majiang.Util.xiangting(next);
+            const honorPenalty = p[0] === "z" ? 0.25 : 0;
+            const edgePenalty = p[0] !== "z" && (p[1] === "1" || p[1] === "9") ? 0.12 : 0;
+            const score = x * 10 + honorPenalty + edgePenalty;
+            if (x < base || score < bestScore) { bestScore = score; best = p; }
+          }
+          this._safeReply({ dapai: best });
+        } catch (e) {
+          console.error("[FORTUNE NOIR] CPU zimo error", e);
+          try {
+            const d = this.get_dapai(this.shoupai) || [];
+            this._safeReply(d.length ? { dapai: d[d.length - 1] } : {});
+          } catch (_) { this._safeReply({}); }
+        }
+      }
+
+      action_dapai(d) {
+        if (d.l === this._menfeng) return this._safeReply({});
+        try {
+          const dir = ["", "+", "=", "-"][(4 + d.l - this._menfeng) % 4];
+          const reaction = d.p.slice(0, 2) + dir;
+          if (this.allow_hule(this.shoupai, reaction, false)) {
+            return this._safeReply({ hule: "-" });
+          }
+
+          const current = Majiang.Util.xiangting(this.shoupai);
+          let bestCall = null, bestX = current;
+          for (const m of (this.get_peng_mianzi(this.shoupai, reaction) || [])) {
+            const x = Majiang.Util.xiangting(this.shoupai.clone().fulou(m));
+            if (x < bestX) { bestX = x; bestCall = m; }
+          }
+          if (d.l === (this._menfeng + 3) % 4) {
+            for (const m of (this.get_chi_mianzi(this.shoupai, reaction) || [])) {
+              const x = Majiang.Util.xiangting(this.shoupai.clone().fulou(m));
+              if (x < bestX) { bestX = x; bestCall = m; }
+            }
+          }
+          if (bestCall) return this._safeReply({ fulou: bestCall });
+          this._safeReply({});
+        } catch (e) {
+          console.error("[FORTUNE NOIR] CPU reaction error", e);
+          this._safeReply({});
+        }
+      }
+
+      action_fulou(f) {
+        if (f.l !== this._menfeng || f.m.match(/^[mpsz]\d{4}/)) return this._safeReply({});
+        try {
+          const d = this.get_dapai(this.shoupai) || [];
+          this._safeReply(d.length ? { dapai: d[d.length - 1] } : {});
+        } catch (_) { this._safeReply({}); }
+      }
+      action_gang() { this._safeReply({}); }
+      action_hule() { this._safeReply({}); }
+      action_pingju() { this._safeReply({}); }
+      action_jieju() { this._safeReply({}); }
+    }
+    return Cpu;
+  }
+
   function makeHumanClass(Majiang, ui) {
     class Human extends Majiang.Player {
       action_kaiju() { ui.respond(this, {}); }
-      action_qipai(q) { ui.respond(this, {}); }
+      action_qipai() { ui.respond(this, {}); }
       action_zimo(z, gangzimo) {
         if (z.l === this._menfeng) ui.humanTurn(this, !!gangzimo, false);
         else ui.respond(this, {});
@@ -523,6 +639,7 @@
           ui.discardChoices = null;
           ui.riichiSelecting = false;
           ui.selectedDiscardIndex = null;
+          ui.clearActions();
           ui.respond(this, {});
         }
         else ui.opponentDiscard(this, d);
@@ -565,8 +682,9 @@
     const Majiang = await load();
     const ui = new TableUI(host.querySelector("#fnMahjongRoot"), Majiang);
     const Human = makeHumanClass(Majiang, ui);
+    const CpuPlayer = makeCpuClass(Majiang);
     const human = new Human();
-    const players = [human, new Majiang.AI(), new Majiang.AI(), new Majiang.AI()];
+    const players = [human, new CpuPlayer(), new CpuPlayer(), new CpuPlayer()];
     const game = new Majiang.Game(players, paipu => ui.showResult("対局終了", paipu), Majiang.rule({}), "FORTUNE NOIR 4 PLAYER MAHJONG");
     game.view = null;
     game.speed = 0;
