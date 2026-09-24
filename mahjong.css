@@ -22,3 +22,49 @@
 .fnmj-actions{height:57px;flex:0 0 57px;display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:5px;padding:5px 10px;background:#0b0e0c;border-top:1px solid #826c31;z-index:20}.fnmj-actions button{min-width:67px;height:34px;padding:0 12px;border:1px solid #a78d43;border-radius:5px;background:#17211d;color:#fff;font:700 12px Arial,sans-serif;box-shadow:inset 0 1px #ffffff0d}.fnmj-actions button.primary,.fnmj-actions button.riichi{background:#745d1e;border-color:#e0c46b}.fnmj-actions button.danger{background:#642d2d;border-color:#d58b8b}.fnmj-actions button.call{background:#27473d;border-color:#7fa999}.fnmj-actions button.secondary{background:#111714;border-color:#53635c}.fnmj-selectable{cursor:pointer;filter:brightness(1.2);transform:translateY(-9px);transition:transform .08s}.fnmj-selectable:hover{transform:translateY(-11px)}
 .fnmj-result{position:absolute;inset:0;z-index:50;display:grid;place-items:center;background:#000b}.fnmj-result-card{width:min(440px,88%);padding:22px;border:1px solid #a88e47;border-radius:8px;background:#0b110e;text-align:center;box-shadow:0 12px 35px #000}.fnmj-result-card h2{margin:0 0 12px;color:#e0c56e}.fnmj-result-card pre{white-space:pre-wrap;color:#ddd;font:12px/1.5 Arial,sans-serif}.fnmj-result-card button{margin-top:10px;padding:8px 20px;border:1px solid #a88e47;border-radius:5px;background:#171c19;color:#fff}.fnmj-fatal{position:absolute;inset:0;overflow:auto;padding:30px;background:#080808;color:#fff}.fnmj-fatal h2{color:#d7bd63}.fnmj-fatal pre{white-space:pre-wrap;color:#ffb4b4}
 @media(max-width:900px){.fnmj-header{height:40px;flex-basis:40px;padding:0 8px}.fnmj-title b{font-size:10px}.fnmj-title span{font-size:9px}.fnmj-round-box strong{font-size:15px}.fnmj-wall-box{font-size:9px}.fnmj-arena{margin:3px}.fnmj-table-felt{inset:11% 8%}.fnmj-player-top{top:25px;width:80%}.fnmj-player-bottom{bottom:13px;width:94%}.fnmj-player-left{left:8px;width:27%}.fnmj-player-right{right:8px;width:27%}.fnmj-player-info{gap:4px;padding:2px 5px;font-size:8px}.fnmj-player-info strong{font-size:8px}.fnmj-tile{width:21px;height:30px}.my-hand .fnmj-tile{width:28px;height:40px}.fnmj-meld .fnmj-tile{width:23px;height:33px}.fnmj-back{width:15px;height:22px}.fnmj-player-top .fnmj-back{width:16px;height:24px}.fnmj-player-left .fnmj-back,.fnmj-player-right .fnmj-back{width:12px;height:19px}.fnmj-river{grid-template-columns:repeat(6,auto);min-height:56px}.fnmj-river-tile,.fnmj-river-tile .fnmj-tile{width:18px;height:24px}.river-left,.river-right{max-width:118px;min-height:88px}.river-left .fnmj-river-tile,.river-right .fnmj-river-tile,.river-left .fnmj-tile,.river-right .fnmj-tile{width:16px;height:22px}.fnmj-center{width:138px}.fnmj-center:before{inset:-8px -12px}.fnmj-center-round{font-size:14px}.fnmj-center-dora-label{margin-top:3px}.fnmj-dora .fnmj-tile{width:18px;height:25px}.fnmj-center-score{font-size:12px}.fnmj-turn{font-size:8px}.fnmj-actions{height:52px;flex-basis:52px;padding:4px}.fnmj-actions button{height:30px;min-width:58px;padding:0 8px;font-size:11px}}
+
+
+/* iPhone landscape: the mahjong table is a landscape game viewport.
+   Override the application's portrait-oriented modal constraints. */
+@media (orientation: landscape) and (max-height: 600px){
+  #modal, .modal{
+    width:100vw!important; height:100svh!important; min-height:100svh!important;
+    max-height:100svh!important; padding:0!important; overflow:hidden!important;
+    align-items:stretch!important; justify-content:center!important;
+  }
+  #modal .tabletop, .modal .tabletop{
+    width:100vw!important; max-width:none!important;
+    height:100svh!important; min-height:100svh!important; max-height:100svh!important;
+    margin:0!important; padding:0!important; overflow:hidden!important;
+  }
+  #modalContent{width:100%!important;height:100%!important;min-height:0!important;overflow:hidden!important}
+  .fn-mahjong-root{width:100vw!important;height:100svh!important;min-height:0!important}
+  .fnmj-header{height:34px;flex-basis:34px;padding:0 8px}
+  .fnmj-arena{margin:2px 4px 2px;min-height:0}
+  .fnmj-actions{height:46px;flex-basis:46px;padding:3px 6px}
+  .fnmj-actions button{height:30px;min-width:58px;padding:0 7px}
+  .fnmj-player-top{top:22px}
+  .fnmj-player-bottom{bottom:10px}
+  .fnmj-player-left{left:10px}
+  .fnmj-player-right{right:10px}
+  .fnmj-center{width:150px}
+  .fnmj-table-felt{inset:9% 11%}
+}
+
+@media (orientation: landscape) and (max-height: 430px){
+  .fnmj-title b{font-size:9px}.fnmj-title span{font-size:8px}
+  .fnmj-round-box strong{font-size:13px}.fnmj-round-box span{font-size:7px}
+  .fnmj-wall-box{font-size:8px}.fnmj-wall-box b{font-size:13px}
+  .fnmj-player-info{font-size:7px;padding:2px 4px;gap:3px}
+  .fnmj-player-info strong{font-size:7px}
+  .fnmj-tile{width:19px;height:27px}.my-hand .fnmj-tile{width:25px;height:35px}
+  .fnmj-meld .fnmj-tile{width:20px;height:29px}.fnmj-meld-back{width:20px;height:29px}
+  .fnmj-back{width:13px;height:19px}.fnmj-player-top .fnmj-back{width:14px;height:20px}
+  .fnmj-player-left .fnmj-back,.fnmj-player-right .fnmj-back{width:10px;height:16px}
+  .fnmj-river{min-height:48px}.fnmj-river-tile,.fnmj-river-tile .fnmj-tile{width:16px;height:21px}
+  .river-left,.river-right{min-height:74px;max-width:100px}.river-left .fnmj-river-tile,.river-right .fnmj-river-tile,.river-left .fnmj-tile,.river-right .fnmj-tile{width:14px;height:19px}
+  .fnmj-center{width:126px}.fnmj-center:before{inset:-6px -9px}
+  .fnmj-center-round{font-size:12px}.fnmj-center-dora-label{font-size:7px;margin:2px 0 1px}
+  .fnmj-dora{min-height:24px}.fnmj-dora .fnmj-tile{width:16px;height:22px}
+  .fnmj-center-score{font-size:10px}.fnmj-turn{font-size:7px}.fnmj-status{font-size:7px}
+}

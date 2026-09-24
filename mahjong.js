@@ -474,7 +474,30 @@
 
     runtime = {game,human,ui};
     ui.bind(game,human);
-    game.kaiju(0);
+
+    // Deterministic Kobalab boot: run only the initial kaiju/qipai/zimo
+    // handshake synchronously.  We stop exactly when the human's first
+    // zimo response is waiting, then return Game to normal async mode.
+    // This avoids Safari/iPhone timing races where the opening hand could
+    // remain stuck on "配牌中".
+    try {
+      game._sync = true;
+      game.kaiju(0);
+      for (let guard = 0; guard < 8; guard++) {
+        if (!game._reply || game._reply.filter(x => x).length < 4) break;
+        if (game._status === "zimo") break;
+        game.next();
+      }
+      game._sync = false;
+      // If the human callback was already satisfied during boot, let the
+      // normal asynchronous state machine take the next step.
+      if (game._reply && game._reply.filter(x => x).length === 4) {
+        setTimeout(() => { try { game.next(); } catch (e) { console.error(e); } }, 0);
+      }
+    } catch (e) {
+      game._sync = false;
+      throw e;
+    }
     return runtime;
   }
 
