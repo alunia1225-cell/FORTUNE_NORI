@@ -1,18 +1,20 @@
 (() => {
   "use strict";
 
+  // Mahjong engine: Kobalab core + AI.  UI is intentionally custom.
   const CORE_URL = "https://esm.sh/@kobalab/majiang-core@1.3.5?bundle&target=es2020";
   const AI_URL   = "https://esm.sh/@kobalab/majiang-ai@1.2.0?bundle&target=es2020";
 
-  let loading = null;
-  let runtime = null;
-
+  const WIND = ["東", "南", "西", "北"];
   const TILE_NAME = {
     m1:"一萬",m2:"二萬",m3:"三萬",m4:"四萬",m5:"五萬",m6:"六萬",m7:"七萬",m8:"八萬",m9:"九萬",m0:"赤五萬",
     p1:"一筒",p2:"二筒",p3:"三筒",p4:"四筒",p5:"五筒",p6:"六筒",p7:"七筒",p8:"八筒",p9:"九筒",p0:"赤五筒",
     s1:"一索",s2:"二索",s3:"三索",s4:"四索",s5:"五索",s6:"六索",s7:"七索",s8:"八索",s9:"九索",s0:"赤五索",
     z1:"東",z2:"南",z3:"西",z4:"北",z5:"白",z6:"發",z7:"中"
   };
+
+  let loading = null;
+  let runtime = null;
 
   function tileKey(p) {
     if (!p) return "";
@@ -25,9 +27,7 @@
   }
 
   function esc(s) {
-    return String(s ?? "").replace(/[&<>"]/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
-    }[c]));
+    return String(s ?? "").replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   }
 
   function tileImg(p, cls = "") {
@@ -36,100 +36,24 @@
     return `<img class="fnmj-tile ${cls}" src="${tileFile(k)}" alt="${esc(TILE_NAME[k] || k)}" data-tile="${k}">`;
   }
 
-  function hiddenTile(count = 1, cls = "") {
-    return `<span class="fnmj-back-row ${cls}">${Array.from({length: count}, () => '<i class="fnmj-back"></i>').join("")}</span>`;
-  }
-
-  function audio(name, volume = 0.22) {
-    const map = {
-      dapai:"dahai11.wav", chi:"chii.wav", peng:"pon.wav", gang:"kan.wav",
-      rong:"ron.wav", zimo:"tsumo.wav", lizhi:"richi.wav", beep:"beep.wav"
-    };
-    const src = map[name];
-    if (!src) return null;
-    const a = new Audio(`./${src}`);
-    a.preload = "auto";
-    a.volume = volume;
-    return a;
+  function backTiles(count, cls = "") {
+    const n = Math.max(0, count | 0);
+    return `<span class="fnmj-back-group ${cls}">${Array.from({length:n}, () => '<i class="fnmj-back"></i>').join("")}</span>`;
   }
 
   function play(name) {
+    const map = {
+      dapai:"dahai11.wav", chi:"chii.wav", peng:"pon.wav", gang:"kan.wav",
+      rong:"ron.wav", zimo:"tsumo.wav", lizhi:"richi.wav"
+    };
+    const src = map[name];
+    if (!src) return;
     try {
-      const a = audio(name);
-      if (a) { a.currentTime = 0; a.play().catch(() => {}); }
+      const a = new Audio(`./${src}`);
+      a.volume = 0.2;
+      a.currentTime = 0;
+      a.play().catch(() => {});
     } catch (_) {}
-  }
-
-  function makeHumanClass(Majiang, ui) {
-    class Human extends Majiang.Player {}
-    const base = Majiang.Player.prototype;
-
-    Human.prototype.kaiju = function(k) {
-      base.kaiju.call(this, k);
-      if (this._callback) this.action_kaiju(k);
-    };
-    Human.prototype.qipai = function(q) {
-      base.qipai.call(this, q);
-      if (this._callback) this.action_qipai(q);
-    };
-    Human.prototype.zimo = function(z, g) {
-      base.zimo.call(this, z, g);
-      if (this._callback) this.action_zimo(z, g);
-    };
-    Human.prototype.dapai = function(d) {
-      base.dapai.call(this, d);
-      if (this._callback) this.action_dapai(d);
-    };
-    Human.prototype.fulou = function(f) {
-      base.fulou.call(this, f);
-      if (this._callback) this.action_fulou(f);
-    };
-    Human.prototype.gang = function(g) {
-      base.gang.call(this, g);
-      if (this._callback) this.action_gang(g);
-    };
-    Human.prototype.kaigang = function(k) { base.kaigang.call(this, k); };
-    Human.prototype.hule = function(h) { base.hule.call(this, h); this.action_hule(h); };
-    Human.prototype.pingju = function(p) { base.pingju.call(this, p); this.action_pingju(p); };
-    Human.prototype.jieju = function(p) { base.jieju.call(this, p); this.action_jieju(p); };
-
-    Human.prototype.action_kaiju = function() { this._callback(); };
-    Human.prototype.action_qipai = function() { this._callback(); };
-
-    Human.prototype.action_zimo = function(z, gangzimo) {
-      if (z.l !== this._menfeng) return this._callback();
-      ui.humanTurn(this, gangzimo);
-    };
-
-    Human.prototype.action_dapai = function(d) {
-      if (d.l === this._menfeng) return this._callback();
-      ui.opponentDiscard(this, d);
-    };
-
-    Human.prototype.action_fulou = function(f) {
-      if (f.l !== this._menfeng) return this._callback();
-      ui.humanTurn(this, false, true);
-    };
-
-    Human.prototype.action_gang = function(g) {
-      if (g.l !== this._menfeng) return this._callback();
-      ui.humanTurn(this, true);
-    };
-
-    Human.prototype.action_hule = function() {
-      ui.showResult("和了", null);
-      this._callback();
-    };
-    Human.prototype.action_pingju = function(p) {
-      ui.showResult(p?.name || "流局", p);
-      this._callback();
-    };
-    Human.prototype.action_jieju = function(p) {
-      ui.showResult("対局終了", p);
-      this._callback();
-    };
-
-    return Human;
   }
 
   class TableUI {
@@ -138,70 +62,84 @@
       this.Majiang = Majiang;
       this.game = null;
       this.human = null;
-      this.message = "";
-      this.actions = [];
       this.seat = 0;
-      this.timer = null;
+      this.actions = [];
+      this.discardChoices = null;
+      this.riichiSelecting = false;
+      this.message = "";
       this.renderTimer = null;
+
       root.innerHTML = `
         <div class="fnmj-shell">
-          <div class="fnmj-topbar">
-            <div class="fnmj-brand"><small>FORTUNE NOIR</small><strong>4 PLAYER MAHJONG</strong></div>
-            <div class="fnmj-round" id="fnmjRound">東1局</div>
-            <div class="fnmj-wall-count">残り <b id="fnmjWall">--</b></div>
+          <div class="fnmj-header">
+            <div class="fnmj-title"><b>FORTUNE NOIR</b><span>MAHJONG</span></div>
+            <div class="fnmj-round-box"><strong id="fnmjRound">東1局</strong><span id="fnmjHonba">0本場</span></div>
+            <div class="fnmj-wall-box">残り <b id="fnmjWall">70</b> 枚</div>
           </div>
-          <div class="fnmj-table">
+
+          <div class="fnmj-arena">
+            <div class="fnmj-table-felt"></div>
             <div class="fnmj-wall fnmj-wall-top" id="fnmjWallTop"></div>
             <div class="fnmj-wall fnmj-wall-right" id="fnmjWallRight"></div>
             <div class="fnmj-wall fnmj-wall-bottom" id="fnmjWallBottom"></div>
             <div class="fnmj-wall fnmj-wall-left" id="fnmjWallLeft"></div>
 
-            <div class="fnmj-seat fnmj-seat-top">
-              <div class="fnmj-player-card"><span class="name" id="fnmjName2">AI 2</span><span class="wind" id="fnmjWind2">南</span><span class="score" id="fnmjScore2">25000</span></div>
-              <div class="hand hidden-hand" id="fnmjHand2"></div><div class="river" id="fnmjRiver2"></div>
-            </div>
-            <div class="fnmj-seat fnmj-seat-left">
-              <div class="fnmj-player-card"><span class="name" id="fnmjName3">AI 3</span><span class="wind" id="fnmjWind3">北</span><span class="score" id="fnmjScore3">25000</span></div>
-              <div class="hand hidden-hand" id="fnmjHand3"></div><div class="river" id="fnmjRiver3"></div>
-            </div>
-            <div class="fnmj-seat fnmj-seat-right">
-              <div class="fnmj-player-card"><span class="name" id="fnmjName1">AI 1</span><span class="wind" id="fnmjWind1">西</span><span class="score" id="fnmjScore1">25000</span></div>
-              <div class="hand hidden-hand" id="fnmjHand1"></div><div class="river" id="fnmjRiver1"></div>
-            </div>
-            <div class="fnmj-seat fnmj-seat-bottom">
-              <div class="river" id="fnmjRiver0"></div>
-              <div class="hand my-hand" id="fnmjHand0"></div>
-              <div class="fnmj-player-card"><span class="name" id="fnmjName0">YOU</span><span class="wind" id="fnmjWind0">東</span><span class="score" id="fnmjScore0">25000</span></div>
-            </div>
+            <section class="fnmj-player fnmj-player-top" data-seat="top">
+              <div class="fnmj-player-info"><span id="fnmjWind2">南</span><b id="fnmjName2">AI 2</b><strong id="fnmjScore2">25000</strong></div>
+              <div class="fnmj-hand opponent-hand" id="fnmjHand2"></div>
+              <div class="fnmj-river river-top" id="fnmjRiver2"></div>
+            </section>
 
-            <div class="fnmj-center">
-              <div class="fnmj-center-board">
-                <div class="fnmj-dora-title">ドラ表示</div>
-                <div class="fnmj-dora" id="fnmjDora"></div>
-                <div class="fnmj-center-score">
-                  <div><span id="fnmjCenterWind">東</span><span id="fnmjTurn">東家</span></div>
-                  <strong id="fnmjCenterScore">25000</strong><small id="fnmjHonba">0本場</small>
-                </div>
-                <div class="fnmj-status" id="fnmjStatus">対局開始中…</div>
+            <section class="fnmj-player fnmj-player-left" data-seat="left">
+              <div class="fnmj-player-info"><span id="fnmjWind3">西</span><b id="fnmjName3">AI 3</b><strong id="fnmjScore3">25000</strong></div>
+              <div class="fnmj-hand opponent-hand" id="fnmjHand3"></div>
+              <div class="fnmj-river river-left" id="fnmjRiver3"></div>
+            </section>
+
+            <section class="fnmj-player fnmj-player-right" data-seat="right">
+              <div class="fnmj-player-info"><span id="fnmjWind1">北</span><b id="fnmjName1">AI 1</b><strong id="fnmjScore1">25000</strong></div>
+              <div class="fnmj-hand opponent-hand" id="fnmjHand1"></div>
+              <div class="fnmj-river river-right" id="fnmjRiver1"></div>
+            </section>
+
+            <section class="fnmj-player fnmj-player-bottom" data-seat="bottom">
+              <div class="fnmj-river river-bottom" id="fnmjRiver0"></div>
+              <div class="fnmj-hand my-hand" id="fnmjHand0"></div>
+              <div class="fnmj-player-info"><span id="fnmjWind0">東</span><b id="fnmjName0">YOU</b><strong id="fnmjScore0">25000</strong></div>
+            </section>
+
+            <div class="fnmj-center" aria-label="卓中央">
+              <div class="fnmj-center-top">
+                <div class="fnmj-center-round" id="fnmjCenterRound">東1局</div>
+                <div class="fnmj-center-honba" id="fnmjCenterHonba">0本場</div>
               </div>
+              <div class="fnmj-center-dora-label">ドラ表示牌</div>
+              <div class="fnmj-dora" id="fnmjDora"></div>
+              <div class="fnmj-center-score" id="fnmjCenterScore">25000</div>
+              <div class="fnmj-turn" id="fnmjTurn">配牌中</div>
+              <div class="fnmj-status" id="fnmjStatus"></div>
             </div>
           </div>
+
           <div class="fnmj-actions" id="fnmjActions"></div>
-          <div class="fnmj-result hidden" id="fnmjResult"><div><strong id="fnmjResultTitle"></strong><pre id="fnmjResultText"></pre><button id="fnmjResultClose">CONTINUE</button></div></div>
+          <div class="fnmj-result hidden" id="fnmjResult">
+            <div class="fnmj-result-card">
+              <h2 id="fnmjResultTitle"></h2>
+              <pre id="fnmjResultText"></pre>
+              <button id="fnmjResultClose">閉じる</button>
+            </div>
+          </div>
         </div>`;
-      this.resultClose = root.querySelector("#fnmjResultClose");
-      this.resultClose.addEventListener("click", () => {
+
+      this.root.querySelector("#fnmjResultClose").addEventListener("click", () => {
         this.root.querySelector("#fnmjResult").classList.add("hidden");
-        if (this.game && this.game._status === "jieju") this.stop();
       });
     }
-
-    setSeat(seat) { this.seat = seat; }
 
     bind(game, human) {
       this.game = game;
       this.human = human;
-      this.renderTimer = setInterval(() => this.render(), 120);
+      this.renderTimer = setInterval(() => this.render(), 100);
       this.render();
     }
 
@@ -209,77 +147,93 @@
       if (this.renderTimer) clearInterval(this.renderTimer);
       this.renderTimer = null;
       this.clearActions();
+      this.discardChoices = null;
+      this.riichiSelecting = false;
     }
 
     clearActions() {
       this.actions = [];
-      const a = this.root.querySelector("#fnmjActions");
-      if (a) a.innerHTML = "";
+      const box = this.root.querySelector("#fnmjActions");
+      if (box) box.innerHTML = "";
     }
 
-    actionButton(label, fn, cls = "") {
+    addAction(label, fn, cls = "") {
       this.actions.push({label, fn, cls});
     }
 
     drawActions() {
       const box = this.root.querySelector("#fnmjActions");
+      if (!box) return;
       box.innerHTML = this.actions.map((a,i) => `<button class="${a.cls}" data-action="${i}">${esc(a.label)}</button>`).join("");
-      box.querySelectorAll("button").forEach((b,i) => b.addEventListener("click", () => this.actions[i].fn()));
+      box.querySelectorAll("button").forEach((b,i) => b.addEventListener("click", () => this.actions[i]?.fn()));
     }
 
     humanTurn(player, gangzimo = false, afterFulou = false) {
       this.clearActions();
       const sp = player.shoupai;
-      if (player.allow_hule(null, gangzimo)) this.actionButton("ツモ", () => { play("zimo"); player.callback({hule:"-"}); });
-      if (player.allow_pingju(sp)) this.actionButton("九種九牌", () => player.callback({daopai:"-"}));
-      const gangs = player.get_gang_mianzi();
-      gangs.forEach(m => this.actionButton(`カン ${m}`, () => { play("gang"); player.callback({gang:m}); }));
-      const riichi = player.allow_lizhi();
+      const normalDapai = player.get_dapai(sp);
+
+      if (player.allow_hule(sp, null, gangzimo)) {
+        this.addAction("ツモ", () => { play("zimo"); player.callback({hule:"-"}); this.clearActions(); }, "primary");
+      }
+      if (!gangzimo && player.allow_pingju(sp)) {
+        this.addAction("九種九牌", () => player.callback({daopai:"-"}), "secondary");
+      }
+      for (const m of (player.get_gang_mianzi(sp, null) || [])) {
+        this.addAction(`カン ${m}`, () => { play("gang"); player.callback({gang:m}); this.clearActions(); }, "call");
+      }
+
+      const riichi = player.allow_lizhi(sp);
       if (riichi) {
-        this.actionButton("リーチ", () => this.selectDiscard(player, riichi, true), "primary");
+        const riichiDapai = Array.isArray(riichi) ? riichi : player.get_dapai(sp);
+        this.addAction("リーチ", () => this.selectDiscard(player, riichiDapai, true), "riichi");
       }
-      if (afterFulou) {
-        this.selectDiscard(player, player.get_dapai(), false);
-      } else if (!riichi) {
-        this.selectDiscard(player, player.get_dapai(), false);
-      }
-      this.message = "あなたのツモ";
-      this.drawActions();
+      this.discardChoices = { player, tiles: normalDapai.map(tileKey) };
+      this.riichiSelecting = false;
+      this.message = gangzimo ? "槓の嶺上牌" : (afterFulou ? "鳴いた後の打牌" : "あなたのツモ");
       this.render();
     }
 
     selectDiscard(player, tiles, riichi) {
-      this.root.querySelectorAll(".fnmj-selectable").forEach(e => e.classList.remove("fnmj-selectable"));
-      const hand = this.root.querySelector("#fnmjHand0");
-      const nodes = [...hand.querySelectorAll(".fnmj-tile-wrap[data-raw]")];
-      const wanted = new Set(tiles.map(tileKey));
-      nodes.forEach(n => {
-        const tile = tileKey(n.dataset.raw);
-        if (wanted.has(tile)) {
-          n.classList.add("fnmj-selectable");
-          n.onclick = () => {
-            const raw = n.dataset.raw;
-            const p = riichi ? `${raw.replace(/_$/, "")}*` : raw;
-            player.callback({dapai: p});
-            this.clearActions();
-          };
-        }
-      });
-      this.drawActions();
+      this.discardChoices = { player, tiles: (tiles || []).map(tileKey) };
+      this.riichiSelecting = !!riichi;
+      this.render();
+    }
+
+    handleDiscardTile(node) {
+      if (!this.discardChoices) return;
+      const player = this.discardChoices.player;
+      const raw = node.dataset.raw;
+      if (!raw) return;
+      if (!this.discardChoices.tiles.includes(tileKey(raw))) return;
+      const p = this.riichiSelecting ? `${raw.replace(/\*$/, "")}*` : raw;
+      play("dapai");
+      this.discardChoices = null;
+      this.riichiSelecting = false;
+      this.clearActions();
+      player.callback({dapai:p});
     }
 
     opponentDiscard(player, d) {
       this.clearActions();
-      const p = d.p;
-      if (player.allow_hule(p)) this.actionButton("ロン", () => { play("rong"); player.callback({hule:"-"}); }, "danger");
-      const peng = player.get_peng_mianzi(p);
-      peng.forEach(m => this.actionButton(`ポン ${m}`, () => { play("peng"); player.callback({fulou:m}); }));
-      const gang = player.get_gang_mianzi(p);
-      gang.forEach(m => this.actionButton(`カン ${m}`, () => { play("gang"); player.callback({fulou:m}); }));
-      const chi = d.l === (player._menfeng + 3) % 4 ? player.get_chi_mianzi(p) : [];
-      chi.forEach(m => this.actionButton(`チー ${m}`, () => { play("chi"); player.callback({fulou:m}); }));
-      this.actionButton("パス", () => player.callback({}), "secondary");
-      this.message = `${TILE_NAME[tileKey(p)] || p} が捨てられました`;
+      this.discardChoices = null;
+      this.riichiSelecting = false;
+      const sp = player.shoupai;
+      if (player.allow_hule(sp, d.p, false)) {
+        this.addAction("ロン", () => { play("rong"); player.callback({hule:"-"}); this.clearActions(); }, "danger");
+      }
+      for (const m of (player.get_peng_mianzi(sp, d.p) || [])) {
+        this.addAction("ポン", () => { play("peng"); player.callback({fulou:m}); this.clearActions(); }, "call");
+      }
+      for (const m of (player.get_gang_mianzi(sp, d.p) || [])) {
+        this.addAction("カン", () => { play("gang"); player.callback({fulou:m}); this.clearActions(); }, "call");
+      }
+      const chi = d.l === (player._menfeng + 3) % 4 ? (player.get_chi_mianzi(sp, d.p) || []) : [];
+      for (const m of chi) {
+        this.addAction("チー", () => { play("chi"); player.callback({fulou:m}); this.clearActions(); }, "call");
+      }
+      this.addAction("パス", () => { player.callback({}); this.clearActions(); }, "secondary");
+      this.message = `${TILE_NAME[tileKey(d.p)] || d.p} を捨てました`;
       this.drawActions();
       this.render();
     }
@@ -287,168 +241,239 @@
     render() {
       if (!this.game) return;
       const m = this.game.model;
-      const root = this.root;
-      const wind = ["東","南","西","北"];
-      root.querySelector("#fnmjRound").textContent = `${wind[m.zhuangfeng]}${m.jushu + 1}局`;
-      root.querySelector("#fnmjWall").textContent = m.shan ? m.shan.paishu : "--";
-      root.querySelector("#fnmjHonba").textContent = `${m.changbang}本場`;
-      root.querySelector("#fnmjTurn").textContent = m.lunban >= 0 ? `${wind[m.player_id[m.lunban]]}家の番` : "配牌";
-      root.querySelector("#fnmjCenterWind").textContent = wind[m.zhuangfeng];
-      root.querySelector("#fnmjCenterScore").textContent = (m.defen[this.seat] ?? 0).toLocaleString();
-      root.querySelector("#fnmjStatus").textContent = this.message || (m.lunban >= 0 ? `${wind[m.player_id[m.lunban]]}家の番` : "配牌中…");
+      if (!m) return;
+
+      const round = `${WIND[m.zhuangfeng] || "東"}${(m.jushu || 0) + 1}局`;
+      const wall = m.shan ? m.shan.paishu : 70;
+      const turnSeat = m.lunban >= 0 ? m.player_id[m.lunban] : -1;
+
+      this.root.querySelector("#fnmjRound").textContent = round;
+      this.root.querySelector("#fnmjCenterRound").textContent = round;
+      this.root.querySelector("#fnmjWall").textContent = wall;
+      this.root.querySelector("#fnmjHonba").textContent = `${m.changbang || 0}本場`;
+      this.root.querySelector("#fnmjCenterHonba").textContent = `${m.changbang || 0}本場`;
+      this.root.querySelector("#fnmjTurn").textContent = turnSeat >= 0 ? `${WIND[this.seatWind(m, turnSeat)]}家の番` : "配牌中";
+      this.root.querySelector("#fnmjStatus").textContent = this.message || "";
+      this.root.querySelector("#fnmjCenterScore").textContent = (m.defen[this.seat] ?? 0).toLocaleString();
 
       const dora = m.shan?.baopai || [];
-      root.querySelector("#fnmjDora").innerHTML = dora.map(p => tileImg(p)).join("");
-      const wallHtml = renderWall(m.shan ? m.shan.paishu : 70);
-      root.querySelector("#fnmjWallTop").innerHTML = wallHtml;
-      root.querySelector("#fnmjWallBottom").innerHTML = wallHtml;
-      root.querySelector("#fnmjWallLeft").innerHTML = wallHtml;
-      root.querySelector("#fnmjWallRight").innerHTML = wallHtml;
+      this.root.querySelector("#fnmjDora").innerHTML = dora.map(p => tileImg(p)).join("");
 
-      for (let l=0;l<4;l++) {
+      this.renderWalls(wall);
+
+      for (let l = 0; l < 4; l++) {
         const id = m.player_id[l];
-        root.querySelector(`#fnmjScore${id}`).textContent = (m.defen[id] ?? 0).toLocaleString();
-        root.querySelector(`#fnmjName${id}`).textContent = id === this.seat ? "YOU" : `AI ${id}`;
-        root.querySelector(`#fnmjWind${id}`).textContent = wind[l];
-        const hand = root.querySelector(`#fnmjHand${id}`);
+        const infoWind = WIND[l];
+        const score = (m.defen[id] ?? 0).toLocaleString();
+        this.root.querySelector(`#fnmjScore${id}`).textContent = score;
+        this.root.querySelector(`#fnmjName${id}`).textContent = id === this.seat ? "YOU" : `AI ${id}`;
+        this.root.querySelector(`#fnmjWind${id}`).textContent = infoWind;
+
+        const player = m.shoupai[l];
+        const hand = this.root.querySelector(`#fnmjHand${id}`);
         if (id === this.seat) {
-          const sp = m.shoupai[l];
-          if (sp) hand.innerHTML = renderOpenHand(sp);
+          hand.innerHTML = renderHand(player, true);
+          if (this.discardChoices && this.discardChoices.player === this.human) {
+            hand.querySelectorAll(".fnmj-tile-wrap[data-raw]").forEach(node => {
+              const raw = node.dataset.raw;
+              if (this.discardChoices.tiles.includes(tileKey(raw))) {
+                node.classList.add("fnmj-selectable");
+                node.onclick = () => this.handleDiscardTile(node);
+              }
+            });
+          }
         } else {
-          const sp = m.shoupai[l];
-          const count = sp ? countTiles(sp) : 13;
-          hand.innerHTML = hiddenTile(Math.max(0, count), "");
+          hand.innerHTML = renderOpponentHand(player);
         }
-        const river = root.querySelector(`#fnmjRiver${id}`);
+        hand.classList.toggle("is-turn", id === turnSeat);
+
+        const river = this.root.querySelector(`#fnmjRiver${id}`);
         river.innerHTML = renderRiver(m.he[l]);
+        river.classList.toggle("is-turn", id === turnSeat);
+
+        const seat = this.root.querySelector(`[data-seat="${seatClassForPlayer(id, this.seat)}"]`);
+        if (seat) seat.classList.toggle("active-seat", id === turnSeat);
       }
+
       this.drawActions();
+    }
+
+    seatWind(model, playerId) {
+      const idx = model.player_id.indexOf(playerId);
+      return idx < 0 ? 0 : idx;
+    }
+
+    renderWalls(count) {
+      // The core exposes the number of drawable tiles, not the physical wall coordinates.
+      // Keep four complete visual walls and mark the remaining live wall proportionally.
+      const live = Math.max(0, Math.min(70, count));
+      const used = 70 - live;
+      const activeStacks = Math.ceil((live + 14) / 4);
+      const usedStacks = Math.max(0, Math.ceil(used / 4));
+      for (const id of ["fnmjWallTop","fnmjWallBottom","fnmjWallLeft","fnmjWallRight"]) {
+        const box = this.root.querySelector(`#${id}`);
+        box.innerHTML = Array.from({length:17}, (_,i) => {
+          const dead = i >= activeStacks;
+          const dim = !dead && i < usedStacks ? " used" : "";
+          return `<i class="fnmj-wall-stack${dead ? " dead" : ""}${dim}"><b></b><b></b></i>`;
+        }).join("");
+      }
     }
 
     showResult(title, data) {
       this.root.querySelector("#fnmjResultTitle").textContent = title;
-      this.root.querySelector("#fnmjResultText").textContent =
-        data?.name ? data.name : "局が終了しました。";
+      this.root.querySelector("#fnmjResultText").textContent = data?.name || "局が終了しました。";
       this.root.querySelector("#fnmjResult").classList.remove("hidden");
       this.message = title;
       this.render();
     }
   }
 
-  function countTiles(sp) {
-    if (!sp) return 0;
-    let n = 0;
-    for (const suit of ["m","p","s","z"]) {
-      const a = sp._bingpai?.[suit];
-      if (!a) continue;
-      for (let i=1;i<a.length;i++) n += a[i] || 0;
-    }
-    return n + (sp._fulou || []).length * 3;
+  function seatClassForPlayer(id, humanSeat) {
+    // Relative to the human: bottom = self, right = next, top = opposite, left = previous.
+    const d = (id - humanSeat + 4) % 4;
+    return d === 0 ? "bottom" : d === 1 ? "right" : d === 2 ? "top" : "left";
   }
 
   function concealedTiles(sp) {
-    const out=[];
+    const out = [];
     if (!sp) return out;
     for (const suit of ["m","p","s","z"]) {
-      const a=sp._bingpai?.[suit];
+      const a = sp._bingpai?.[suit];
       if (!a) continue;
-      for (let n=1;n<a.length;n++) {
-        let c=a[n]||0;
-        if (n===5 && suit!=="z") {
-          const red=a[0]||0;
-          for(let i=0;i<red;i++) out.push(suit+"0");
-          c-=red;
+      for (let n = 1; n < a.length; n++) {
+        let c = a[n] || 0;
+        if (n === 5 && suit !== "z") {
+          const red = a[0] || 0;
+          for (let i = 0; i < red; i++) out.push(`${suit}0`);
+          c -= red;
         }
-        for(let i=0;i<c;i++) out.push(suit+n);
+        for (let i = 0; i < c; i++) out.push(`${suit}${n}`);
       }
     }
-    const z=sp._zimo;
-    if(z && z.length<=2 && z!=="_"){
-      const k=tileKey(z);
-      const i=out.findIndex(p=>tileKey(p)===k);
-      if(i>=0) out.splice(i,1);
-      out.push(k);
-    }
+    // IMPORTANT: _zimo is separate from _bingpai in Kobalab. Do not remove a matching
+    // tile from _bingpai here; doing so produces the old 12-tile display bug.
+    if (sp._zimo && sp._zimo !== "_") out.push(tileKey(sp._zimo));
     return out;
   }
 
-  function renderOpenHand(sp) {
-    if(!sp) return "";
-    const tiles=concealedTiles(sp);
-    const z=sp._zimo;
-    const zk=z && z.length<=2 ? tileKey(z) : "";
-    const concealed=tiles.map((p,i)=>{
-      const sep=zk && i===tiles.length-1 ? " zimo-tile" : "";
-      return `<span class="fnmj-tile-wrap${sep}" data-raw="${p}">${tileImg(p)}</span>`;
+  function renderMeld(m) {
+    const nums = m.match(/[0-9]/g) || [];
+    const suit = m[0];
+    if (/^[mpsz]\d{4}$/.test(m)) {
+      const backs = nums.map((n, i) => (i === 0 || i === 3)
+        ? '<i class="fnmj-meld-back"></i>'
+        : tileImg(suit + n)).join("");
+      return `<span class="fnmj-meld ankan">${backs}</span>`;
+    }
+    return `<span class="fnmj-meld">${nums.map(n => tileImg(suit + n)).join("")}</span>`;
+  }
+
+  function renderHand(sp, selectable) {
+    if (!sp) return "";
+    const concealed = concealedTiles(sp);
+    const zimo = sp._zimo && sp._zimo !== "_" ? tileKey(sp._zimo) : "";
+    const melds = (sp._fulou || []).map(renderMeld).join("");
+    const body = concealed.map((p, i) => {
+      const isZimo = zimo && i === concealed.length - 1;
+      return `<span class="fnmj-tile-wrap${isZimo ? " zimo-tile" : ""}" data-raw="${p}">${tileImg(p)}</span>`;
     }).join("");
-    const melds=(sp._fulou||[]).map(m=>{
-      const suit=m[0], nums=m.match(/\d/g)||[];
-      return `<span class="fnmj-meld">${nums.map(n=>tileImg(suit+n)).join("")}</span>`;
-    }).join("");
-    return `<span class="fnmj-concealed">${concealed}</span>${melds}`;
+    return `<span class="fnmj-concealed">${body}</span>${melds}`;
+  }
+
+  function countVisibleTiles(sp) {
+    if (!sp) return 13;
+    let n = concealedTiles(sp).length;
+    for (const m of sp._fulou || []) n += (m.match(/[0-9]/g) || []).length;
+    return n;
+  }
+
+  function renderOpponentHand(sp) {
+    const total = countVisibleTiles(sp);
+    const closed = total - (sp?._fulou || []).reduce((n,m) => n + (m.match(/[0-9]/g)||[]).length, 0);
+    const melds = (sp?._fulou || []).map(renderMeld).join("");
+    return `${backTiles(closed)}${melds}`;
   }
 
   function renderRiver(he) {
-    if(!he || !he._pai) return "";
-    return he._pai.map(p=>{
-      const raw=p.replace(/[\+\=\-]$/,"");
-      const called=/[\+\=\-]$/.test(p) ? " fnmj-called-discard" : "";
-      return `<span class="fnmj-river-tile${called}">${tileImg(raw)}</span>`;
+    if (!he?._pai) return "";
+    return he._pai.map(p => {
+      const called = /[+=-]$/.test(p);
+      const raw = p.replace(/[+=-]$/, "");
+      return `<span class="fnmj-river-tile${called ? " called" : ""}">${tileImg(raw)}</span>`;
     }).join("");
-  }
-
-  function renderWall(count) {
-    const n=Math.max(0,Math.min(17,Math.ceil((count+14)/8)));
-    return Array.from({length:n},()=>'<i class="fnmj-wall-tile"></i>').join("");
   }
 
   async function load() {
     if (loading) return loading;
-    loading = (async () => {
-      const [coreMod, aiMod] = await Promise.all([import(CORE_URL), import(AI_URL)]);
-      const Majiang = coreMod.default || coreMod;
-      Majiang.AI = aiMod.default || aiMod;
-      if (!Majiang.Game || !Majiang.Player || !Majiang.rule) {
-        throw new Error("Kobalab Majiang core のロードに失敗しました");
-      }
+    loading = Promise.all([import(CORE_URL), import(AI_URL)]).then(([core, ai]) => {
+      const Majiang = core.default || core;
+      Majiang.AI = ai.default || ai;
+      if (!Majiang.Game || !Majiang.Player || !Majiang.rule) throw new Error("Kobalab Majiang core のロードに失敗しました");
       return Majiang;
-    })();
+    });
     return loading;
   }
+
+  function makeHumanClass(Majiang, ui) {
+    class Human extends Majiang.Player {
+      action_kaiju() { this._callback({}); }
+      action_qipai(q) { this._callback({}); }
+      action_zimo(z, gangzimo) {
+        if (z.l === this._menfeng) ui.humanTurn(this, !!gangzimo, false);
+        else this._callback({});
+      }
+      action_dapai(d) {
+        if (d.l === this._menfeng) { ui.discardChoices = null; ui.riichiSelecting = false; this._callback({}); }
+        else ui.opponentDiscard(this, d);
+      }
+      action_fulou(f) {
+        if (f.l === this._menfeng) ui.humanTurn(this, false, true);
+        else this._callback({});
+      }
+      action_gang(g) {
+        // After a kan declaration the engine must proceed to the replacement draw.
+        this._callback({});
+      }
+      action_hule(h) {
+        ui.showResult("和了", h);
+        this._callback({});
+      }
+      action_pingju(p) {
+        ui.showResult(p?.name || "流局", p);
+        this._callback({});
+      }
+      action_jieju(p) {
+        ui.showResult("対局終了", p);
+        this._callback({});
+      }
+    }
+    return Human;
+  }
+
 
   async function start() {
     if (runtime) return runtime;
     const host = document.getElementById("modalContent");
     if (!host) throw new Error("modalContent が見つかりません");
-
     host.style.width = "100%";
     host.style.height = "100%";
-    host.style.minHeight = "560px";
+    host.style.minHeight = "600px";
     host.style.overflow = "hidden";
     host.innerHTML = `<div id="fnMahjongRoot" class="fn-mahjong-root"></div>`;
+
     const Majiang = await load();
     const ui = new TableUI(host.querySelector("#fnMahjongRoot"), Majiang);
     const Human = makeHumanClass(Majiang, ui);
     const human = new Human();
     const players = [human, new Majiang.AI(), new Majiang.AI(), new Majiang.AI()];
-    const rule = Majiang.rule({});
-    const game = new Majiang.Game(
-      players,
-      paipu => {
-        ui.showResult("対局終了", paipu);
-      },
-      rule,
-      "FORTUNE NOIR 4 PLAYER MAHJONG"
-    );
-
-    // UIは独自実装。KobalabのGame / Player / AI / ルールエンジンだけを使用し、
-    // 旧majiang-uiのBoard/Player/kaiju画面は一切ロードしない。
+    const game = new Majiang.Game(players, paipu => ui.showResult("対局終了", paipu), Majiang.rule({}), "FORTUNE NOIR 4 PLAYER MAHJONG");
     game.view = null;
     game.speed = 0;
     game.dwell = 0;
 
-    runtime = { game, human, ui };
-    ui.bind(game, human);
+    runtime = {game,human,ui};
+    ui.bind(game,human);
     game.kaiju(0);
     return runtime;
   }
@@ -463,10 +488,7 @@
   window.FN_MAHJONG_START = () => start().catch(err => {
     console.error("[FORTUNE NOIR] Mahjong start failed", err);
     const host = document.getElementById("modalContent");
-    if (host) {
-      host.innerHTML = `<div class="fnmj-fatal"><h2>MAHJONG LOAD ERROR</h2><pre>${esc(err.stack || err)}</pre></div>`;
-    }
+    if (host) host.innerHTML = `<div class="fnmj-fatal"><h2>MAHJONG LOAD ERROR</h2><pre>${esc(err.stack || err)}</pre></div>`;
   });
-
   window.FN_MAHJONG_STOP = stop;
 })();
