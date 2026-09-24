@@ -71,6 +71,8 @@
       this._visualFuluCount = 0;
       this._visualLastDiscard = "";
       this._cutinTimer = null;
+      this._resizeHandler = null;
+      this._decisionUntil = 0;
 
       root.innerHTML = `
         <div class="fnmj-shell">
@@ -111,6 +113,8 @@
               <div class="fnmj-player-info"><i class="fnmj-avatar fnmj-avatar-you">自</i><span id="fnmjWind0">東</span><b id="fnmjName0">YOU</b><strong id="fnmjScore0">25000</strong></div>
             </section>
 
+            <div class="fnmj-actions" id="fnmjActions"></div>
+
             <div class="fnmj-center" aria-label="卓中央">
               <div class="fnmj-center-top">
                 <div class="fnmj-center-round" id="fnmjCenterRound">東1局</div>
@@ -122,13 +126,14 @@
               <div class="fnmj-turn" id="fnmjTurn">配牌中</div><div class="fnmj-count" id="fnmjCount">0巡目</div>
               <div class="fnmj-status" id="fnmjStatus"></div>
             </div>
+
+            <div class="fnmj-timer" id="fnmjTimer" aria-hidden="true"></div>
+            <div class="fnmj-cutin hidden" id="fnmjCutin" aria-live="polite">
+              <div class="fnmj-cutin-label" id="fnmjCutinLabel"></div>
+              <div class="fnmj-cutin-sub" id="fnmjCutinSub"></div>
+            </div>
           </div>
 
-          <div class="fnmj-actions" id="fnmjActions"></div>
-          <div class="fnmj-cutin hidden" id="fnmjCutin" aria-live="polite">
-            <div class="fnmj-cutin-label" id="fnmjCutinLabel"></div>
-            <div class="fnmj-cutin-sub" id="fnmjCutinSub"></div>
-          </div>
           <div class="fnmj-result hidden" id="fnmjResult">
             <div class="fnmj-result-card">
               <h2 id="fnmjResultTitle"></h2>
@@ -161,23 +166,51 @@
     bind(game, human) {
       this.game = game;
       this.human = human;
+      this._resizeHandler = () => this.fitArena();
+      window.addEventListener("resize", this._resizeHandler, {passive:true});
+      if (window.visualViewport) window.visualViewport.addEventListener("resize", this._resizeHandler, {passive:true});
       this.renderTimer = setInterval(() => this.render(), 100);
+      this.fitArena();
       this.render();
     }
 
     stop() {
       if (this.renderTimer) clearInterval(this.renderTimer);
       this.renderTimer = null;
+      if (this._resizeHandler) {
+        window.removeEventListener("resize", this._resizeHandler);
+        if (window.visualViewport) window.visualViewport.removeEventListener("resize", this._resizeHandler);
+      }
+      this._resizeHandler = null;
       this._visualFuluCount = 0;
       this._visualLastDiscard = "";
       this._cutinTimer = null;
+      this._decisionUntil = 0;
       this.clearActions();
       this.discardChoices = null;
       this.riichiSelecting = false;
       this.selectedDiscardIndex = null;
     }
 
+    fitArena() {
+      const arena = this.root.querySelector(".fnmj-arena");
+      if (!arena) return;
+      const w = Math.max(320, this.root.clientWidth || window.innerWidth || 320);
+      const h = Math.max(180, this.root.clientHeight || window.innerHeight || 180);
+      const scale = Math.max(0.52, Math.min(w / 800, h / 450));
+      arena.style.setProperty("--fnmj-scale", scale.toFixed(4));
+    }
+
+    startDecisionTimer(seconds = 20) {
+      this._decisionUntil = performance.now() + seconds * 1000;
+    }
+
+    clearDecisionTimer() {
+      this._decisionUntil = 0;
+    }
+
     clearActions() {
+      this.clearDecisionTimer();
       this.actions = [];
       const box = this.root.querySelector("#fnmjActions");
       if (box) box.innerHTML = "";
@@ -229,6 +262,7 @@
       this.riichiSelecting = false;
       this.selectedDiscardIndex = null;
       this.message = gangzimo ? "槓の嶺上牌" : (afterFulou ? "鳴いた後の打牌" : "あなたのツモ");
+      this.startDecisionTimer(20);
       this.render();
     }
 
@@ -260,6 +294,7 @@
       this.discardChoices = null;
       this.riichiSelecting = false;
       this.selectedDiscardIndex = null;
+      this.clearDecisionTimer();
       this.clearActions();
       play("dapai");
 
@@ -277,6 +312,7 @@
       this.discardChoices = null;
       this.riichiSelecting = false;
       this.selectedDiscardIndex = null;
+      this.startDecisionTimer(8);
 
       // Kobalab requires reaction tiles to carry the relative seat marker
       // (+/=/-). Passing bare "m5" etc. is invalid and throws inside
@@ -372,6 +408,12 @@
         this.message = `${WIND[this.seatWind(m, turnSeat)]}家のツモを処理中`;
       }
       this.root.querySelector("#fnmjStatus").textContent = this.message || "";
+      const timer = this.root.querySelector("#fnmjTimer");
+      if (timer) {
+        const left = this._decisionUntil ? Math.max(0, Math.ceil((this._decisionUntil - performance.now()) / 1000)) : 0;
+        timer.textContent = left ? String(left) : "";
+        timer.classList.toggle("active", left > 0);
+      }
       this.root.querySelector("#fnmjCenterScore").textContent = (m.defen[this.seat] ?? 0).toLocaleString();
 
       const dora = m.shan?.baopai || [];
@@ -419,6 +461,14 @@
       this.drawActions();
     }
 
+    showCallCutin(f) {
+      const meld = f?.m || "";
+      const actor = Number.isInteger(f?.l) ? f.l : this.seat;
+      const label = /^[mpsz]\d{4}/.test(meld) ? "カン！" : (meld.includes("-") ? "チー！" : "ポン！");
+      const wind = WIND[actor] || "";
+      this.showCutin(label, `${wind}家`);
+    }
+
     showCutin(label, sub = "") {
       const box = this.root.querySelector("#fnmjCutin");
       if (!box) return;
@@ -435,26 +485,12 @@
 
     detectVisualEvent(m) {
       const counts = (m.shoupai || []).map(sp => (sp?._fulou || []).length);
-      const total = counts.reduce((a,b) => a+b, 0);
-      if (total > this._visualFuluCount) {
-        let who = counts.findIndex((n,i) => n > (this._visualFuluSeen?.[i] || 0));
-        if (who < 0) who = 0;
-        const fs = m.shoupai?.[who]?._fulou || [];
-        const meld = fs[fs.length - 1] || "";
-        const label = /^[mpsz]\d{4}/.test(meld) ? "カン！" : (meld.includes("-") ? "チー！" : "ポン！");
-        this.showCutin(label, `${WIND[who]}家が鳴きました`);
-      }
-      this._visualFuluCount = total;
+      this._visualFuluCount = counts.reduce((a,b) => a + b, 0);
       this._visualFuluSeen = counts;
-
       let latest = "";
-      let latestSeat = -1;
       for (let l = 0; l < 4; l++) {
         const a = m.he?.[l]?._pai || [];
-        if (a.length) { latest = a[a.length - 1]; latestSeat = l; }
-      }
-      if (latest && latest !== this._visualLastDiscard && /\*$/.test(latest)) {
-        this.showCutin("リーチ！", `${WIND[latestSeat]}家`);
+        if (a.length) latest = a[a.length - 1];
       }
       this._visualLastDiscard = latest || this._visualLastDiscard;
     }
@@ -539,7 +575,7 @@
       const isZimo = zimo && i === concealed.length - 1;
       return `<span class="fnmj-tile-wrap${isZimo ? " zimo-tile" : ""}" data-raw="${p}" data-index="${i}">${tileImg(p)}</span>`;
     }).join("");
-    return `<span class="fnmj-concealed">${body}</span>${melds}`;
+    return `${melds}<span class="fnmj-concealed">${body}</span>`;
   }
 
   function countVisibleTiles(sp) {
@@ -553,7 +589,7 @@
     const total = countVisibleTiles(sp);
     const closed = total - (sp?._fulou || []).reduce((n,m) => n + (m.match(/[0-9]/g)||[]).length, 0);
     const melds = (sp?._fulou || []).map(renderMeld).join("");
-    return `${backTiles(closed)}${melds}`;
+    return `${melds}${backTiles(closed)}`;
   }
 
   function renderRiver(he) {
@@ -686,6 +722,7 @@
         else ui.respond(this, {});
       }
       action_dapai(d) {
+        if (d?.p && /\*$/.test(d.p)) ui.showCutin("リーチ！", `${WIND[this._menfeng]}家`);
         if (d.l === this._menfeng) {
           ui.discardChoices = null;
           ui.riichiSelecting = false;
@@ -696,10 +733,12 @@
         else ui.opponentDiscard(this, d);
       }
       action_fulou(f) {
+        ui.showCallCutin(f);
         if (f.l === this._menfeng) ui.humanTurn(this, false, true);
         else ui.respond(this, {});
       }
       action_gang(g) {
+        ui.showCutin("カン！", `${WIND[this._menfeng]}家`);
         // After a kan declaration the engine must proceed to the replacement draw.
         ui.respond(this, {});
       }
