@@ -34,3 +34,61 @@
   .fnmj-center{width:138px}.fnmj-center:before{inset:-8px -11px}.fnmj-center-round{font-size:13px}.fnmj-dora .fnmj-tile{width:17px;height:24px}.fnmj-center-score{font-size:11px}.fnmj-turn{font-size:8px}.fnmj-status{font-size:7px}
   .fnmj-actions{right:6px;bottom:4px;gap:3px}.fnmj-actions button{height:29px;min-width:56px;padding:0 7px;font-size:10px}
 }
+
+/* Mahjong Soul-like interaction/spacing: selected tile rises after the first tap. */
+.fnmj-selectable{
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent;
+  cursor:pointer;
+}
+.fnmj-selectable.fnmj-selected{
+  transform:translateY(-13px)!important;
+  filter:brightness(1.12);
+  z-index:12;
+}
+.fnmj-selectable:not(.fnmj-selected){
+  transform:translateY(0);
+}
+
+/* Keep the four-player board readable instead of compressing all information
+   into the center. */
+@media (orientation:landscape){
+  .fnmj-table-felt{
+    inset:7% 6%;
+    border-radius:18% 18% 24% 24%;
+  }
+  .fnmj-center{
+    width:128px;
+    opacity:.96;
+  }
+  .fnmj-center:before{
+    inset:-10px -14px;
+    border-radius:18px;
+    background:rgba(4,24,19,.86);
+  }
+  .fnmj-center-round{font-size:15px}
+  .fnmj-center-score{font-size:13px}
+  .fnmj-player-top{top:8px;width:68%}
+  .fnmj-player-bottom{bottom:7px;width:84%}
+  .fnmj-player-left{left:12px;width:25%}
+  .fnmj-player-right{right:12px;width:25%}
+  .fnmj-player-info{
+    background:rgba(7,18,15,.92);
+    border-color:#8c783e;
+  }
+  .fnmj-river{
+    min-height:72px;
+  }
+  .fnmj-player-bottom .my-hand{
+    min-height:58px;
+  }
+}
+@media (orientation:landscape) and (max-height:430px){
+  .fnmj-table-felt{inset:6% 6%}
+  .fnmj-center{width:112px}
+  .fnmj-center-round{font-size:13px}
+  .fnmj-center-score{font-size:11px}
+  .fnmj-river{min-height:58px}
+  .fnmj-selectable.fnmj-selected{transform:translateY(-10px)!important}
+}

@@ -66,6 +66,7 @@
       this.actions = [];
       this.discardChoices = null;
       this.riichiSelecting = false;
+      this.selectedDiscardIndex = null;
       this.message = "";
       this.renderTimer = null;
 
@@ -163,6 +164,7 @@
       this.clearActions();
       this.discardChoices = null;
       this.riichiSelecting = false;
+      this.selectedDiscardIndex = null;
     }
 
     clearActions() {
@@ -204,6 +206,7 @@
       }
       this.discardChoices = { player, tiles: normalDapai.map(tileKey) };
       this.riichiSelecting = false;
+      this.selectedDiscardIndex = null;
       this.message = gangzimo ? "槓の嶺上牌" : (afterFulou ? "鳴いた後の打牌" : "あなたのツモ");
       this.render();
     }
@@ -211,35 +214,39 @@
     selectDiscard(player, tiles, riichi) {
       this.discardChoices = { player, tiles: (tiles || []).map(tileKey) };
       this.riichiSelecting = !!riichi;
+      this.selectedDiscardIndex = null;
       this.render();
     }
 
     handleDiscardTile(node) {
       if (!this.discardChoices) return;
-      const choice = this.discardChoices;
-      const player = choice.player;
-      const raw = node?.dataset?.raw;
-      if (!raw) return;
-      if (!choice.tiles.includes(tileKey(raw))) return;
-      const p = this.riichiSelecting ? `${raw.replace(/\*$/, "")}*` : raw;
-      // Consume the UI lock BEFORE invoking the engine callback. The callback
-      // can synchronously advance the game and cause a render immediately.
-      this.discardChoices = null;
-      this.riichiSelecting = false;
-      this.clearActions();
-      node.classList.remove("fnmj-selectable");
-      play("dapai");
-      if (typeof player._callback !== "function") {
-        console.error("[FORTUNE NOIR] Mahjong: human callback is missing");
-        this.message = "打牌入力エラー";
+      const player = this.discardChoices.player;
+      const raw = node.dataset.raw;
+      const index = Number(node.dataset.index);
+      if (!raw || !Number.isInteger(index)) return;
+      if (!this.discardChoices.tiles.includes(tileKey(raw))) return;
+
+      // Mahjong Soul-style confirmation: first tap lifts/selects the tile,
+      // second tap on that same physical tile confirms the discard.
+      if (this.selectedDiscardIndex !== index) {
+        this.selectedDiscardIndex = index;
         this.render();
         return;
       }
+
+      const p = this.riichiSelecting ? `${raw.replace(/\\*$/, "")}*` : raw;
+      play("dapai");
+      this.discardChoices = null;
+      this.riichiSelecting = false;
+      this.selectedDiscardIndex = null;
+      this.clearActions();
+
       try {
-        player._callback({dapai:p});
+        if (typeof player._callback === "function") player._callback({dapai:p});
+        else if (typeof player.callback === "function") player.callback({dapai:p});
       } catch (e) {
-        console.error("[FORTUNE NOIR] Mahjong discard failed", e);
-        this.message = "打牌エラー: " + (e?.message || e);
+        console.error("[FORTUNE NOIR] discard callback failed", e);
+        this.message = "打牌処理エラー";
         this.render();
       }
     }
@@ -248,22 +255,70 @@
       this.clearActions();
       this.discardChoices = null;
       this.riichiSelecting = false;
+      this.selectedDiscardIndex = null;
+
       const sp = player.shoupai;
+      let canCall = false;
+
       if (player.allow_hule(sp, d.p, false)) {
-        this.addAction("ロン", () => { play("rong"); if (typeof player._callback === "function") player._callback({hule:"-"}); this.clearActions(); }, "danger");
+        canCall = true;
+        this.addAction("ロン", () => {
+          play("rong");
+          if (typeof player._callback === "function") player._callback({hule:"-"});
+          this.clearActions();
+        }, "danger");
       }
+
       for (const m of (player.get_peng_mianzi(sp, d.p) || [])) {
-        this.addAction("ポン", () => { play("peng"); if (typeof player._callback === "function") player._callback({fulou:m}); this.clearActions(); }, "call");
+        canCall = true;
+        this.addAction("ポン", () => {
+          play("peng");
+          if (typeof player._callback === "function") player._callback({fulou:m});
+          this.clearActions();
+        }, "call");
       }
+
       for (const m of (player.get_gang_mianzi(sp, d.p) || [])) {
-        this.addAction("カン", () => { play("gang"); if (typeof player._callback === "function") player._callback({fulou:m}); this.clearActions(); }, "call");
+        canCall = true;
+        this.addAction("カン", () => {
+          play("gang");
+          if (typeof player._callback === "function") player._callback({fulou:m});
+          this.clearActions();
+        }, "call");
       }
-      const chi = d.l === (player._menfeng + 3) % 4 ? (player.get_chi_mianzi(sp, d.p) || []) : [];
+
+      const chi = d.l === (player._menfeng + 3) % 4
+        ? (player.get_chi_mianzi(sp, d.p) || []) : [];
+
       for (const m of chi) {
-        this.addAction("チー", () => { play("chi"); if (typeof player._callback === "function") player._callback({fulou:m}); this.clearActions(); }, "call");
+        canCall = true;
+        this.addAction("チー", () => {
+          play("chi");
+          if (typeof player._callback === "function") player._callback({fulou:m});
+          this.clearActions();
+        }, "call");
       }
-      this.addAction("パス", () => { if (typeof player._callback === "function") player._callback({}); this.clearActions(); }, "secondary");
+
       this.message = `${TILE_NAME[tileKey(d.p)] || d.p} を捨てました`;
+
+      // Critical progression rule:
+      // If the human has no legal reaction to an opponent's discard,
+      // the engine must be released immediately. Waiting for a "pass"
+      // button here freezes the whole four-player game on the next seat.
+      if (!canCall) {
+        if (typeof player._callback === "function") player._callback({});
+        else if (typeof player.callback === "function") player.callback({});
+        this.clearActions();
+        this.render();
+        return;
+      }
+
+      this.addAction("パス", () => {
+        if (typeof player._callback === "function") player._callback({});
+        else if (typeof player.callback === "function") player.callback({});
+        this.clearActions();
+      }, "secondary");
+
       this.drawActions();
       this.render();
     }
@@ -308,6 +363,9 @@
               const raw = node.dataset.raw;
               if (this.discardChoices.tiles.includes(tileKey(raw))) {
                 node.classList.add("fnmj-selectable");
+                if (this.selectedDiscardIndex === Number(node.dataset.index)) {
+                  node.classList.add("fnmj-selected");
+                }
                 node.setAttribute("role", "button");
                 node.setAttribute("tabindex", "0");
               }
@@ -407,7 +465,7 @@
     const melds = (sp._fulou || []).map(renderMeld).join("");
     const body = concealed.map((p, i) => {
       const isZimo = zimo && i === concealed.length - 1;
-      return `<span class="fnmj-tile-wrap${isZimo ? " zimo-tile" : ""}" data-raw="${p}">${tileImg(p)}</span>`;
+      return `<span class="fnmj-tile-wrap${isZimo ? " zimo-tile" : ""}" data-raw="${p}" data-index="${i}">${tileImg(p)}</span>`;
     }).join("");
     return `<span class="fnmj-concealed">${body}</span>${melds}`;
   }
@@ -455,7 +513,7 @@
         else this._callback({});
       }
       action_dapai(d) {
-        if (d.l === this._menfeng) { ui.discardChoices = null; ui.riichiSelecting = false; this._callback({}); }
+        if (d.l === this._menfeng) { ui.discardChoices = null; ui.riichiSelecting = false; ui.selectedDiscardIndex = null; this._callback({}); }
         else ui.opponentDiscard(this, d);
       }
       action_fulou(f) {
