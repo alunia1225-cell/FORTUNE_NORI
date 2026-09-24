@@ -86,19 +86,19 @@
             <div class="fnmj-wall fnmj-wall-left" id="fnmjWallLeft"></div>
 
             <section class="fnmj-player fnmj-player-top" data-seat="top">
-              <div class="fnmj-player-info"><span id="fnmjWind2">南</span><b id="fnmjName2">AI 2</b><strong id="fnmjScore2">25000</strong></div>
+              <div class="fnmj-player-info"><i class="fnmj-avatar">南</i><span id="fnmjWind2">南</span><b id="fnmjName2">AI 2</b><strong id="fnmjScore2">25000</strong></div>
               <div class="fnmj-hand opponent-hand" id="fnmjHand2"></div>
               <div class="fnmj-river river-top" id="fnmjRiver2"></div>
             </section>
 
             <section class="fnmj-player fnmj-player-left" data-seat="left">
-              <div class="fnmj-player-info"><span id="fnmjWind3">西</span><b id="fnmjName3">AI 3</b><strong id="fnmjScore3">25000</strong></div>
+              <div class="fnmj-player-info"><i class="fnmj-avatar">西</i><span id="fnmjWind3">西</span><b id="fnmjName3">AI 3</b><strong id="fnmjScore3">25000</strong></div>
               <div class="fnmj-hand opponent-hand" id="fnmjHand3"></div>
               <div class="fnmj-river river-left" id="fnmjRiver3"></div>
             </section>
 
             <section class="fnmj-player fnmj-player-right" data-seat="right">
-              <div class="fnmj-player-info"><span id="fnmjWind1">北</span><b id="fnmjName1">AI 1</b><strong id="fnmjScore1">25000</strong></div>
+              <div class="fnmj-player-info"><i class="fnmj-avatar">北</i><span id="fnmjWind1">北</span><b id="fnmjName1">AI 1</b><strong id="fnmjScore1">25000</strong></div>
               <div class="fnmj-hand opponent-hand" id="fnmjHand1"></div>
               <div class="fnmj-river river-right" id="fnmjRiver1"></div>
             </section>
@@ -106,7 +106,7 @@
             <section class="fnmj-player fnmj-player-bottom" data-seat="bottom">
               <div class="fnmj-river river-bottom" id="fnmjRiver0"></div>
               <div class="fnmj-hand my-hand" id="fnmjHand0"></div>
-              <div class="fnmj-player-info"><span id="fnmjWind0">東</span><b id="fnmjName0">YOU</b><strong id="fnmjScore0">25000</strong></div>
+              <div class="fnmj-player-info"><i class="fnmj-avatar fnmj-avatar-you">自</i><span id="fnmjWind0">東</span><b id="fnmjName0">YOU</b><strong id="fnmjScore0">25000</strong></div>
             </section>
 
             <div class="fnmj-center" aria-label="卓中央">
@@ -117,7 +117,7 @@
               <div class="fnmj-center-dora-label">ドラ表示牌</div>
               <div class="fnmj-dora" id="fnmjDora"></div>
               <div class="fnmj-center-score" id="fnmjCenterScore">25000</div>
-              <div class="fnmj-turn" id="fnmjTurn">配牌中</div>
+              <div class="fnmj-turn" id="fnmjTurn">配牌中</div><div class="fnmj-count" id="fnmjCount">0巡目</div>
               <div class="fnmj-status" id="fnmjStatus"></div>
             </div>
           </div>
@@ -177,6 +177,17 @@
       this.actions.push({label, fn, cls});
     }
 
+    respond(player, payload = {}) {
+      // Capture and clear the current engine callback first. This prevents
+      // iOS pointerup/touchend/click from ever releasing the same Kobalab
+      // wait state twice.
+      const cb = player && player._callback;
+      if (typeof cb !== "function") return false;
+      player._callback = null;
+      cb(payload || {});
+      return true;
+    }
+
     drawActions() {
       const box = this.root.querySelector("#fnmjActions");
       if (!box) return;
@@ -222,19 +233,10 @@
       if (!this.discardChoices) return;
       const player = this.discardChoices.player;
       const raw = node.dataset.raw;
-      const index = Number(node.dataset.index);
-      if (!raw || !Number.isInteger(index)) return;
+      if (!raw) return;
       if (!this.discardChoices.tiles.includes(tileKey(raw))) return;
 
-      // Mahjong Soul-style confirmation: first tap lifts/selects the tile,
-      // second tap on that same physical tile confirms the discard.
-      if (this.selectedDiscardIndex !== index) {
-        this.selectedDiscardIndex = index;
-        this.render();
-        return;
-      }
-
-      const p = this.riichiSelecting ? `${raw.replace(/\\*$/, "")}*` : raw;
+      const p = this.riichiSelecting ? `${raw.replace(/\*$/, "")}*` : raw;
       play("dapai");
       this.discardChoices = null;
       this.riichiSelecting = false;
@@ -242,8 +244,7 @@
       this.clearActions();
 
       try {
-        if (typeof player._callback === "function") player._callback({dapai:p});
-        else if (typeof player.callback === "function") player.callback({dapai:p});
+        this.respond(player, {dapai:p});
       } catch (e) {
         console.error("[FORTUNE NOIR] discard callback failed", e);
         this.message = "打牌処理エラー";
@@ -257,69 +258,76 @@
       this.riichiSelecting = false;
       this.selectedDiscardIndex = null;
 
+      // Kobalab requires reaction tiles to carry the relative seat marker
+      // (+/=/-). Passing bare "m5" etc. is invalid and throws inside
+      // Shoupai.get_peng_mianzi/get_chi_mianzi, which was the actual reason
+      // the browser stopped on the next player's discard.
+      const dir = ["", "+", "=", "-"][(4 + d.l - player._menfeng) % 4];
+      const reaction = d.p.slice(0, 2) + dir;
       const sp = player.shoupai;
       let canCall = false;
 
-      if (player.allow_hule(sp, d.p, false)) {
-        canCall = true;
-        this.addAction("ロン", () => {
-          play("rong");
-          if (typeof player._callback === "function") player._callback({hule:"-"});
-          this.clearActions();
-        }, "danger");
-      }
+      try {
+        if (player.allow_hule(sp, reaction, false)) {
+          canCall = true;
+          this.addAction("ロン", () => {
+            play("rong");
+            this.respond(player, {hule:"-"});
+            this.clearActions();
+          }, "danger");
+        }
 
-      for (const m of (player.get_peng_mianzi(sp, d.p) || [])) {
-        canCall = true;
-        this.addAction("ポン", () => {
-          play("peng");
-          if (typeof player._callback === "function") player._callback({fulou:m});
-          this.clearActions();
-        }, "call");
-      }
+        for (const m of (player.get_peng_mianzi(sp, reaction) || [])) {
+          canCall = true;
+          this.addAction("ポン", () => {
+            play("peng");
+            this.respond(player, {fulou:m});
+            this.clearActions();
+          }, "call");
+        }
 
-      for (const m of (player.get_gang_mianzi(sp, d.p) || [])) {
-        canCall = true;
-        this.addAction("カン", () => {
-          play("gang");
-          if (typeof player._callback === "function") player._callback({fulou:m});
-          this.clearActions();
-        }, "call");
-      }
+        for (const m of (player.get_gang_mianzi(sp, reaction) || [])) {
+          canCall = true;
+          this.addAction("カン", () => {
+            play("gang");
+            this.respond(player, {fulou:m});
+            this.clearActions();
+          }, "call");
+        }
 
-      const chi = d.l === (player._menfeng + 3) % 4
-        ? (player.get_chi_mianzi(sp, d.p) || []) : [];
-
-      for (const m of chi) {
-        canCall = true;
-        this.addAction("チー", () => {
-          play("chi");
-          if (typeof player._callback === "function") player._callback({fulou:m});
-          this.clearActions();
-        }, "call");
+        if (d.l === (player._menfeng + 3) % 4) {
+          for (const m of (player.get_chi_mianzi(sp, reaction) || [])) {
+            canCall = true;
+            this.addAction("チー", () => {
+              play("chi");
+              this.respond(player, {fulou:m});
+              this.clearActions();
+            }, "call");
+          }
+        }
+      } catch (e) {
+        // A malformed reaction must never deadlock the table. Treat it as a
+        // pass while logging the actual engine error for debugging.
+        console.error("[FORTUNE NOIR] reaction check failed", e);
+        canCall = false;
+        this.actions = [];
       }
 
       this.message = `${TILE_NAME[tileKey(d.p)] || d.p} を捨てました`;
 
-      // Critical progression rule:
-      // If the human has no legal reaction to an opponent's discard,
-      // the engine must be released immediately. Waiting for a "pass"
-      // button here freezes the whole four-player game on the next seat.
+      // No legal reaction = automatic skip, exactly as a real four-player
+      // table must behave. Never wait for a meaningless Pass button.
       if (!canCall) {
-        if (typeof player._callback === "function") player._callback({});
-        else if (typeof player.callback === "function") player.callback({});
+        this.respond(player, {});
         this.clearActions();
         this.render();
         return;
       }
 
       this.addAction("パス", () => {
-        if (typeof player._callback === "function") player._callback({});
-        else if (typeof player.callback === "function") player.callback({});
+        this.respond(player, {});
         this.clearActions();
       }, "secondary");
-
-      this.drawActions();
       this.render();
     }
 
@@ -363,9 +371,7 @@
               const raw = node.dataset.raw;
               if (this.discardChoices.tiles.includes(tileKey(raw))) {
                 node.classList.add("fnmj-selectable");
-                if (this.selectedDiscardIndex === Number(node.dataset.index)) {
-                  node.classList.add("fnmj-selected");
-                }
+                if (this.selectedDiscardIndex === Number(node.dataset.index)) node.classList.add("fnmj-selected");
                 node.setAttribute("role", "button");
                 node.setAttribute("tabindex", "0");
               }
@@ -506,35 +512,40 @@
 
   function makeHumanClass(Majiang, ui) {
     class Human extends Majiang.Player {
-      action_kaiju() { this._callback({}); }
-      action_qipai(q) { this._callback({}); }
+      action_kaiju() { ui.respond(this, {}); }
+      action_qipai(q) { ui.respond(this, {}); }
       action_zimo(z, gangzimo) {
         if (z.l === this._menfeng) ui.humanTurn(this, !!gangzimo, false);
-        else this._callback({});
+        else ui.respond(this, {});
       }
       action_dapai(d) {
-        if (d.l === this._menfeng) { ui.discardChoices = null; ui.riichiSelecting = false; ui.selectedDiscardIndex = null; this._callback({}); }
+        if (d.l === this._menfeng) {
+          ui.discardChoices = null;
+          ui.riichiSelecting = false;
+          ui.selectedDiscardIndex = null;
+          ui.respond(this, {});
+        }
         else ui.opponentDiscard(this, d);
       }
       action_fulou(f) {
         if (f.l === this._menfeng) ui.humanTurn(this, false, true);
-        else this._callback({});
+        else ui.respond(this, {});
       }
       action_gang(g) {
         // After a kan declaration the engine must proceed to the replacement draw.
-        this._callback({});
+        ui.respond(this, {});
       }
       action_hule(h) {
         ui.showResult("和了", h);
-        this._callback({});
+        ui.respond(this, {});
       }
       action_pingju(p) {
         ui.showResult(p?.name || "流局", p);
-        this._callback({});
+        ui.respond(this, {});
       }
       action_jieju(p) {
         ui.showResult("対局終了", p);
-        this._callback({});
+        ui.respond(this, {});
       }
     }
     return Human;
