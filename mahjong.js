@@ -68,6 +68,9 @@
       this.selectedDiscardIndex = null;
       this.message = "";
       this.renderTimer = null;
+      this._visualFuluCount = 0;
+      this._visualLastDiscard = "";
+      this._cutinTimer = null;
 
       root.innerHTML = `
         <div class="fnmj-shell">
@@ -122,6 +125,10 @@
           </div>
 
           <div class="fnmj-actions" id="fnmjActions"></div>
+          <div class="fnmj-cutin hidden" id="fnmjCutin" aria-live="polite">
+            <div class="fnmj-cutin-label" id="fnmjCutinLabel"></div>
+            <div class="fnmj-cutin-sub" id="fnmjCutinSub"></div>
+          </div>
           <div class="fnmj-result hidden" id="fnmjResult">
             <div class="fnmj-result-card">
               <h2 id="fnmjResultTitle"></h2>
@@ -161,6 +168,9 @@
     stop() {
       if (this.renderTimer) clearInterval(this.renderTimer);
       this.renderTimer = null;
+      this._visualFuluCount = 0;
+      this._visualLastDiscard = "";
+      this._cutinTimer = null;
       this.clearActions();
       this.discardChoices = null;
       this.riichiSelecting = false;
@@ -405,7 +415,48 @@
         if (seat) seat.classList.toggle("active-seat", id === turnSeat);
       }
 
+      this.detectVisualEvent(m);
       this.drawActions();
+    }
+
+    showCutin(label, sub = "") {
+      const box = this.root.querySelector("#fnmjCutin");
+      if (!box) return;
+      const title = this.root.querySelector("#fnmjCutinLabel");
+      const desc = this.root.querySelector("#fnmjCutinSub");
+      if (title) title.textContent = label;
+      if (desc) desc.textContent = sub;
+      box.classList.remove("hidden", "show");
+      void box.offsetWidth;
+      box.classList.add("show");
+      clearTimeout(this._cutinTimer);
+      this._cutinTimer = setTimeout(() => box.classList.add("hidden"), 760);
+    }
+
+    detectVisualEvent(m) {
+      const counts = (m.shoupai || []).map(sp => (sp?._fulou || []).length);
+      const total = counts.reduce((a,b) => a+b, 0);
+      if (total > this._visualFuluCount) {
+        let who = counts.findIndex((n,i) => n > (this._visualFuluSeen?.[i] || 0));
+        if (who < 0) who = 0;
+        const fs = m.shoupai?.[who]?._fulou || [];
+        const meld = fs[fs.length - 1] || "";
+        const label = /^[mpsz]\d{4}/.test(meld) ? "カン！" : (meld.includes("-") ? "チー！" : "ポン！");
+        this.showCutin(label, `${WIND[who]}家が鳴きました`);
+      }
+      this._visualFuluCount = total;
+      this._visualFuluSeen = counts;
+
+      let latest = "";
+      let latestSeat = -1;
+      for (let l = 0; l < 4; l++) {
+        const a = m.he?.[l]?._pai || [];
+        if (a.length) { latest = a[a.length - 1]; latestSeat = l; }
+      }
+      if (latest && latest !== this._visualLastDiscard && /\*$/.test(latest)) {
+        this.showCutin("リーチ！", `${WIND[latestSeat]}家`);
+      }
+      this._visualLastDiscard = latest || this._visualLastDiscard;
     }
 
     seatWind(model, playerId) {
