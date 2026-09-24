@@ -69,6 +69,8 @@
       this.message = "";
       this.renderTimer = null;
       this._visualFuluCount = 0;
+      this._visualFuluSeen = null;
+      this._visualRiverSeen = [0,0,0,0];
       this._visualLastDiscard = "";
       this._cutinTimer = null;
       this._resizeHandler = null;
@@ -76,12 +78,6 @@
 
       root.innerHTML = `
         <div class="fnmj-shell">
-          <div class="fnmj-header">
-            <div class="fnmj-title"><b>FORTUNE NOIR</b><span>MAHJONG</span></div>
-            <div class="fnmj-round-box"><strong id="fnmjRound">東1局</strong><span id="fnmjHonba">0本場</span></div>
-            <div class="fnmj-wall-box">残り <b id="fnmjWall">70</b> 枚</div>
-          </div>
-
           <div class="fnmj-arena">
             <div class="fnmj-table-felt"></div>
             <div class="fnmj-wall fnmj-wall-top" id="fnmjWallTop"></div>
@@ -90,19 +86,28 @@
             <div class="fnmj-wall fnmj-wall-left" id="fnmjWallLeft"></div>
 
             <section class="fnmj-player fnmj-player-top" data-seat="top">
-              <div class="fnmj-player-info"><i class="fnmj-avatar">南</i><span id="fnmjWind2">南</span><b id="fnmjName2">AI 2</b><strong id="fnmjScore2">25000</strong></div>
+              <div class="fnmj-player-info">
+                <i class="fnmj-avatar" id="fnmjAvatar2">南</i>
+                <span id="fnmjWind2">南</span><b id="fnmjName2">AI 2</b><strong id="fnmjScore2">25,000</strong>
+              </div>
               <div class="fnmj-hand opponent-hand" id="fnmjHand2"></div>
               <div class="fnmj-river river-top" id="fnmjRiver2"></div>
             </section>
 
             <section class="fnmj-player fnmj-player-left" data-seat="left">
-              <div class="fnmj-player-info"><i class="fnmj-avatar">西</i><span id="fnmjWind3">西</span><b id="fnmjName3">AI 3</b><strong id="fnmjScore3">25000</strong></div>
+              <div class="fnmj-player-info">
+                <i class="fnmj-avatar" id="fnmjAvatar3">西</i>
+                <span id="fnmjWind3">西</span><b id="fnmjName3">AI 3</b><strong id="fnmjScore3">25,000</strong>
+              </div>
               <div class="fnmj-hand opponent-hand" id="fnmjHand3"></div>
               <div class="fnmj-river river-left" id="fnmjRiver3"></div>
             </section>
 
             <section class="fnmj-player fnmj-player-right" data-seat="right">
-              <div class="fnmj-player-info"><i class="fnmj-avatar">北</i><span id="fnmjWind1">北</span><b id="fnmjName1">AI 1</b><strong id="fnmjScore1">25000</strong></div>
+              <div class="fnmj-player-info">
+                <i class="fnmj-avatar" id="fnmjAvatar1">北</i>
+                <span id="fnmjWind1">北</span><b id="fnmjName1">AI 1</b><strong id="fnmjScore1">25,000</strong>
+              </div>
               <div class="fnmj-hand opponent-hand" id="fnmjHand1"></div>
               <div class="fnmj-river river-right" id="fnmjRiver1"></div>
             </section>
@@ -110,20 +115,29 @@
             <section class="fnmj-player fnmj-player-bottom" data-seat="bottom">
               <div class="fnmj-river river-bottom" id="fnmjRiver0"></div>
               <div class="fnmj-hand my-hand" id="fnmjHand0"></div>
-              <div class="fnmj-player-info"><i class="fnmj-avatar fnmj-avatar-you">自</i><span id="fnmjWind0">東</span><b id="fnmjName0">YOU</b><strong id="fnmjScore0">25000</strong></div>
+              <div class="fnmj-player-info">
+                <i class="fnmj-avatar fnmj-avatar-you" id="fnmjAvatar0">自</i>
+                <span id="fnmjWind0">東</span><b id="fnmjName0">YOU</b><strong id="fnmjScore0">25,000</strong>
+              </div>
             </section>
 
             <div class="fnmj-actions" id="fnmjActions"></div>
 
             <div class="fnmj-center" aria-label="卓中央">
-              <div class="fnmj-center-top">
-                <div class="fnmj-center-round" id="fnmjCenterRound">東1局</div>
-                <div class="fnmj-center-honba" id="fnmjCenterHonba">0本場</div>
+              <div class="fnmj-center-round" id="fnmjCenterRound">東1局</div>
+              <div class="fnmj-center-honba" id="fnmjCenterHonba">0本場</div>
+              <div class="fnmj-center-main">
+                <div class="fnmj-seat-score fnmj-seat-score-top" id="fnmjSeatScore2">南 25,000</div>
+                <div class="fnmj-seat-score fnmj-seat-score-left" id="fnmjSeatScore3">西 25,000</div>
+                <div class="fnmj-seat-score fnmj-seat-score-right" id="fnmjSeatScore1">北 25,000</div>
+                <div class="fnmj-seat-score fnmj-seat-score-bottom" id="fnmjSeatScore0">東 25,000</div>
+                <div class="fnmj-center-dora-label">ドラ表示牌</div>
+                <div class="fnmj-dora" id="fnmjDora"></div>
+                <div class="fnmj-center-stick" id="fnmjCenterStick">供託 0本　積棒 0</div>
+                <div class="fnmj-center-wall" id="fnmjCenterWall">残り70枚</div>
               </div>
-              <div class="fnmj-center-dora-label">ドラ表示牌</div>
-              <div class="fnmj-dora" id="fnmjDora"></div>
-              <div class="fnmj-center-score" id="fnmjCenterScore">25000</div>
-              <div class="fnmj-turn" id="fnmjTurn">配牌中</div><div class="fnmj-count" id="fnmjCount">0巡目</div>
+              <div class="fnmj-turn" id="fnmjTurn">配牌中</div>
+              <div class="fnmj-count" id="fnmjCount">0巡目</div>
               <div class="fnmj-status" id="fnmjStatus"></div>
             </div>
 
@@ -133,12 +147,9 @@
               <div class="fnmj-cutin-sub" id="fnmjCutinSub"></div>
             </div>
           </div>
-
           <div class="fnmj-result hidden" id="fnmjResult">
             <div class="fnmj-result-card">
-              <h2 id="fnmjResultTitle"></h2>
-              <pre id="fnmjResultText"></pre>
-              <button id="fnmjResultClose">閉じる</button>
+              <h2 id="fnmjResultTitle"></h2><pre id="fnmjResultText"></pre><button id="fnmjResultClose">閉じる</button>
             </div>
           </div>
         </div>`;
@@ -183,6 +194,8 @@
       }
       this._resizeHandler = null;
       this._visualFuluCount = 0;
+      this._visualFuluSeen = null;
+      this._visualRiverSeen = [0,0,0,0];
       this._visualLastDiscard = "";
       this._cutinTimer = null;
       this._decisionUntil = 0;
@@ -351,7 +364,8 @@
           }, "call");
         }
 
-        if (d.l === (player._menfeng + 3) % 4) {
+        const canChi = player._menfeng === ((d.l + 1) % 4);
+        if (canChi) {
           for (const m of (player.get_chi_mianzi(sp, reaction) || [])) {
             canCall = true;
             this.addAction("チー", () => {
@@ -397,13 +411,12 @@
       const turnSeat = m.lunban >= 0 ? m.player_id[m.lunban] : -1;
       const turnCount = Math.max(0, ...(m.he || []).map(h => h?._pai?.length || 0));
 
-      this.root.querySelector("#fnmjRound").textContent = round;
       this.root.querySelector("#fnmjCenterRound").textContent = round;
-      this.root.querySelector("#fnmjWall").textContent = wall;
-      this.root.querySelector("#fnmjHonba").textContent = `${m.changbang || 0}本場`;
       this.root.querySelector("#fnmjCenterHonba").textContent = `${m.changbang || 0}本場`;
       this.root.querySelector("#fnmjTurn").textContent = turnSeat < 0 ? "配牌中" : (turnSeat === this.seat ? "あなたの番" : `${WIND[this.seatWind(m, turnSeat)]}家の番`);
       this.root.querySelector("#fnmjCount").textContent = `${turnCount}巡目`;
+      this.root.querySelector("#fnmjCenterWall").textContent = `残り${wall}枚`;
+      this.root.querySelector("#fnmjCenterStick").textContent = `供託 ${Number(m.lizhibang || 0)}本　積棒 ${Number(m.changbang || 0)}`;
       if (turnSeat !== this.seat && this.game._status === "zimo" && !this.discardChoices) {
         this.message = `${WIND[this.seatWind(m, turnSeat)]}家のツモを処理中`;
       }
@@ -414,8 +427,6 @@
         timer.textContent = left ? String(left) : "";
         timer.classList.toggle("active", left > 0);
       }
-      this.root.querySelector("#fnmjCenterScore").textContent = (m.defen[this.seat] ?? 0).toLocaleString();
-
       const dora = m.shan?.baopai || [];
       this.root.querySelector("#fnmjDora").innerHTML = dora.map(p => tileImg(p)).join("");
 
@@ -428,6 +439,8 @@
         this.root.querySelector(`#fnmjScore${id}`).textContent = score;
         this.root.querySelector(`#fnmjName${id}`).textContent = id === this.seat ? "YOU" : `AI ${id}`;
         this.root.querySelector(`#fnmjWind${id}`).textContent = infoWind;
+        const centerScore = this.root.querySelector(`#fnmjSeatScore${id}`);
+        if (centerScore) centerScore.textContent = `${infoWind} ${score}`;
 
         const player = m.shoupai[l];
         const hand = this.root.querySelector(`#fnmjHand${id}`);
@@ -485,16 +498,38 @@
 
     detectVisualEvent(m) {
       const counts = (m.shoupai || []).map(sp => (sp?._fulou || []).length);
-      this._visualFuluCount = counts.reduce((a,b) => a + b, 0);
-      this._visualFuluSeen = counts;
-      let latest = "";
-      for (let l = 0; l < 4; l++) {
-        const a = m.he?.[l]?._pai || [];
-        if (a.length) latest = a[a.length - 1];
+      const rivers = (m.he || []).map(h => h?._pai?.length || 0);
+
+      if (this._visualFuluSeen == null) {
+        this._visualFuluSeen = counts.slice();
+        this._visualRiverSeen = rivers.slice();
+        return;
       }
+
+      for (let l = 0; l < 4; l++) {
+        if (counts[l] > (this._visualFuluSeen[l] || 0)) {
+          const meld = m.shoupai?.[l]?._fulou?.slice(-1)[0] || "";
+          const label = /^[mpsz]\d{4}[+=-]?$/.test(meld) ? "カン！"
+                      : meld.includes("-") ? "チー！"
+                      : "ポン！";
+          this.showCutin(label, `${WIND[l]}家`);
+          break;
+        }
+      }
+
+      for (let l = 0; l < 4; l++) {
+        if (rivers[l] > (this._visualRiverSeen[l] || 0)) {
+          const p = m.he?.[l]?._pai?.slice(-1)[0] || "";
+          if (p.endsWith("*")) this.showCutin("リーチ！", `${WIND[l]}家`);
+        }
+      }
+
+      this._visualFuluSeen = counts.slice();
+      this._visualRiverSeen = rivers.slice();
+      this._visualFuluCount = counts.reduce((a,b) => a + b, 0);
+      const latest = (m.he || []).map(h => h?._pai?.slice(-1)[0] || "").filter(Boolean).pop() || "";
       this._visualLastDiscard = latest || this._visualLastDiscard;
     }
-
     seatWind(model, playerId) {
       const idx = model.player_id.indexOf(playerId);
       return idx < 0 ? 0 : idx;
@@ -532,7 +567,7 @@
     return d === 0 ? "bottom" : d === 1 ? "right" : d === 2 ? "top" : "left";
   }
 
-  function concealedTiles(sp) {
+  function concealedTiles(sp, includeZimo = false) {
     const out = [];
     if (!sp) return out;
     for (const suit of ["m","p","s","z"]) {
@@ -548,16 +583,14 @@
         for (let i = 0; i < c; i++) out.push(`${suit}${n}`);
       }
     }
-    // IMPORTANT: _zimo is separate from _bingpai in Kobalab. Do not remove a matching
-    // tile from _bingpai here; doing so produces the old 12-tile display bug.
-    if (sp._zimo && sp._zimo !== "_") out.push(tileKey(sp._zimo));
+    if (includeZimo && sp._zimo && sp._zimo !== "_") out.push(tileKey(sp._zimo));
     return out;
   }
 
   function renderMeld(m) {
     const nums = m.match(/[0-9]/g) || [];
     const suit = m[0];
-    if (/^[mpsz]\d{4}$/.test(m)) {
+    if (/^[mpsz]\d{4}[+=-]?$/.test(m)) {
       const backs = nums.map((n, i) => (i === 0 || i === 3)
         ? '<i class="fnmj-meld-back"></i>'
         : tileImg(suit + n)).join("");
@@ -568,28 +601,33 @@
 
   function renderHand(sp, selectable) {
     if (!sp) return "";
-    const concealed = concealedTiles(sp);
+    const concealed = concealedTiles(sp, false);
     const zimo = sp._zimo && sp._zimo !== "_" ? tileKey(sp._zimo) : "";
     const melds = (sp._fulou || []).map(renderMeld).join("");
-    const body = concealed.map((p, i) => {
-      const isZimo = zimo && i === concealed.length - 1;
-      return `<span class="fnmj-tile-wrap${isZimo ? " zimo-tile" : ""}" data-raw="${p}" data-index="${i}">${tileImg(p)}</span>`;
-    }).join("");
-    return `${melds}<span class="fnmj-concealed">${body}</span>`;
+    const body = concealed.map((p, i) =>
+      `<span class="fnmj-tile-wrap" data-raw="${p}" data-index="${i}">${tileImg(p)}</span>`
+    ).join("");
+    const zimoHtml = zimo
+      ? `<span class="fnmj-zimo-gap"></span><span class="fnmj-tile-wrap zimo-tile" data-raw="${zimo}" data-index="${concealed.length}">${tileImg(zimo)}</span>`
+      : "";
+    return `<span class="fnmj-melds">${melds}</span><span class="fnmj-concealed">${body}</span>${zimoHtml}`;
   }
 
   function countVisibleTiles(sp) {
     if (!sp) return 13;
-    let n = concealedTiles(sp).length;
+    let n = concealedTiles(sp, false).length;
+    if (sp._zimo && sp._zimo !== "_") n += 1;
     for (const m of sp._fulou || []) n += (m.match(/[0-9]/g) || []).length;
     return n;
   }
 
   function renderOpponentHand(sp) {
-    const total = countVisibleTiles(sp);
-    const closed = total - (sp?._fulou || []).reduce((n,m) => n + (m.match(/[0-9]/g)||[]).length, 0);
+    const meldCount = (sp?._fulou || []).reduce((n,m) => n + (m.match(/[0-9]/g)||[]).length, 0);
+    const closed = Math.max(0, countVisibleTiles(sp) - meldCount);
+    const backCount = Math.min(14, closed);
+    const backs = Array.from({length: backCount}, () => '<i class="fnmj-opponent-back"></i>').join("");
     const melds = (sp?._fulou || []).map(renderMeld).join("");
-    return `${melds}${backTiles(closed)}`;
+    return `<span class="fnmj-melds">${melds}</span><span class="fnmj-opponent-backs">${backs}</span>`;
   }
 
   function renderRiver(he) {
@@ -684,7 +722,8 @@
             const x = Majiang.Util.xiangting(this.shoupai.clone().fulou(m));
             if (x < bestX) { bestX = x; bestCall = m; }
           }
-          if (d.l === (this._menfeng + 3) % 4) {
+          const canChi = this._menfeng === ((d.l + 1) % 4);
+          if (canChi) {
             for (const m of (this.get_chi_mianzi(this.shoupai, reaction) || [])) {
               const x = Majiang.Util.xiangting(this.shoupai.clone().fulou(m));
               if (x < bestX) { bestX = x; bestCall = m; }
@@ -733,7 +772,6 @@
         else ui.opponentDiscard(this, d);
       }
       action_fulou(f) {
-        ui.showCallCutin(f);
         if (f.l === this._menfeng) ui.humanTurn(this, false, true);
         else ui.respond(this, {});
       }
