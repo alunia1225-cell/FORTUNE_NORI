@@ -201,13 +201,13 @@
     fitArena() {
       const arena = this.root.querySelector(".fnmj-arena");
       if (!arena) return;
-      const w = Math.max(320, this.root.clientWidth || window.innerWidth || 320);
-      const rawH = Math.max(180, this.root.clientHeight || window.innerHeight || 180);
-      // Keep a deliberate safety margin for Safari's bottom browser/safe-area inset.
-      // The entire 800x450 table is scaled as one unit; nothing may be cropped.
-      const h = Math.max(180, rawH - 18);
-      const scale = Math.max(0.52, Math.min((w - 8) / 800, h / 450));
-      arena.style.setProperty("--fnmj-scale", scale.toFixed(4));
+      const vv = window.visualViewport;
+      const w = Math.max(320, Number(vv?.width) || window.innerWidth || document.documentElement.clientWidth || 320);
+      const h = Math.max(180, Number(vv?.height) || window.innerHeight || document.documentElement.clientHeight || 180);
+      // Fit the entire 900x500 table inside the safe visual viewport.
+      // No vertical offset is introduced; the table is always centered as one unit.
+      const scale = Math.min((w - 16) / 900, (h - 16) / 500);
+      arena.style.setProperty("--fnmj-scale", Math.max(0.42, scale).toFixed(4));
     }
 
     startDecisionTimer(seconds = 20) {
@@ -230,12 +230,10 @@
     }
 
     respond(player, payload = {}) {
-      // Capture and clear the current engine callback first. This prevents
-      // iOS pointerup/touchend/click from ever releasing the same Kobalab
-      // wait state twice.
       const cb = player && player._callback;
       if (typeof cb !== "function") return false;
-      player._callback = null;
+      if (player.__fnResponded) return false;
+      player.__fnResponded = true;
       cb(payload || {});
       return true;
     }
@@ -361,7 +359,7 @@
           }, "call");
         }
 
-        const canChi = Number(player._menfeng) === ((Number(d.l) + 1) % 4);
+        const canChi = player._menfeng === ((d.l + 1) % 4);
         if (canChi) {
           for (const m of (player.get_chi_mianzi(sp, reaction) || [])) {
             canCall = true;
@@ -574,31 +572,39 @@
         for (let i = 0; i < c; i++) out.push(`${suit}${n}`);
       }
     }
-    if (includeZimo && sp._zimo && sp._zimo !== "_") out.push(tileKey(sp._zimo));
+    if (includeZimo && sp._zimo && sp._zimo.length === 2 && sp._zimo !== "_") out.push(tileKey(sp._zimo));
     return out;
   }
 
   function renderMeld(m) {
     const nums = m.match(/[0-9]/g) || [];
     const suit = m[0];
-    if (/^[mpsz]\d{4}[+=-]?$/.test(m)) {
+    // Concealed kan: first and last tiles are face-down.
+    if (/^[mpsz]\d{4}$/.test(m)) {
       const backs = nums.map((n, i) => (i === 0 || i === 3)
         ? '<i class="fnmj-meld-back"></i>'
         : tileImg(suit + n)).join("");
       return `<span class="fnmj-meld ankan">${backs}</span>`;
     }
-    return `<span class="fnmj-meld">${nums.map(n => tileImg(suit + n)).join("")}</span>`;
+    // Open melds encode the claimed tile with +, =, or - immediately before it.
+    const mark = m.match(/[+=-]/);
+    const markAt = mark ? mark.index : -1;
+    const calledIndex = markAt >= 0 ? ((m.slice(0, markAt).match(/[0-9]/g) || []).length) : -1;
+    return `<span class="fnmj-meld${mark ? ` called-${mark[0]}` : ""}">${nums.map((n,i) => {
+      const called = i === calledIndex;
+      return called ? `<span class="fnmj-meld-called">${tileImg(suit+n)}</span>` : tileImg(suit+n);
+    }).join("")}</span>`;
   }
 
   function renderHand(sp, selectable) {
     if (!sp) return "";
     const concealed = concealedTiles(sp, false);
-    const zimo = sp._zimo && sp._zimo !== "_" ? tileKey(sp._zimo) : "";
+    const zimo = (sp._zimo && sp._zimo.length === 2 && sp._zimo !== "_") ? tileKey(sp._zimo) : "";
     const melds = (sp._fulou || []).map(renderMeld).join("");
     const body = concealed.map((p, i) =>
       `<span class="fnmj-tile-wrap" data-raw="${p}" data-index="${i}">${tileImg(p)}</span>`
     ).join("");
-    const zimoHtml = zimo
+    const zimoHtml = (sp._zimo && sp._zimo.length === 2 && sp._zimo !== "_")
       ? `<span class="fnmj-zimo-gap"></span><span class="fnmj-tile-wrap zimo-tile" data-raw="${zimo}" data-index="${concealed.length}">${tileImg(zimo)}</span>`
       : "";
     return `<span class="fnmj-melds">${melds}</span><span class="fnmj-concealed">${body}</span>${zimoHtml}`;
@@ -607,7 +613,7 @@
   function countVisibleTiles(sp) {
     if (!sp) return 13;
     let n = concealedTiles(sp, false).length;
-    if (sp._zimo && sp._zimo !== "_") n += 1;
+    if (sp._zimo && sp._zimo.length === 2 && sp._zimo !== "_") n += 1;
     for (const m of sp._fulou || []) n += (m.match(/[0-9]/g) || []).length;
     return n;
   }
@@ -624,9 +630,10 @@
   function renderRiver(he) {
     if (!he?._pai) return "";
     return he._pai.map(p => {
-      const called = /[+=-]$/.test(p);
+      const mark = p.match(/[+=-]$/);
       const raw = p.replace(/[+=-]$/, "");
-      return `<span class="fnmj-river-tile${called ? " called" : ""}">${tileImg(raw)}</span>`;
+      const cls = mark ? ` called called-${mark[0]}` : "";
+      return `<span class="fnmj-river-tile${cls}">${tileImg(raw)}</span>`;
     }).join("");
   }
 
@@ -647,6 +654,7 @@
   function makeCpuClass(Majiang) {
     class Cpu extends Majiang.Player {
       action(msg, callback) {
+        this.__fnResponded = false;
         this._cpu_timer && clearTimeout(this._cpu_timer);
         this._cpu_timer = setTimeout(() => {
           if (typeof this._callback === "function") {
@@ -661,8 +669,8 @@
         this._cpu_timer && clearTimeout(this._cpu_timer);
         this._cpu_timer = null;
         const cb = this._callback;
-        if (typeof cb !== "function") return;
-        this._callback = null;
+        if (typeof cb !== "function" || this.__fnResponded) return;
+        this.__fnResponded = true;
         cb(payload || {});
       }
 
@@ -713,7 +721,7 @@
             const x = Majiang.Util.xiangting(this.shoupai.clone().fulou(m));
             if (x < bestX) { bestX = x; bestCall = m; }
           }
-          const canChi = Number(this._menfeng) === ((Number(d.l) + 1) % 4);
+          const canChi = this._menfeng === ((d.l + 1) % 4);
           if (canChi) {
             for (const m of (this.get_chi_mianzi(this.shoupai, reaction) || [])) {
               const x = Majiang.Util.xiangting(this.shoupai.clone().fulou(m));
@@ -745,14 +753,15 @@
 
   function makeHumanClass(Majiang, ui) {
     class Human extends Majiang.Player {
-      action_kaiju() { ui.respond(this, {}); }
-      action_qipai() { ui.respond(this, {}); }
+      action_kaiju() { this.__fnResponded = false; ui.respond(this, {}); }
+      action_qipai() { this.__fnResponded = false; ui.respond(this, {}); }
       action_zimo(z, gangzimo) {
+        this.__fnResponded = false;
         if (z.l === this._menfeng) ui.humanTurn(this, !!gangzimo, false);
         else ui.respond(this, {});
       }
       action_dapai(d) {
-        if (d?.p && /\*$/.test(d.p)) ui.showCutin("リーチ！", `${WIND[this._menfeng]}家`);
+        this.__fnResponded = false;
         if (d.l === this._menfeng) {
           ui.discardChoices = null;
           ui.riichiSelecting = false;
@@ -763,23 +772,28 @@
         else ui.opponentDiscard(this, d);
       }
       action_fulou(f) {
+        this.__fnResponded = false;
         if (f.l === this._menfeng) ui.humanTurn(this, false, true);
         else ui.respond(this, {});
       }
       action_gang(g) {
+        this.__fnResponded = false;
         ui.showCutin("カン！", `${WIND[this._menfeng]}家`);
         // After a kan declaration the engine must proceed to the replacement draw.
         ui.respond(this, {});
       }
       action_hule(h) {
+        this.__fnResponded = false;
         ui.showResult("和了", h);
         ui.respond(this, {});
       }
       action_pingju(p) {
+        this.__fnResponded = false;
         ui.showResult(p?.name || "流局", p);
         ui.respond(this, {});
       }
       action_jieju(p) {
+        this.__fnResponded = false;
         ui.showResult("対局終了", p);
         ui.respond(this, {});
       }
@@ -790,6 +804,15 @@
 
   async function start() {
     if (runtime) return runtime;
+    const STYLE_BUILD = "20260925-table-final-01";
+    document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+      try {
+        const href = link.getAttribute("href") || "";
+        if (href.includes("mahjong.css")) {
+          link.setAttribute("href", `./mahjong.css?v=${STYLE_BUILD}`);
+        }
+      } catch (_) {}
+    });
     const host = document.getElementById("modalContent");
     if (!host) throw new Error("modalContent が見つかりません");
     host.style.width = "100%";
