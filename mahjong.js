@@ -816,7 +816,7 @@
 
   async function start() {
     if (runtime) return runtime;
-    const STYLE_BUILD = "20260925-river-universal-02";
+    const STYLE_BUILD = "20260925-jantama-table-rebuild-01";
     document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
       try {
         const href = link.getAttribute("href") || "";
@@ -839,7 +839,36 @@
     const CpuPlayer = makeCpuClass(Majiang);
     const human = new Human();
     const players = [human, new CpuPlayer(), new CpuPlayer(), new CpuPlayer()];
-    const game = new Majiang.Game(players, paipu => ui.showResult("対局終了", paipu), Majiang.rule({}), "FORTUNE NOIR 4 PLAYER MAHJONG");
+    const FN_MAHJONG_RULE = Majiang.rule({
+      "配給原点": 25000,
+      "順位点": ["15","5","-5","-15"],
+      "赤牌": { m: 1, p: 1, s: 1 },
+      "クイタンあり": true,
+      "喰い替え許可レベル": 0,
+      "場数": 2,
+      "途中流局あり": true,
+      "流し満貫あり": true,
+      "ノーテン宣言あり": false,
+      "ノーテン罰あり": true,
+      "最大同時和了数": 3,
+      "連荘方式": 2,
+      "トビ終了あり": true,
+      "オーラス止めあり": true,
+      "延長戦方式": 1,
+      "一発あり": true,
+      "裏ドラあり": true,
+      "カンドラあり": true,
+      "カン裏あり": true,
+      "カンドラ後乗せ": true,
+      "ツモ番なしリーチあり": false,
+      "リーチ後暗槓許可レベル": 2,
+      "役満の複合あり": true,
+      "ダブル役満あり": true,
+      "数え役満あり": true,
+      "役満パオあり": true,
+      "切り上げ満貫あり": false
+    });
+    const game = new Majiang.Game(players, paipu => ui.showResult("対局終了", paipu), FN_MAHJONG_RULE, "FORTUNE NOIR 4 PLAYER MAHJONG");
     game.view = null;
     game.speed = 0;
     game.dwell = 0;
