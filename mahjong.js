@@ -202,8 +202,11 @@
       const arena = this.root.querySelector(".fnmj-arena");
       if (!arena) return;
       const w = Math.max(320, this.root.clientWidth || window.innerWidth || 320);
-      const h = Math.max(180, this.root.clientHeight || window.innerHeight || 180);
-      const scale = Math.max(0.52, Math.min(w / 800, h / 450));
+      const rawH = Math.max(180, this.root.clientHeight || window.innerHeight || 180);
+      // Keep a deliberate safety margin for Safari's bottom browser/safe-area inset.
+      // The entire 800x450 table is scaled as one unit; nothing may be cropped.
+      const h = Math.max(180, rawH - 18);
+      const scale = Math.max(0.52, Math.min((w - 8) / 800, h / 450));
       arena.style.setProperty("--fnmj-scale", scale.toFixed(4));
     }
 
@@ -358,7 +361,7 @@
           }, "call");
         }
 
-        const canChi = player._menfeng === ((d.l + 1) % 4);
+        const canChi = Number(player._menfeng) === ((Number(d.l) + 1) % 4);
         if (canChi) {
           for (const m of (player.get_chi_mianzi(sp, reaction) || [])) {
             canCall = true;
@@ -710,7 +713,7 @@
             const x = Majiang.Util.xiangting(this.shoupai.clone().fulou(m));
             if (x < bestX) { bestX = x; bestCall = m; }
           }
-          const canChi = this._menfeng === ((d.l + 1) % 4);
+          const canChi = Number(this._menfeng) === ((Number(d.l) + 1) % 4);
           if (canChi) {
             for (const m of (this.get_chi_mianzi(this.shoupai, reaction) || [])) {
               const x = Majiang.Util.xiangting(this.shoupai.clone().fulou(m));

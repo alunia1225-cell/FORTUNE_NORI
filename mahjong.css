@@ -49,3 +49,14 @@
 .fnmj-cutin{position:absolute;z-index:80;left:50%;top:130px;transform:translate(-50%,-50%) scale(.84);min-width:270px;padding:7px 36px;border-top:1px solid #e6c45f;border-bottom:1px solid #e6c45f;background:linear-gradient(90deg,transparent,rgba(5,16,25,.94) 16%,rgba(5,16,25,.94) 84%,transparent);text-align:center;opacity:0;pointer-events:none}.fnmj-cutin.show{animation:fnmjCutin .72s ease-out both}.fnmj-cutin-label{font-size:28px;font-weight:900;color:#fff;letter-spacing:.16em;text-shadow:0 2px 8px #000}.fnmj-cutin-sub{font-size:8px;color:#ebce70;margin-top:2px}@keyframes fnmjCutin{0%{opacity:0;transform:translate(-50%,-50%) scale(.78)}18%,72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.03)}}
 .fnmj-result{position:absolute;inset:0;z-index:100;display:grid;place-items:center;background:rgba(3,7,11,.75)}.fnmj-result-card{width:min(470px,82vw);padding:24px;border:1px solid #dfbb52;border-radius:8px;background:#0f1923;text-align:center}.fnmj-result-card h2{color:#f0ce70}.fnmj-result-card pre{white-space:pre-wrap;color:#e7eaed}.fnmj-result-card button{margin-top:14px;padding:9px 22px;background:#1b2935;color:#fff;border:1px solid #d8b44d;border-radius:5px}.fnmj-fatal{position:absolute;inset:0;overflow:auto;padding:30px;background:#070b0e;color:#fff}.fnmj-fatal pre{white-space:pre-wrap;color:#ffb8bd}
 @media (orientation:landscape) and (max-height:500px){.fnmj-arena{transform:scale(var(--fnmj-scale,1))}}
+
+/* FINAL TABLE FIT SAFETY: keep the complete 800x450 table inside the mobile viewport. */
+#fnMahjongRoot,.fn-mahjong-root{height:100%;padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+.fnmj-shell{height:100%;padding:0 0 env(safe-area-inset-bottom,0px);box-sizing:border-box}
+.fnmj-arena{max-width:none;max-height:none}
+/* The table itself stays centered; no player lane may escape its 800x450 coordinate system. */
+.fnmj-player-bottom{overflow:visible}
+.fnmj-player-bottom .fnmj-hand{bottom:auto}
+.fnmj-actions{max-width:190px}
+/* Only the immediate next player owns a chi action. */
+.fnmj-actions button[data-action-kind=chi]{display:inline-flex}
