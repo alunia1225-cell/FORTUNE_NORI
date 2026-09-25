@@ -816,7 +816,7 @@
 
   async function start() {
     if (runtime) return runtime;
-    const STYLE_BUILD = "20260925-seat-regions-01";
+    const STYLE_BUILD = "20260925-river-universal-02";
     document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
       try {
         const href = link.getAttribute("href") || "";

@@ -1,70 +1,86 @@
-/* FORTUNE NOIR Mahjong — responsive 2D table.
-   The board itself is always centered and always 16:9. All four rivers use
-   the same logical rectangle; side seats rotate tile faces inside that same
-   rectangle rather than changing the river's footprint. */
+/* FORTUNE NOIR Mahjong — fixed logical 16:9 table, responsive viewport.
+   Layout rule: the four discard areas are IDENTICAL rectangles. Seat
+   orientation changes only tile orientation; it never changes river size. */
 #modal:has(#fnMahjongRoot),.modal:has(#fnMahjongRoot){position:fixed!important;inset:0!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;overflow:hidden!important;display:block!important;background:#06111b!important;z-index:2147483000!important}
 #modal:has(#fnMahjongRoot) .tabletop,.modal:has(#fnMahjongRoot) .tabletop{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;overflow:hidden!important;background:#06111b!important}
 #modalContent,#fnMahjongRoot{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;overflow:hidden!important;box-sizing:border-box!important}
-.fn-mahjong-root{position:absolute!important;inset:0!important;overflow:hidden!important;background:radial-gradient(circle at 50% 50%,#173b59 0,#0b2237 62%,#040b12 100%);color:#f5f0e5;font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+.fn-mahjong-root{position:absolute!important;inset:0!important;overflow:hidden!important;background:#06111b;color:#f5f0e5;font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
 .fn-mahjong-root .hidden{display:none!important}
 
-/* Responsive board: no transformed 1280px box. The board has its real CSS size. */
-.fnmj-shell{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0;box-sizing:border-box}
-.fnmj-arena{position:relative;flex:0 0 auto;width:min(100vw,177.7777778vh);height:min(100vh,56.25vw);aspect-ratio:16/9;overflow:hidden;background:#102a42;box-shadow:0 14px 48px rgba(0,0,0,.5);container-type:size}
-.fnmj-table-felt{position:absolute;z-index:0;left:5%;right:5%;top:5%;bottom:5%;border:clamp(1px,.14cqw,2px) solid rgba(219,184,76,.88);border-radius:4%;background:radial-gradient(ellipse at 50% 49%,#205773 0,#17435d 52%,#102f4a 100%);box-shadow:inset 0 0 8cqw rgba(0,0,0,.34),0 0 0 1px rgba(0,0,0,.35)}
+/* The only scaled object is this 16:9 board. No second JS transform. */
+.fnmj-shell{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.fnmj-arena{position:relative;flex:none;width:min(100vw,177.7777778vh);height:min(100vh,56.25vw);aspect-ratio:16/9;overflow:hidden;background:#102a42;box-shadow:0 14px 48px rgba(0,0,0,.5);container-type:size}
+.fnmj-table-felt{position:absolute;z-index:0;left:4.5%;right:4.5%;top:4.5%;bottom:4.5%;border:2px solid rgba(219,184,76,.88);border-radius:4%;background:radial-gradient(ellipse at 50% 49%,#205773 0,#17435d 52%,#102f4a 100%);box-shadow:inset 0 0 8cqw rgba(0,0,0,.34)}
 .fnmj-table-felt:after{content:"";position:absolute;inset:2%;border:1px solid rgba(225,191,84,.18);border-radius:3%}
 
-/* Walls are deliberately subordinate. */
-.fnmj-wall{position:absolute;z-index:2;display:flex;gap:.16cqw;pointer-events:none;opacity:.48}
-.fnmj-wall-top,.fnmj-wall-bottom{left:38%;width:24%;height:3%;justify-content:center}
-.fnmj-wall-top{top:1.5%}.fnmj-wall-bottom{bottom:1.5%}
-.fnmj-wall-left,.fnmj-wall-right{top:27%;height:46%;width:2%;flex-direction:column;justify-content:center}
-.fnmj-wall-left{left:8.2%}.fnmj-wall-right{right:8.2%}
-.fnmj-wall-stack{position:relative;flex:1 1 0;width:100%;min-height:0}.fnmj-wall-stack b{position:absolute;left:0;width:100%;height:49%;border:1px solid rgba(109,69,18,.72);border-radius:2px;background:linear-gradient(145deg,#eec867,#b57c29);box-shadow:inset 0 1px rgba(255,255,255,.5)}.fnmj-wall-stack b:first-child{top:0}.fnmj-wall-stack b:last-child{top:47%}.fnmj-wall-stack.dead{opacity:.08}.fnmj-wall-stack.used{opacity:.35}
+/* Walls are background decoration only. */
+.fnmj-wall{position:absolute;z-index:2;display:flex;gap:2px;pointer-events:none;opacity:.38}
+.fnmj-wall-top,.fnmj-wall-bottom{left:40%;width:20%;height:3.1%;justify-content:center}
+.fnmj-wall-top{top:1.3%}.fnmj-wall-bottom{bottom:1.3%}
+.fnmj-wall-left,.fnmj-wall-right{top:31%;height:38%;width:1.8%;flex-direction:column;justify-content:center}
+.fnmj-wall-left{left:7%}.fnmj-wall-right{right:7%}
+.fnmj-wall-stack{position:relative;flex:1 1 0;width:100%;min-height:0}.fnmj-wall-stack b{position:absolute;left:0;width:100%;height:49%;border:1px solid rgba(109,69,18,.72);border-radius:2px;background:linear-gradient(145deg,#eec867,#b57c29)}
+.fnmj-wall-stack b:first-child{top:0}.fnmj-wall-stack b:last-child{top:47%}.fnmj-wall-stack.dead{opacity:.08}.fnmj-wall-stack.used{opacity:.35}
 
-/* Four disjoint seat territories around a dedicated center. */
-.fnmj-player{position:absolute;z-index:10;pointer-events:none;box-sizing:border-box}
-.fnmj-player-top{left:25%;top:3%;width:50%;height:27%}
-.fnmj-player-left{left:2%;top:30%;width:28%;height:40%}
-.fnmj-player-right{left:70%;top:30%;width:28%;height:40%}
-.fnmj-player-bottom{left:25%;top:70%;width:50%;height:27%}
+/*
+   IMPORTANT: player sections are transparent full-board overlays.
+   This prevents parent-seat percentage calculations from moving the child
+   hand/river depending on the seat. Every child below is positioned against
+   the SAME 16:9 board coordinate system.
+*/
+.fnmj-player{position:absolute;inset:0;width:100%;height:100%;z-index:10;pointer-events:none;box-sizing:border-box}
 
-.fnmj-player-info{position:absolute;z-index:50;display:flex;align-items:center;gap:.45cqw;height:4cqw;min-height:20px;padding:.35cqw .65cqw;border:1px solid rgba(255,255,255,.17);border-radius:.55cqw;background:linear-gradient(180deg,#101c28,#060e16);box-shadow:0 .35cqw .9cqw rgba(0,0,0,.48);font-size:1.05cqw;line-height:1;white-space:nowrap;box-sizing:border-box}
-.fnmj-player-info span{color:#e8cb70;font-weight:900}.fnmj-player-info b{color:#fff;font-weight:900}.fnmj-player-info strong{color:#f4d77e;font-size:1.12cqw}.fnmj-avatar{width:2.5cqw;height:2.5cqw;display:grid;place-items:center;background:#475666;border-radius:.3cqw;font-style:normal;font-weight:900;font-size:.9cqw}.fnmj-avatar-you{background:#c79d37;color:#19140a}
-.fnmj-player-top .fnmj-player-info{left:50%;top:0;transform:translateX(-50%) rotate(180deg)}
-.fnmj-player-left .fnmj-player-info{left:0;top:0}.fnmj-player-right .fnmj-player-info{right:0;top:0}.fnmj-player-bottom .fnmj-player-info{left:50%;bottom:0;transform:translateX(-50%)}
-.fnmj-player.is-current-turn .fnmj-player-info{border-color:#f1cf67;box-shadow:0 0 1.2cqw rgba(241,207,103,.42)}
+.fnmj-player-info{position:absolute;z-index:50;display:flex;align-items:center;gap:5px;height:29px;padding:3px 8px;border:1px solid rgba(255,255,255,.17);border-radius:7px;background:linear-gradient(180deg,#101c28,#060e16);box-shadow:0 4px 11px rgba(0,0,0,.48);font-size:11px;line-height:1;white-space:nowrap;box-sizing:border-box}
+.fnmj-player-info span{color:#e8cb70;font-weight:900}.fnmj-player-info b{color:#fff;font-weight:900}.fnmj-player-info strong{color:#f4d77e;font-size:12px}.fnmj-avatar{width:20px;height:20px;display:grid;place-items:center;background:#475666;border-radius:3px;font-style:normal;font-weight:900;font-size:9px}.fnmj-avatar-you{background:#c79d37;color:#19140a}
+/* info positions: each belongs to its own side */
+.fnmj-player-top .fnmj-player-info{left:50%;top:5.5%;transform:translateX(-50%) rotate(180deg)}
+.fnmj-player-right .fnmj-player-info{right:5%;top:48%;transform:translateY(-50%)}
+.fnmj-player-left .fnmj-player-info{left:5%;top:48%;transform:translateY(-50%)}
+.fnmj-player-bottom .fnmj-player-info{left:50%;bottom:3.2%;transform:translateX(-50%)}
+.fnmj-player.is-current-turn .fnmj-player-info{border-color:#f1cf67;box-shadow:0 0 16px rgba(241,207,103,.42)}
 
-.fnmj-tile{display:block;width:2.42cqw;height:5.9cqh;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
-.fnmj-seat-hand,.fnmj-seat-melds{position:absolute;display:flex;white-space:nowrap;pointer-events:none}.fnmj-concealed,.fnmj-opponent-backs{display:flex;align-items:flex-end}.fnmj-tile-wrap{position:relative;display:inline-flex;align-items:flex-end;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.fnmj-tile-wrap.fnmj-selectable{cursor:pointer}.fnmj-tile-wrap.fnmj-selected .fnmj-tile{transform:translateY(-1.3cqh);filter:drop-shadow(0 .35cqw .15cqw rgba(0,0,0,.35))}.fnmj-tile-wrap.fnmj-selected:after{content:"";position:absolute;left:.25cqw;right:.25cqw;bottom:-.2cqh;height:.35cqh;background:#efc95b;border-radius:3px}.fnmj-zimo-gap{display:block;width:1.05cqw;flex:0 0 1.05cqw}
+/* Generic tile primitives. */
+.fnmj-tile{display:block;width:31px;height:44px;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
+.fnmj-seat-hand,.fnmj-seat-melds{position:absolute;display:flex;white-space:nowrap;pointer-events:none}
+.fnmj-concealed,.fnmj-opponent-backs{display:flex;align-items:flex-end}.fnmj-tile-wrap{position:relative;display:inline-flex;align-items:flex-end;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.fnmj-tile-wrap.fnmj-selectable{cursor:pointer}.fnmj-tile-wrap.fnmj-selected .fnmj-tile{transform:translateY(-9px);filter:drop-shadow(0 4px 2px rgba(0,0,0,.35))}.fnmj-tile-wrap.fnmj-selected:after{content:"";position:absolute;left:3px;right:3px;bottom:-2px;height:3px;background:#efc95b;border-radius:3px}.fnmj-zimo-gap{display:block;width:13px;flex:0 0 13px}
 
-/* TOP */
-.fnmj-seat-hand-top{left:50%;top:16%;transform:translateX(-50%) rotate(180deg);width:40%;height:11%;justify-content:center;align-items:flex-end}.fnmj-seat-hand-top .fnmj-opponent-backs{gap:.15cqw}.fnmj-seat-hand-top .fnmj-opponent-back{display:block;width:2.05cqw;height:3.65cqh;flex:0 0 2.05cqw;border:1px solid #715026;border-radius:2px;background:linear-gradient(145deg,#efcc6a,#ab7426);box-shadow:inset 0 1px rgba(255,255,255,.5)}
-.fnmj-seat-melds-top{left:50%;top:29%;transform:translateX(-50%) rotate(180deg);width:42%;height:10%;align-items:flex-end;justify-content:center;gap:.7cqw;overflow:visible}.fnmj-seat-melds-top .fnmj-meld .fnmj-tile{width:1.95cqw;height:5cqh}.fnmj-seat-melds-top .fnmj-meld-back{width:1.95cqw;height:5cqh}.fnmj-player-top .river-top{left:50%;top:44%;transform:translateX(-50%)}.fnmj-player-top .river-top .fnmj-tile{width:2.42cqw;height:2.65cqh;transform:rotate(180deg)}
+/* -------------------- UNIVERSAL RIVER --------------------
+   Exact same outer footprint for all seats: 216 x 66 logical px.
+   Six columns x three rows. The river does NOT inherit seat dimensions. */
+.fnmj-river{position:absolute!important;display:grid!important;width:216px!important;height:66px!important;grid-template-columns:repeat(6,34px)!important;grid-template-rows:repeat(3,20px)!important;grid-auto-flow:row!important;gap:2px!important;justify-content:start!important;align-content:start!important;pointer-events:none!important;z-index:25!important}
+.fnmj-river-tile{display:flex;align-items:center;justify-content:center;position:relative;width:34px;height:20px}.fnmj-river-tile .fnmj-tile{width:34px;height:20px;object-fit:contain}.fnmj-river-tile.called{outline:1px solid rgba(244,205,96,.65);outline-offset:-1px}.fnmj-river-tile.riichi:after{content:"";position:absolute;inset:0;border:1px solid rgba(245,210,106,.9)}
+/* Four fixed river positions. Same 216x66 rectangle, no rotation of the box. */
+.fnmj-player-top .fnmj-river{left:50%;top:22%;transform:translateX(-50%)}
+.fnmj-player-bottom .fnmj-river{left:50%;top:66%;transform:translateX(-50%)}
+.fnmj-player-left .fnmj-river{left:3.5%;top:45%;transform:none}
+.fnmj-player-right .fnmj-river{left:auto;right:3.5%;top:45%;transform:none}
+/* Side rivers rotate only tile faces, not their grid. */
+.fnmj-player-left .fnmj-river .fnmj-tile{width:20px;height:34px;transform:rotate(90deg)}
+.fnmj-player-right .fnmj-river .fnmj-tile{width:20px;height:34px;transform:rotate(-90deg)}
 
-/* BOTTOM */
-.fnmj-player-bottom .river-bottom{left:50%;top:0;transform:translateX(-50%)}.fnmj-player-bottom .river-bottom .fnmj-tile{width:2.42cqw;height:2.65cqh}.fnmj-seat-melds-bottom{left:50%;top:35%;transform:translateX(-50%);width:44%;height:11%;align-items:flex-end;justify-content:center;gap:.65cqw;overflow:visible}.fnmj-seat-melds-bottom .fnmj-meld .fnmj-tile{width:1.95cqw;height:5cqh}.fnmj-seat-melds-bottom .fnmj-meld-back{width:1.95cqw;height:5cqh}.fnmj-seat-hand-bottom{left:50%;top:49%;transform:translateX(-50%);width:88%;height:31%;justify-content:center;align-items:flex-end}.fnmj-seat-hand-bottom .fnmj-concealed{gap:.16cqw;align-items:flex-end}.fnmj-seat-hand-bottom .fnmj-tile{width:2.42cqw;height:6.15cqh}.fnmj-seat-hand-bottom .zimo-tile .fnmj-tile{width:2.42cqw;height:6.15cqh}
+/* -------------------- HANDS -------------------- */
+/* TOP: centered and reversed. */
+.fnmj-seat-hand-top{left:50%;top:10%;transform:translateX(-50%) rotate(180deg);width:48%;height:7%;justify-content:center;align-items:flex-end}
+.fnmj-seat-hand-top .fnmj-opponent-backs{gap:2px}.fnmj-seat-hand-top .fnmj-opponent-back{display:block;width:22px;height:29px;flex:0 0 22px;border:1px solid #715026;border-radius:2px;background:linear-gradient(145deg,#efcc6a,#ab7426)}
+/* BOTTOM: concealed 13 + independent tsumo. */
+.fnmj-seat-hand-bottom{left:50%;top:82%;transform:translateX(-50%);width:55%;height:9%;justify-content:center;align-items:flex-end}.fnmj-seat-hand-bottom .fnmj-concealed{gap:2px;align-items:flex-end}.fnmj-seat-hand-bottom .fnmj-tile,.fnmj-seat-hand-bottom .zimo-tile .fnmj-tile{width:31px;height:45px}
+/* LEFT/RIGHT: vertical opponent hands. */
+.fnmj-seat-hand-left{left:8%;top:29%;width:4%;height:39%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}.fnmj-seat-hand-right{right:8%;top:29%;width:4%;height:39%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}.fnmj-seat-hand-left .fnmj-opponent-backs,.fnmj-seat-hand-right .fnmj-opponent-backs{flex-direction:column;align-items:center;gap:0}.fnmj-seat-hand-left .fnmj-opponent-back,.fnmj-seat-hand-right .fnmj-opponent-back{display:block;width:18px;height:17px;flex:0 0 17px;margin-top:-5px;border:1px solid #715026;border-radius:2px;background:linear-gradient(145deg,#efcc6a,#ab7426)}.fnmj-seat-hand-left .fnmj-opponent-back:first-child,.fnmj-seat-hand-right .fnmj-opponent-back:first-child{margin-top:0}
 
-/* LEFT/RIGHT: hands and melds vertical; rivers remain identical rectangle. */
-.fnmj-seat-hand-left,.fnmj-seat-hand-right{top:14%;width:7%;height:55%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:visible}.fnmj-seat-hand-left{left:1.5%}.fnmj-seat-hand-right{right:1.5%}.fnmj-seat-hand-left .fnmj-opponent-backs,.fnmj-seat-hand-right .fnmj-opponent-backs{flex-direction:column;align-items:center;gap:0}.fnmj-seat-hand-left .fnmj-opponent-back,.fnmj-seat-hand-right .fnmj-opponent-back{display:block;width:2.05cqw;height:2.3cqh;flex:0 0 2.3cqh;margin-top:-.65cqh;border:1px solid #715026;border-radius:2px;background:linear-gradient(145deg,#efcc6a,#ab7426);box-shadow:inset 0 1px rgba(255,255,255,.5)}.fnmj-seat-hand-left .fnmj-opponent-back:first-child,.fnmj-seat-hand-right .fnmj-opponent-back:first-child{margin-top:0}
-.fnmj-seat-melds-left,.fnmj-seat-melds-right{top:14%;width:7%;height:55%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:.45cqw;overflow:visible}.fnmj-seat-melds-left{left:9.2%}.fnmj-seat-melds-right{right:9.2%}.fnmj-seat-melds-left .fnmj-meld,.fnmj-seat-melds-right .fnmj-meld{align-items:flex-end}.fnmj-seat-melds-left .fnmj-meld .fnmj-tile,.fnmj-seat-melds-right .fnmj-meld .fnmj-tile{width:1.35cqw;height:3.55cqh}.fnmj-seat-melds-left .fnmj-meld-back,.fnmj-seat-melds-right .fnmj-meld-back{width:1.35cqw;height:3.55cqh}.fnmj-seat-melds-left .fnmj-meld-tile.called .fnmj-tile{transform:rotate(90deg)}.fnmj-seat-melds-right .fnmj-meld-tile.called .fnmj-tile{transform:rotate(-90deg)}
+/* -------------------- MELD LANES -------------------- */
+.fnmj-seat-melds-top{left:50%;top:16%;transform:translateX(-50%) rotate(180deg);width:42%;height:5%;align-items:flex-end;justify-content:center;gap:8px;overflow:visible}
+.fnmj-seat-melds-bottom{left:50%;top:76%;transform:translateX(-50%);width:42%;height:5%;align-items:flex-end;justify-content:center;gap:8px;overflow:visible}
+.fnmj-seat-melds-left{left:12%;top:29%;width:6%;height:39%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px}.fnmj-seat-melds-right{right:12%;top:29%;width:6%;height:39%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px}
+.fnmj-seat-melds-top .fnmj-meld .fnmj-tile,.fnmj-seat-melds-bottom .fnmj-meld .fnmj-tile{width:25px;height:36px}.fnmj-seat-melds-top .fnmj-meld-back,.fnmj-seat-melds-bottom .fnmj-meld-back{width:25px;height:36px}
+.fnmj-seat-melds-left .fnmj-meld .fnmj-tile,.fnmj-seat-melds-right .fnmj-meld .fnmj-tile{width:17px;height:25px}.fnmj-seat-melds-left .fnmj-meld-back,.fnmj-seat-melds-right .fnmj-meld-back{width:17px;height:25px}
+.fnmj-seat-melds-left .fnmj-meld-tile.called .fnmj-tile{transform:rotate(90deg)}.fnmj-seat-melds-right .fnmj-meld-tile.called .fnmj-tile{transform:rotate(-90deg)}
+.fnmj-meld{display:flex;align-items:flex-end;gap:2px;overflow:visible}.fnmj-meld-tile{display:flex;align-items:flex-end;overflow:visible}.fnmj-meld-tile.called .fnmj-tile{transform:rotate(90deg) translateY(-1px)}.fnmj-seat-melds-top .fnmj-meld-tile.called .fnmj-tile{transform:rotate(270deg) translateY(-1px)}.fnmj-meld-back{display:block;border:1px solid #765224;border-radius:2px;background:linear-gradient(145deg,#f0ce70,#b47d2b)}
 
-/* ALL FOUR RIVERS: identical 6x3 logical slots. The board is responsive, so
-   width/height are percentages of the board, but all four resolve identically. */
-.fnmj-river{position:absolute;display:grid;width:34%;height:10%;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(3,1fr);grid-auto-flow:row;gap:.15cqw;justify-content:start;align-content:start;pointer-events:none;z-index:25}.fnmj-river-tile{display:flex;align-items:center;justify-content:center;position:relative;width:100%;height:100%}.fnmj-river-tile .fnmj-tile{width:100%;height:100%;object-fit:contain}.fnmj-river-tile.called{outline:1px solid rgba(244,205,96,.65);outline-offset:-1px}.fnmj-river-tile.riichi:after{content:"";position:absolute;inset:0;border:1px solid rgba(245,210,106,.9)}
-.fnmj-player-top .fnmj-river,.fnmj-player-bottom .fnmj-river{left:50%;width:34%;height:10%;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(3,1fr)}
-.fnmj-player-top .fnmj-river{top:44%;transform:translateX(-50%)}.fnmj-player-bottom .fnmj-river{top:0;transform:translateX(-50%)}
-.fnmj-player-left .fnmj-river,.fnmj-player-right .fnmj-river{top:74%;left:50%;width:79.5%;height:22%;transform:translateX(-50%);grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(3,1fr)}
-.fnmj-player-left .fnmj-river .fnmj-tile{transform:rotate(90deg);width:100%;height:100%}.fnmj-player-right .fnmj-river .fnmj-tile{transform:rotate(-90deg);width:100%;height:100%}
+/* Center: deliberately clear of all four rivers. */
+.fnmj-center{position:absolute;z-index:30;left:50%;top:50%;width:170px;height:108px;transform:translate(-50%,-50%);border:1px solid rgba(222,190,91,.7);border-radius:10px;background:linear-gradient(180deg,rgba(6,20,31,.82),rgba(4,14,23,.9));box-shadow:0 8px 22px rgba(0,0,0,.30);text-align:center;pointer-events:none}.fnmj-center-round{padding-top:10px;font-size:22px;font-weight:900;line-height:1.05}.fnmj-center-honba{margin-top:2px;font-size:9px;color:#e6c86e}.fnmj-center-dora-label{margin-top:8px;font-size:7px;color:#aeb8c1}.fnmj-dora{height:28px;margin-top:2px;display:flex;justify-content:center;gap:2px}.fnmj-dora .fnmj-tile{width:21px;height:28px}.fnmj-center-stick{margin-top:2px;font-size:7px;color:#c7cdd0}.fnmj-center-wall{margin-top:2px;font-size:7px;color:#adb8c0}
 
-.fnmj-meld{display:flex;align-items:flex-end;gap:.15cqw;overflow:visible}.fnmj-meld-tile{display:flex;align-items:flex-end;overflow:visible}.fnmj-meld-tile.called .fnmj-tile{transform:rotate(90deg) translateY(-1px)}.fnmj-seat-melds-top .fnmj-meld-tile.called .fnmj-tile{transform:rotate(270deg) translateY(-1px)}.fnmj-meld-back{display:block;border:1px solid #765224;border-radius:2px;background:linear-gradient(145deg,#f0ce70,#b47d2b);box-shadow:inset 0 1px rgba(255,255,255,.5)}
-
-/* Compact center, intentionally smaller than all four player territories. */
-.fnmj-center{position:absolute;z-index:30;left:50%;top:50%;width:14%;height:17%;transform:translate(-50%,-50%);border:1px solid rgba(222,190,91,.7);border-radius:.7cqw;background:linear-gradient(180deg,rgba(6,20,31,.82),rgba(4,14,23,.9));box-shadow:0 .6cqw 1.7cqw rgba(0,0,0,.30);text-align:center;pointer-events:none}.fnmj-center-round{padding-top:1.2cqh;font-size:2.5cqw;font-weight:900;line-height:1.05}.fnmj-center-honba{margin-top:.2cqh;font-size:1cqw;color:#e6c86e}.fnmj-center-dora-label{margin-top:1cqh;font-size:.7cqw;color:#aeb8c1}.fnmj-dora{height:4cqh;margin-top:.2cqh;display:flex;justify-content:center;gap:.15cqw}.fnmj-dora .fnmj-tile{width:1.8cqw;height:4cqh}.fnmj-center-stick{margin-top:.2cqh;font-size:.7cqw;color:#c7cdd0}.fnmj-center-wall{margin-top:.2cqh;font-size:.7cqw;color:#adb8c0}
-
-.fnmj-actions{position:absolute;z-index:65;left:78%;bottom:4%;width:19%;min-height:10%;display:flex;flex-wrap:wrap;justify-content:flex-end;align-content:flex-end;gap:.45cqw;pointer-events:none}.fnmj-actions button{min-width:5.3cqw;height:4.5cqh;padding:0 .75cqw;border:1px solid #c4af6a;border-radius:.45cqw;background:linear-gradient(#30485a,#162633);color:#fff;font-weight:900;box-shadow:0 .35cqw .9cqw rgba(0,0,0,.35);pointer-events:auto;touch-action:manipulation}.fnmj-actions button.primary,.fnmj-actions button.riichi{background:linear-gradient(#d8b450,#8e681f);color:#111}.fnmj-actions button.danger{background:linear-gradient(#8d4a50,#562a30)}.fnmj-actions button.call{background:linear-gradient(#426078,#263e50)}
-.fnmj-timer{position:absolute;z-index:58;left:48%;bottom:22%;min-width:4%;text-align:center;font-size:3cqw;font-style:italic;font-weight:900;color:#f2d16b;text-shadow:0 2px 10px #000;opacity:.25}.fnmj-timer.active{opacity:1}
-.fnmj-cutin{position:absolute;z-index:90;left:50%;top:50%;min-width:25%;padding:1.1cqh 3.2cqw;transform:translate(-50%,-50%) scale(.84);border-top:1px solid #e8c765;border-bottom:1px solid #e8c765;background:linear-gradient(90deg,transparent,rgba(5,15,24,.96) 15%,rgba(5,15,24,.96) 85%,transparent);text-align:center;opacity:0;pointer-events:none}.fnmj-cutin.show{animation:fnmjCutin .72s ease-out both}.fnmj-cutin-label{font-size:3.8cqw;font-weight:900;letter-spacing:.17em;color:#fff;text-shadow:0 2px 8px #000}.fnmj-cutin-sub{margin-top:.2cqh;font-size:1cqw;color:#ebce70}@keyframes fnmjCutin{0%{opacity:0;transform:translate(-50%,-50%) scale(.78)}18%,72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.03)}}
+/* Actions remain inside the bottom-right seat territory. */
+.fnmj-actions{position:absolute;z-index:65;right:3%;bottom:3%;width:19%;min-height:9%;display:flex;flex-wrap:wrap;justify-content:flex-end;align-content:flex-end;gap:6px;pointer-events:none}.fnmj-actions button{min-width:68px;height:33px;padding:0 10px;border:1px solid #c4af6a;border-radius:6px;background:linear-gradient(#30485a,#162633);color:#fff;font-weight:900;box-shadow:0 4px 11px rgba(0,0,0,.35);pointer-events:auto;touch-action:manipulation}.fnmj-actions button.primary,.fnmj-actions button.riichi{background:linear-gradient(#d8b450,#8e681f);color:#111}.fnmj-actions button.danger{background:linear-gradient(#8d4a50,#562a30)}.fnmj-actions button.call{background:linear-gradient(#426078,#263e50)}
+.fnmj-timer{position:absolute;z-index:58;left:48%;bottom:20%;min-width:44px;text-align:center;font-size:28px;font-style:italic;font-weight:900;color:#f2d16b;text-shadow:0 2px 10px #000;opacity:.25}.fnmj-timer.active{opacity:1}
+.fnmj-cutin{position:absolute;z-index:90;left:50%;top:50%;min-width:300px;padding:9px 42px;transform:translate(-50%,-50%) scale(.84);border-top:1px solid #e8c765;border-bottom:1px solid #e8c765;background:linear-gradient(90deg,transparent,rgba(5,15,24,.96) 15%,rgba(5,15,24,.96) 85%,transparent);text-align:center;opacity:0;pointer-events:none}.fnmj-cutin.show{animation:fnmjCutin .72s ease-out both}.fnmj-cutin-label{font-size:31px;font-weight:900;letter-spacing:.17em;color:#fff;text-shadow:0 2px 8px #000}.fnmj-cutin-sub{margin-top:2px;font-size:9px;color:#ebce70}@keyframes fnmjCutin{0%{opacity:0;transform:translate(-50%,-50%) scale(.78)}18%,72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.03)}}
 .fnmj-result{position:absolute;inset:0;z-index:100;display:grid;place-items:center;background:rgba(2,7,12,.76)}.fnmj-result-card{width:min(470px,82vw);padding:24px;border:1px solid #dfbb52;border-radius:8px;background:#0e1823;text-align:center}.fnmj-result-card h2{margin:0 0 12px;color:#f0ce70}.fnmj-result-card pre{white-space:pre-wrap;color:#e7eaed}.fnmj-result-card button{margin-top:14px;padding:9px 22px;background:#1b2935;color:#fff;border:1px solid #d8b44d;border-radius:5px}.fnmj-fatal{position:absolute;inset:0;overflow:auto;padding:30px;background:#070b0e;color:#fff}.fnmj-fatal pre{white-space:pre-wrap;color:#ffb8bd}
-
-@media (max-height:520px){.fnmj-center{width:15%;height:18%}.fnmj-player-info{font-size:1.1cqw}.fnmj-actions{bottom:3%}}
