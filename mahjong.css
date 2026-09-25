@@ -1,104 +1,153 @@
-/* FORTUNE NOIR Mahjong — 4-player table reconstruction.
-   Reference layout: mobile mahjong table composition with reserved lanes for
-   each seat. The implementation uses original styling/assets and does not
-   copy proprietary Mahjong Soul artwork. */
-#modal:has(#fnMahjongRoot),.modal:has(#fnMahjongRoot),.fn-mahjong-active #modal{
-  position:fixed!important;inset:0!important;width:100vw!important;height:100svh!important;
-  max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;
+/* FORTUNE NOIR Mahjong — coherent 4-seat fixed playfield.
+   The table is a single 1280x720 logical canvas. Every seat owns one
+   non-overlapping region containing its info, hand/meld lanes and river.
+   Visual language is original FORTUNE NOIR; only the gameplay hierarchy is
+   modeled on the familiar 4-player mobile mahjong layout. */
+
+#modal:has(#fnMahjongRoot),.modal:has(#fnMahjongRoot){
+  position:fixed!important;inset:0!important;padding:0!important;margin:0!important;
   border:0!important;border-radius:0!important;overflow:hidden!important;
-  display:block!important;align-items:initial!important;justify-content:initial!important;
-  background:#050b12!important;z-index:2147483000!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  background:#06111b!important;z-index:2147483000!important
 }
-#modal:has(#fnMahjongRoot) .tabletop,.fn-mahjong-active #modal .tabletop{
-  position:fixed!important;inset:0!important;width:100vw!important;height:100svh!important;
-  max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;
-  overflow:hidden!important;border:0!important;border-radius:0!important;background:#050b12!important;
+#modal:has(#fnMahjongRoot) .tabletop,.modal:has(#fnMahjongRoot) .tabletop{
+  position:relative!important;width:100vw!important;height:100svh!important;min-width:0!important;
+  min-height:0!important;max-width:none!important;max-height:none!important;padding:0!important;
+  margin:0!important;border:0!important;border-radius:0!important;overflow:hidden!important;
+  background:#06111b!important
 }
-#modalContent,#fnMahjongRoot{position:fixed!important;inset:0!important;width:100vw!important;height:100svh!important;min-height:0!important;overflow:hidden!important;box-sizing:border-box!important}
-.fn-mahjong-root{position:fixed!important;inset:0!important;width:100vw!important;height:100svh!important;min-height:0!important;overflow:hidden!important;background:#06101a!important;color:#f3f1ea;font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;isolation:isolate}
-.fn-mahjong-root *{box-sizing:border-box}.fn-mahjong-root .hidden{display:none!important}
+#modalContent,#fnMahjongRoot{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;overflow:hidden!important;box-sizing:border-box!important}
+.fn-mahjong-root{position:relative!important;width:100%!important;height:100%!important;overflow:hidden!important;background:#07131f!important;color:#f5f0e5;font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+.fn-mahjong-root .hidden{display:none!important}
 
-/* One coordinate system. JS fits this 900x500 stage to the safe visual viewport. */
-.fnmj-shell{position:fixed!important;inset:0!important;width:100vw!important;height:100svh!important;display:block!important;overflow:hidden!important;background:radial-gradient(circle at 50% 48%,#1d405f 0,#102840 57%,#06101a 100%)}
-.fnmj-arena{position:absolute;left:50%;top:50%;width:900px;height:500px;transform:translate(-50%,-50%) scale(var(--fnmj-scale,1));transform-origin:center center;overflow:hidden;background:linear-gradient(145deg,#173452,#0d2740 58%,#081827);border:1px solid rgba(255,255,255,.05);box-shadow:0 20px 70px rgba(0,0,0,.62);isolation:isolate}
-.fnmj-table-felt{position:absolute;left:47px;right:47px;top:31px;bottom:31px;border:2px solid rgba(218,183,79,.84);border-radius:29px;background:radial-gradient(ellipse at 50% 48%,#225472 0,#173c5c 48%,#0f2a45 100%);box-shadow:inset 0 0 90px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.38);z-index:0}
-.fnmj-table-felt:before{content:"";position:absolute;inset:13px;border:1px solid rgba(223,190,88,.2);border-radius:21px;pointer-events:none}
+/* One exact logical board: 1280 x 720. JS fitArena() uses these exact dimensions. */
+.fnmj-shell{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 50% 50%,#183c5c 0,#0d263d 58%,#06121d 100%)}
+.fnmj-arena{position:relative;flex:none;width:1280px;height:720px;overflow:hidden;background:#102a42;box-shadow:0 18px 60px rgba(0,0,0,.55);transform:scale(var(--fnmj-scale,1));transform-origin:center center}
+.fnmj-table-felt{position:absolute;z-index:0;left:5%;right:5%;top:5%;bottom:5%;border:2px solid rgba(219,184,76,.88);border-radius:4%;background:radial-gradient(ellipse at 50% 49%,#205773 0,#17435d 52%,#102f4a 100%);box-shadow:inset 0 0 95px rgba(0,0,0,.34),0 0 0 1px rgba(0,0,0,.35)}
+.fnmj-table-felt:after{content:"";position:absolute;inset:2%;border:1px solid rgba(225,191,84,.18);border-radius:3%}
 
-/* Wall: present but visually subordinate to table information. */
-.fnmj-wall{position:absolute;z-index:2;display:flex;gap:1px;pointer-events:none;opacity:.62}
-.fnmj-wall-top,.fnmj-wall-bottom{left:286px;width:328px;height:18px;justify-content:center}.fnmj-wall-top{top:7px}.fnmj-wall-bottom{bottom:7px}
-.fnmj-wall-left,.fnmj-wall-right{top:80px;height:340px;width:18px;flex-direction:column;justify-content:center}.fnmj-wall-left{left:60px}.fnmj-wall-right{right:60px}
-.fnmj-wall-stack{position:relative;width:16px;height:17px;display:block}.fnmj-wall-stack b{position:absolute;left:0;width:16px;height:8px;border:1px solid rgba(111,71,18,.67);border-radius:2px;background:linear-gradient(145deg,#e6c061,#ad7628);box-shadow:inset 0 1px rgba(255,255,255,.54)}.fnmj-wall-stack b:first-child{top:0}.fnmj-wall-stack b:last-child{top:7px}.fnmj-wall-stack.dead{opacity:.08}.fnmj-wall-stack.used{opacity:.38}
+/* Quiet physical wall. It stays outside seat playfields and never acts as a region. */
+.fnmj-wall{position:absolute;z-index:2;display:flex;gap:2px;pointer-events:none;opacity:.58}
+.fnmj-wall-top,.fnmj-wall-bottom{left:38%;width:24%;height:3.1%;justify-content:center}
+.fnmj-wall-top{top:1.4%}.fnmj-wall-bottom{bottom:1.4%}
+.fnmj-wall-left,.fnmj-wall-right{top:25%;height:50%;width:2.2%;flex-direction:column;justify-content:center}
+.fnmj-wall-left{left:8%}.fnmj-wall-right{right:8%}
+.fnmj-wall-stack{position:relative;flex:1 1 0;width:100%;min-height:10px}
+.fnmj-wall-stack b{position:absolute;left:0;width:100%;height:49%;border:1px solid rgba(109,69,18,.72);border-radius:2px;background:linear-gradient(145deg,#eec867,#b57c29);box-shadow:inset 0 1px rgba(255,255,255,.5)}
+.fnmj-wall-stack b:first-child{top:0}.fnmj-wall-stack b:last-child{top:47%}.fnmj-wall-stack.dead{opacity:.10}.fnmj-wall-stack.used{opacity:.42}
 
-/* Player seat boxes never own another player's river or hand. */
+/* ================================================================
+   FOUR NON-OVERLAPPING SEAT REGIONS
+   ================================================================
+   Top    : y 22..210
+   Sides  : y 220..500
+   Bottom : y 510..698
+   Center : x 300..980, y 210..510
+*/
 .fnmj-player{position:absolute;z-index:10;pointer-events:none}
-.fnmj-player-top{left:171px;top:24px;width:558px;height:164px}
-.fnmj-player-left{left:77px;top:102px;width:240px;height:288px}
-.fnmj-player-right{right:77px;top:102px;width:240px;height:288px}
-.fnmj-player-bottom{left:82px;top:317px;width:736px;height:171px}
+.fnmj-player-top{left:300px;top:22px;width:680px;height:188px}
+.fnmj-player-left{left:25px;top:220px;width:250px;height:280px}
+.fnmj-player-right{left:1005px;top:220px;width:250px;height:280px}
+.fnmj-player-bottom{left:300px;top:510px;width:680px;height:188px}
 
-/* Seat information is shown only at the owning seat. */
-.fnmj-player-info{position:absolute;z-index:50;display:flex;align-items:center;gap:5px;height:24px;padding:3px 8px;border:1px solid rgba(255,255,255,.18);border-radius:6px;background:linear-gradient(#0b1723,#040b12);box-shadow:0 4px 12px rgba(0,0,0,.5);font-size:9px;line-height:1;white-space:nowrap}
-.fnmj-avatar{width:18px;height:18px;display:grid;place-items:center;border-radius:3px;background:#49586b;font-style:normal;font-size:8px;font-weight:900}.fnmj-avatar-you{background:#c59c38;color:#171209;border:1px solid #f3d36f}
-.fnmj-player-info span{color:#e6c96c;font-weight:900}.fnmj-player-info b{color:#fff;font-weight:800}.fnmj-player-info strong{color:#f2d37a;font-size:10px}.fnmj-player.is-current-turn .fnmj-player-info{border-color:#f1cf68;box-shadow:0 0 14px rgba(241,207,104,.34)}
+/* Player information is owned by the corresponding seat only. */
+.fnmj-player-info{position:absolute;z-index:50;display:flex;align-items:center;gap:6px;height:29px;padding:3px 8px;border:1px solid rgba(255,255,255,.17);border-radius:7px;background:linear-gradient(180deg,#101c28,#060e16);box-shadow:0 4px 11px rgba(0,0,0,.48);font-size:11px;line-height:1;white-space:nowrap;box-sizing:border-box}
+.fnmj-player-info span{color:#e8cb70;font-weight:900}.fnmj-player-info b{color:#fff;font-weight:900}.fnmj-player-info strong{color:#f4d77e;font-size:12px}
+.fnmj-avatar{width:20px;height:20px;display:grid;place-items:center;background:#475666;border-radius:3px;font-style:normal;font-weight:900;font-size:9px}.fnmj-avatar-you{background:#c79d37;color:#19140a}
 .fnmj-player-top .fnmj-player-info{left:50%;top:0;transform:translateX(-50%) rotate(180deg)}
-.fnmj-player-left .fnmj-player-info{left:-4px;top:-22px}.fnmj-player-right .fnmj-player-info{right:-4px;top:-22px}.fnmj-player-bottom .fnmj-player-info{left:50%;bottom:0;transform:translateX(-50%)}
+.fnmj-player-left .fnmj-player-info{left:0;top:0}
+.fnmj-player-right .fnmj-player-info{right:0;top:0}
+.fnmj-player-bottom .fnmj-player-info{left:50%;bottom:0;transform:translateX(-50%)}
+.fnmj-player.is-current-turn .fnmj-player-info{border-color:#f1cf67;box-shadow:0 0 16px rgba(241,207,103,.42)}
 
-/* Common tile geometry. */
-.fnmj-hand{position:absolute;display:flex;align-items:flex-end;white-space:nowrap;pointer-events:none}
-.fnmj-concealed,.fnmj-melds,.fnmj-opponent-backs{display:flex;align-items:flex-end}
+/* Shared tile rendering. */
+.fnmj-tile{display:block;width:31px;height:44px;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
+.fnmj-seat-hand,.fnmj-seat-melds{position:absolute;display:flex;white-space:nowrap;pointer-events:none}
+.fnmj-concealed,.fnmj-opponent-backs{display:flex;align-items:flex-end}
 .fnmj-tile-wrap{position:relative;display:inline-flex;align-items:flex-end;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-.fnmj-tile{display:block;width:29px;height:41px;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.42))}
-.fnmj-tile-wrap.fnmj-selectable{cursor:pointer}.fnmj-tile-wrap.fnmj-selected .fnmj-tile{transform:translateY(-10px);filter:drop-shadow(0 4px 2px rgba(0,0,0,.35)) brightness(1.05)}.fnmj-tile-wrap.fnmj-selected:after{content:"";position:absolute;left:3px;right:3px;bottom:-2px;height:3px;border-radius:3px;background:#efcc60}
+.fnmj-tile-wrap.fnmj-selectable{cursor:pointer}
+.fnmj-tile-wrap.fnmj-selected .fnmj-tile{transform:translateY(-10px);filter:drop-shadow(0 4px 2px rgba(0,0,0,.35))}
+.fnmj-tile-wrap.fnmj-selected:after{content:"";position:absolute;left:3px;right:3px;bottom:-2px;height:3px;background:#efc95b;border-radius:3px}
+.fnmj-zimo-gap{display:block;width:13px;flex:0 0 13px}
 
-/* SELF: melds / 13 concealed tiles / isolated drawn tile. */
-.fnmj-player-bottom .fnmj-hand{left:50%;top:57px;width:724px;height:58px;transform:translateX(-50%);justify-content:center;align-items:flex-end}
-.fnmj-player-bottom .fnmj-melds{flex:0 0 auto;gap:3px;margin-right:11px;align-items:flex-end}.fnmj-player-bottom .fnmj-concealed{flex:0 0 auto;gap:3px;align-items:flex-end}
-.fnmj-player-bottom .fnmj-tile{width:31px;height:47px}.fnmj-player-bottom .fnmj-meld .fnmj-tile{width:27px;height:41px}.fnmj-player-bottom .fnmj-meld-back{width:27px;height:41px}.fnmj-zimo-gap{width:13px;flex:0 0 13px}
-.fnmj-player-bottom .zimo-tile{margin-left:0;flex:0 0 auto}
+/* TOP SEAT: info -> concealed backs -> fixed meld lane -> river. */
+.fnmj-seat-hand-top{left:50%;top:39px;transform:translateX(-50%) rotate(180deg);width:420px;height:30px;justify-content:center;align-items:flex-end}
+.fnmj-seat-hand-top .fnmj-opponent-backs{gap:2px;align-items:flex-end}
+.fnmj-seat-hand-top .fnmj-opponent-back{display:block;width:22px;height:29px;flex:0 0 22px;border:1px solid #715026;border-radius:2px;background:linear-gradient(145deg,#efcc6a,#ab7426);box-shadow:inset 0 1px rgba(255,255,255,.5)}
+.fnmj-seat-melds-top{left:50%;top:75px;transform:translateX(-50%) rotate(180deg);width:430px;height:40px;align-items:flex-end;justify-content:center;gap:9px;overflow:visible}
+.fnmj-seat-melds-top .fnmj-meld .fnmj-tile{width:25px;height:37px}.fnmj-seat-melds-top .fnmj-meld-back{width:25px;height:37px}
+.fnmj-player-top .river-top{left:50%;top:120px;transform:translateX(-50%)}
+.fnmj-player-top .river-top .fnmj-tile{width:31px;height:20px;transform:rotate(180deg)}
 
-/* SELF RIVER: one fixed rectangle above the hand. */
-.fnmj-player-bottom .fnmj-river{left:50%;top:-13px;width:282px;height:65px;transform:translateX(-50%);grid-template-columns:repeat(6,41px);grid-auto-rows:25px;gap:2px 4px}
-.fnmj-player-bottom .fnmj-river-tile .fnmj-tile{width:41px;height:25px}
-.fnmj-player-bottom .fnmj-river-tile.called-plus .fnmj-tile{transform:rotate(90deg)}.fnmj-player-bottom .fnmj-river-tile.called-minus .fnmj-tile{transform:rotate(-90deg)}
+/* BOTTOM SEAT: river -> dedicated meld lane -> 13 concealed tiles + separate tsumo -> info. */
+.fnmj-player-bottom .river-bottom{left:50%;top:0;transform:translateX(-50%)}
+.fnmj-player-bottom .river-bottom .fnmj-tile{width:31px;height:20px}
+.fnmj-seat-melds-bottom{left:50%;top:63px;transform:translateX(-50%);width:470px;height:38px;align-items:flex-end;justify-content:center;gap:8px;overflow:visible}
+.fnmj-seat-melds-bottom .fnmj-meld .fnmj-tile{width:25px;height:36px}.fnmj-seat-melds-bottom .fnmj-meld-back{width:25px;height:36px}
+.fnmj-seat-hand-bottom{left:50%;top:103px;transform:translateX(-50%);width:610px;height:52px;justify-content:center;align-items:flex-end}
+.fnmj-seat-hand-bottom .fnmj-concealed{gap:2px;align-items:flex-end}
+.fnmj-seat-hand-bottom .fnmj-tile{width:31px;height:46px}
+.fnmj-seat-hand-bottom .zimo-tile{margin-left:0;flex:0 0 auto}.fnmj-seat-hand-bottom .zimo-tile .fnmj-tile{width:31px;height:46px}
 
-/* TOP OPPONENT. */
-.fnmj-player-top .fnmj-hand{left:50%;top:29px;width:480px;height:33px;transform:translateX(-50%) rotate(180deg);justify-content:center}
-.fnmj-player-top .fnmj-opponent-backs{gap:2px}.fnmj-player-top .fnmj-opponent-back{display:block;width:22px;height:29px;border:1px solid #765224;border-radius:2px;background:linear-gradient(145deg,#f0ca69,#ae7628);box-shadow:inset 0 1px rgba(255,255,255,.52)}
-.fnmj-player-top .fnmj-river{left:50%;top:72px;width:282px;height:66px;transform:translateX(-50%);grid-template-columns:repeat(6,41px);grid-auto-rows:25px;gap:2px 4px}
-.fnmj-player-top .fnmj-river-tile .fnmj-tile{width:41px;height:25px;transform:rotate(180deg)}
-.fnmj-player-top .fnmj-river-tile.called-plus .fnmj-tile{transform:rotate(-90deg)}.fnmj-player-top .fnmj-river-tile.called-minus .fnmj-tile{transform:rotate(90deg)}
+/* LEFT / RIGHT SEATS: same river footprint as top/bottom.
+   The hand + melds occupy the upper part of the side seat; the river is a
+   separate 198x62px horizontal strip at the bottom. This makes all four
+   discard areas exactly the same width/height and tile-slot spacing. */
+.fnmj-seat-hand-left,.fnmj-seat-hand-right{top:36px;width:22px;height:154px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:visible}
+.fnmj-seat-hand-left{left:2px}.fnmj-seat-hand-right{right:2px}
+.fnmj-seat-hand-left .fnmj-opponent-backs,.fnmj-seat-hand-right .fnmj-opponent-backs{flex-direction:column;align-items:center;gap:0}
+.fnmj-seat-hand-left .fnmj-opponent-back,.fnmj-seat-hand-right .fnmj-opponent-back{display:block;width:18px;height:17px;flex:0 0 17px;margin-top:-5px;border:1px solid #715026;border-radius:2px;background:linear-gradient(145deg,#efcc6a,#ab7426);box-shadow:inset 0 1px rgba(255,255,255,.5)}
+.fnmj-seat-hand-left .fnmj-opponent-back:first-child,.fnmj-seat-hand-right .fnmj-opponent-back:first-child{margin-top:0}
+.fnmj-seat-melds-left,.fnmj-seat-melds-right{top:36px;width:78px;height:154px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:5px;overflow:visible}
+.fnmj-seat-melds-left{left:30px}.fnmj-seat-melds-right{right:30px}
+.fnmj-seat-melds-left .fnmj-meld,.fnmj-seat-melds-right .fnmj-meld{align-items:flex-end}
+.fnmj-seat-melds-left .fnmj-meld .fnmj-tile,.fnmj-seat-melds-right .fnmj-meld .fnmj-tile{width:17px;height:25px}
+.fnmj-seat-melds-left .fnmj-meld-back,.fnmj-seat-melds-right .fnmj-meld-back{width:17px;height:25px}
+.fnmj-seat-melds-left .fnmj-meld-tile.called .fnmj-tile{transform:rotate(90deg)}
+.fnmj-seat-melds-right .fnmj-meld-tile.called .fnmj-tile{transform:rotate(-90deg)}
 
-/* LEFT/RIGHT OPPONENTS. */
-.fnmj-player-left .fnmj-hand,.fnmj-player-right .fnmj-hand{top:30px;width:29px;height:220px;display:flex;flex-direction:column;align-items:center}
-.fnmj-player-left .fnmj-hand{left:8px}.fnmj-player-right .fnmj-hand{right:8px}
-.fnmj-player-left .fnmj-opponent-backs,.fnmj-player-right .fnmj-opponent-backs{flex-direction:column;gap:2px}.fnmj-player-left .fnmj-opponent-back,.fnmj-player-right .fnmj-opponent-back{display:block;width:19px;height:26px;border:1px solid #765224;border-radius:2px;background:linear-gradient(145deg,#f0ca69,#ae7628)}
-.fnmj-player-left .fnmj-river,.fnmj-player-right .fnmj-river{top:60px;width:100px;height:150px;grid-template-columns:repeat(3,31px);grid-auto-rows:33px;gap:3px}
-.fnmj-player-left .fnmj-river{left:66px}.fnmj-player-right .fnmj-river{right:66px}
-.fnmj-player-left .fnmj-river-tile .fnmj-tile{width:31px;height:26px;transform:rotate(90deg)}.fnmj-player-right .fnmj-river-tile .fnmj-tile{width:31px;height:26px;transform:rotate(-90deg)}
-.fnmj-player-left .fnmj-river-tile.called-plus .fnmj-tile{transform:rotate(180deg)}.fnmj-player-left .fnmj-river-tile.called-minus .fnmj-tile{transform:rotate(0deg)}
-.fnmj-player-right .fnmj-river-tile.called-plus .fnmj-tile{transform:rotate(0deg)}.fnmj-player-right .fnmj-river-tile.called-minus .fnmj-tile{transform:rotate(180deg)}
+/* One universal river footprint for all four seats: 6 columns x 3 rows,
+   31px slot width and 20px row height = 198x62px including gaps.
+   Side-seat tile faces are rotated inside the same fixed slots, so the
+   discard-area width never changes with seat orientation. */
+.fnmj-player-left .river-left,.fnmj-player-right .river-right{left:26px;right:auto;top:210px;width:198px;height:62px;grid-template-columns:repeat(6,31px);grid-auto-rows:20px;grid-template-rows:repeat(3,20px);grid-auto-flow:row;gap:2px;justify-content:start;align-content:start}
+.fnmj-player-right .river-right{left:26px}
+.fnmj-player-left .river-left .fnmj-tile,.fnmj-player-right .river-right .fnmj-tile{width:20px;height:31px}
+.fnmj-player-left .river-left .fnmj-tile{transform:rotate(90deg)}
+.fnmj-player-right .river-right .fnmj-tile{transform:rotate(-90deg)}
 
-/* MELDS remain attached to the owning hand lane. */
-.fnmj-meld{display:flex;align-items:flex-end;gap:1px;margin:0;padding:0}.fnmj-meld .fnmj-tile{width:24px;height:35px}.fnmj-meld-back{display:block;width:24px;height:35px;border:1px solid #765224;border-radius:2px;background:linear-gradient(145deg,#efca6d,#b47a29);box-shadow:inset 0 1px rgba(255,255,255,.55)}
-.fnmj-meld-called{display:inline-flex;align-items:flex-end}.fnmj-meld-called .fnmj-tile{transform:rotate(90deg) scale(.94);transform-origin:center bottom}
-.fnmj-player-left .fnmj-meld,.fnmj-player-right .fnmj-meld{flex-direction:column;align-items:center}.fnmj-player-left .fnmj-meld .fnmj-tile,.fnmj-player-right .fnmj-meld .fnmj-tile{width:15px;height:22px}.fnmj-player-left .fnmj-meld-back,.fnmj-player-right .fnmj-meld-back{width:15px;height:22px}
+/* Meld orientation / called-tile marker. */
+.fnmj-meld{display:flex;align-items:flex-end;gap:2px;overflow:visible}.fnmj-meld-tile{display:flex;align-items:flex-end;overflow:visible}
+.fnmj-meld-tile.called .fnmj-tile{transform:rotate(90deg) translateY(-1px)}
+.fnmj-seat-melds-top .fnmj-meld-tile.called .fnmj-tile{transform:rotate(270deg) translateY(-1px)}
+.fnmj-meld-back{display:block;border:1px solid #765224;border-radius:2px;background:linear-gradient(145deg,#f0ce70,#b47d2b);box-shadow:inset 0 1px rgba(255,255,255,.5)}
 
-/* RIVERS: strict cells, never free-positioned. */
-.fnmj-river{position:absolute;display:grid;justify-content:center;align-content:start;pointer-events:none;z-index:20}.fnmj-river-tile{display:flex;align-items:center;justify-content:center}.fnmj-river-tile .fnmj-tile{filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))}.fnmj-river-tile.called{outline:1px solid rgba(244,205,96,.62);outline-offset:-1px}
+/* Every river uses exactly the same 198x62px footprint. */
+.fnmj-river{position:absolute;display:grid;width:198px;height:62px;grid-template-columns:repeat(6,31px);grid-template-rows:repeat(3,20px);grid-auto-flow:row;gap:2px;justify-content:start;align-content:start;pointer-events:none;z-index:25}.fnmj-river-tile{display:flex;align-items:center;justify-content:center;position:relative;width:31px;height:20px}
+.fnmj-river-tile.called{outline:1px solid rgba(244,205,96,.65);outline-offset:-1px}.fnmj-river-tile.riichi:after{content:"";position:absolute;inset:0;border:1px solid rgba(245,210,106,.9)}
 
-/* CENTER: compact table information only. */
-.fnmj-center{position:absolute;z-index:25;left:50%;top:190px;width:142px;height:112px;transform:translateX(-50%);display:block;padding:10px 8px;border:1px solid rgba(225,190,87,.72);border-radius:12px;background:linear-gradient(180deg,rgba(7,22,34,.88),rgba(4,13,22,.92));box-shadow:0 10px 24px rgba(0,0,0,.38),inset 0 0 0 1px rgba(255,255,255,.025);text-align:center;pointer-events:none}
-.fnmj-center-round{font-size:18px;font-weight:900;line-height:1.1}.fnmj-center-honba{margin-top:2px;font-size:8px;color:#e4c66b}.fnmj-center-main{position:relative;margin-top:4px;height:69px}.fnmj-center-dora-label{font-size:7px;color:#aeb8c0}.fnmj-dora{height:28px;margin-top:2px;display:flex;justify-content:center;gap:3px}.fnmj-dora .fnmj-tile{width:20px;height:27px}.fnmj-center-stick{margin-top:2px;font-size:7px;color:#c5cbd0}.fnmj-center-wall{margin-top:2px;font-size:7px;color:#b9c1c8}
+/* Center is a table area, not a large debug/info card. */
+.fnmj-center{position:absolute;z-index:30;left:50%;top:50%;width:174px;height:112px;transform:translate(-50%,-50%);border:1px solid rgba(222,190,91,.7);border-radius:10px;background:linear-gradient(180deg,rgba(6,20,31,.82),rgba(4,14,23,.9));box-shadow:0 8px 22px rgba(0,0,0,.30);text-align:center;pointer-events:none}
+.fnmj-center-round{padding-top:10px;font-size:22px;font-weight:900;line-height:1.05}.fnmj-center-honba{margin-top:2px;font-size:9px;color:#e6c86e}.fnmj-center-dora-label{margin-top:8px;font-size:7px;color:#aeb8c1}.fnmj-dora{height:28px;margin-top:2px;display:flex;justify-content:center;gap:2px}.fnmj-dora .fnmj-tile{width:21px;height:28px}.fnmj-center-stick{margin-top:2px;font-size:7px;color:#c7cdd0}.fnmj-center-wall{margin-top:2px;font-size:7px;color:#adb8c0}
 
-/* Operation buttons only appear when an action is actually legal. */
-.fnmj-actions{position:absolute;z-index:65;right:22px;bottom:17px;width:205px;min-height:66px;display:flex;justify-content:flex-end;align-content:flex-end;flex-wrap:wrap;gap:6px;pointer-events:none}.fnmj-actions button{min-width:70px;height:33px;padding:0 11px;border:1px solid #c8b369;border-radius:6px;background:linear-gradient(#304858,#152635);color:#fff;font:900 11px Arial,sans-serif;box-shadow:0 4px 10px rgba(0,0,0,.42);pointer-events:auto;touch-action:manipulation}.fnmj-actions button.primary,.fnmj-actions button.riichi{background:linear-gradient(#d7b24c,#8e681f);color:#111}.fnmj-actions button.call{background:linear-gradient(#405e72,#263f50);border-color:#a9c7d6}.fnmj-actions button.danger{background:linear-gradient(#8c4b52,#592a30);border-color:#e69ca3}.fnmj-actions button.secondary{background:linear-gradient(#1e2c38,#101921);border-color:#71808a}
-.fnmj-timer{position:absolute;z-index:64;right:239px;bottom:22px;min-width:35px;text-align:center;font-size:22px;font-style:italic;font-weight:900;color:#f2d371;text-shadow:0 2px 7px #000;opacity:.25}.fnmj-timer.active{opacity:1}
+/* Human actions are tied to the bottom seat, not the table center. */
+.fnmj-actions{position:absolute;z-index:65;left:995px;bottom:26px;width:250px;min-height:70px;display:flex;flex-wrap:wrap;justify-content:flex-end;align-content:flex-end;gap:6px;pointer-events:none}
+.fnmj-actions button{min-width:68px;height:33px;padding:0 10px;border:1px solid #c4af6a;border-radius:6px;background:linear-gradient(#30485a,#162633);color:#fff;font-weight:900;box-shadow:0 4px 11px rgba(0,0,0,.35);pointer-events:auto;touch-action:manipulation}
+.fnmj-actions button.primary,.fnmj-actions button.riichi{background:linear-gradient(#d8b450,#8e681f);color:#111}.fnmj-actions button.danger{background:linear-gradient(#8d4a50,#562a30)}.fnmj-actions button.call{background:linear-gradient(#426078,#263e50)}
+.fnmj-timer{position:absolute;z-index:58;left:1040px;bottom:105px;min-width:44px;text-align:center;font-size:28px;font-style:italic;font-weight:900;color:#f2d16b;text-shadow:0 2px 10px #000;opacity:.25}.fnmj-timer.active{opacity:1}
 
-/* Event animation: a dedicated strip, never a full-screen debug message. */
-.fnmj-cutin{position:absolute;z-index:90;left:50%;top:145px;transform:translate(-50%,-50%) scale(.84);min-width:300px;padding:7px 40px;border-top:1px solid #f0ce64;border-bottom:1px solid #f0ce64;background:linear-gradient(90deg,transparent,rgba(4,14,22,.96) 16%,rgba(4,14,22,.96) 84%,transparent);text-align:center;opacity:0;pointer-events:none}.fnmj-cutin.show{animation:fnmjCutin .72s ease-out both}.fnmj-cutin-label{font-size:30px;font-weight:900;letter-spacing:.16em;color:#fff;text-shadow:0 2px 8px #000}.fnmj-cutin-sub{margin-top:2px;font-size:8px;color:#efd176}@keyframes fnmjCutin{0%{opacity:0;transform:translate(-50%,-50%) scale(.76)}18%,72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.03)}}
+/* Transient call/riichi announcement overlays only the center; it never changes layout. */
+.fnmj-cutin{position:absolute;z-index:90;left:50%;top:50%;min-width:300px;padding:9px 42px;transform:translate(-50%,-50%) scale(.84);border-top:1px solid #e8c765;border-bottom:1px solid #e8c765;background:linear-gradient(90deg,transparent,rgba(5,15,24,.96) 15%,rgba(5,15,24,.96) 85%,transparent);text-align:center;opacity:0;pointer-events:none}
+.fnmj-cutin.show{animation:fnmjCutin .72s ease-out both}.fnmj-cutin-label{font-size:31px;font-weight:900;letter-spacing:.17em;color:#fff;text-shadow:0 2px 8px #000}.fnmj-cutin-sub{margin-top:2px;font-size:9px;color:#ebce70}
+@keyframes fnmjCutin{0%{opacity:0;transform:translate(-50%,-50%) scale(.78)}18%,72%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.03)}}
 
-.fnmj-result{position:absolute;inset:0;z-index:120;display:grid;place-items:center;background:rgba(3,7,11,.76);backdrop-filter:blur(2px)}.fnmj-result-card{width:min(470px,82vw);padding:24px;border:1px solid #dfbb52;border-radius:8px;background:#0f1923;text-align:center}.fnmj-result-card h2{margin:0 0 12px;color:#f0ce70}.fnmj-result-card pre{white-space:pre-wrap;color:#e7eaed}.fnmj-result-card button{margin-top:14px;padding:9px 22px;background:#1b2935;color:#fff;border:1px solid #d8b44d;border-radius:5px}
+.fnmj-result{position:absolute;inset:0;z-index:100;display:grid;place-items:center;background:rgba(2,7,12,.76)}
+.fnmj-result-card{width:min(470px,82vw);padding:24px;border:1px solid #dfbb52;border-radius:8px;background:#0e1823;text-align:center}.fnmj-result-card h2{margin:0 0 12px;color:#f0ce70}.fnmj-result-card pre{white-space:pre-wrap;color:#e7eaed}.fnmj-result-card button{margin-top:14px;padding:9px 22px;background:#1b2935;color:#fff;border:1px solid #d8b44d;border-radius:5px}
 .fnmj-fatal{position:absolute;inset:0;overflow:auto;padding:30px;background:#070b0e;color:#fff}.fnmj-fatal pre{white-space:pre-wrap;color:#ffb8bd}
 
-@media (orientation:portrait){.fnmj-arena{--fnmj-scale:calc(min((100vw - 16px)/900,(100svh - 16px)/500))!important}}
+@media (orientation:landscape) and (max-height:520px){
+  .fnmj-player-info{height:25px;font-size:10px;padding:3px 7px}.fnmj-avatar{width:17px;height:17px;font-size:8px}.fnmj-player-info strong{font-size:11px}
+  .fnmj-seat-hand-bottom .fnmj-tile{width:29px;height:43px}.fnmj-seat-hand-bottom .zimo-tile .fnmj-tile{width:29px;height:43px}
+  .fnmj-seat-melds-bottom{top:62px}.fnmj-seat-melds-top{top:72px}
+  .fnmj-center{width:160px;height:104px}.fnmj-center-round{font-size:20px;padding-top:10px}.fnmj-cutin{min-width:280px}
+}

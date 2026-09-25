@@ -90,7 +90,8 @@
                 <i class="fnmj-avatar" id="fnmjAvatar2">南</i>
                 <span id="fnmjWind2">南</span><b id="fnmjName2">AI 2</b><strong id="fnmjScore2">25,000</strong>
               </div>
-              <div class="fnmj-hand opponent-hand" id="fnmjHand2"></div>
+              <div class="fnmj-seat-hand fnmj-seat-hand-top" id="fnmjSeatHand2"></div>
+              <div class="fnmj-seat-melds fnmj-seat-melds-top" id="fnmjMelds2"></div>
               <div class="fnmj-river river-top" id="fnmjRiver2"></div>
             </section>
 
@@ -99,7 +100,8 @@
                 <i class="fnmj-avatar" id="fnmjAvatar3">西</i>
                 <span id="fnmjWind3">西</span><b id="fnmjName3">AI 3</b><strong id="fnmjScore3">25,000</strong>
               </div>
-              <div class="fnmj-hand opponent-hand" id="fnmjHand3"></div>
+              <div class="fnmj-seat-hand fnmj-seat-hand-left" id="fnmjSeatHand3"></div>
+              <div class="fnmj-seat-melds fnmj-seat-melds-left" id="fnmjMelds3"></div>
               <div class="fnmj-river river-left" id="fnmjRiver3"></div>
             </section>
 
@@ -108,32 +110,31 @@
                 <i class="fnmj-avatar" id="fnmjAvatar1">北</i>
                 <span id="fnmjWind1">北</span><b id="fnmjName1">AI 1</b><strong id="fnmjScore1">25,000</strong>
               </div>
-              <div class="fnmj-hand opponent-hand" id="fnmjHand1"></div>
+              <div class="fnmj-seat-hand fnmj-seat-hand-right" id="fnmjSeatHand1"></div>
+              <div class="fnmj-seat-melds fnmj-seat-melds-right" id="fnmjMelds1"></div>
               <div class="fnmj-river river-right" id="fnmjRiver1"></div>
             </section>
 
             <section class="fnmj-player fnmj-player-bottom" data-seat="bottom">
               <div class="fnmj-river river-bottom" id="fnmjRiver0"></div>
-              <div class="fnmj-hand my-hand" id="fnmjHand0"></div>
+              <div class="fnmj-seat-melds fnmj-seat-melds-bottom" id="fnmjMelds0"></div>
+              <div class="fnmj-seat-hand fnmj-seat-hand-bottom" id="fnmjSeatHand0"></div>
               <div class="fnmj-player-info">
                 <i class="fnmj-avatar fnmj-avatar-you" id="fnmjAvatar0">自</i>
                 <span id="fnmjWind0">東</span><b id="fnmjName0">YOU</b><strong id="fnmjScore0">25,000</strong>
               </div>
             </section>
 
-            <div class="fnmj-actions" id="fnmjActions"></div>
-
             <div class="fnmj-center" aria-label="卓中央">
               <div class="fnmj-center-round" id="fnmjCenterRound">東1局</div>
               <div class="fnmj-center-honba" id="fnmjCenterHonba">0本場</div>
-              <div class="fnmj-center-main">
-                <div class="fnmj-center-dora-label">ドラ表示牌</div>
-                <div class="fnmj-dora" id="fnmjDora"></div>
-                <div class="fnmj-center-stick" id="fnmjCenterStick">供託 0本　積棒 0</div>
-                <div class="fnmj-center-wall" id="fnmjCenterWall">残り70枚</div>
-              </div>
+              <div class="fnmj-center-dora-label">ドラ表示牌</div>
+              <div class="fnmj-dora" id="fnmjDora"></div>
+              <div class="fnmj-center-stick" id="fnmjCenterStick">供託 0　積棒 0</div>
+              <div class="fnmj-center-wall" id="fnmjCenterWall">残り70枚</div>
             </div>
 
+            <div class="fnmj-actions" id="fnmjActions"></div>
             <div class="fnmj-timer" id="fnmjTimer" aria-hidden="true"></div>
             <div class="fnmj-cutin hidden" id="fnmjCutin" aria-live="polite">
               <div class="fnmj-cutin-label" id="fnmjCutinLabel"></div>
@@ -204,9 +205,11 @@
       const vv = window.visualViewport;
       const w = Math.max(320, Number(vv?.width) || window.innerWidth || document.documentElement.clientWidth || 320);
       const h = Math.max(180, Number(vv?.height) || window.innerHeight || document.documentElement.clientHeight || 180);
-      // Fit the entire 900x500 table inside the safe visual viewport.
-      // No vertical offset is introduced; the table is always centered as one unit.
-      const scale = Math.min((w - 16) / 900, (h - 16) / 500);
+      // The CSS arena is exactly 1280x720. Scale that exact logical canvas so
+      // every seat region, river and meld lane keeps its intended geometry.
+      const BASE_W = 1280;
+      const BASE_H = 720;
+      const scale = Math.min((w - 16) / BASE_W, (h - 16) / BASE_H);
       arena.style.setProperty("--fnmj-scale", Math.max(0.42, scale).toFixed(4));
     }
 
@@ -232,7 +235,11 @@
     respond(player, payload = {}) {
       const cb = player && player._callback;
       if (typeof cb !== "function") return false;
-      if (player.__fnResponded) return false;
+      // The Player.action() callback belongs to this one engine wait state.
+      // Clear the callback before invoking it so a second UI event cannot
+      // answer the same state twice, while the next Player.action() installs
+      // a fresh callback for the next state.
+      player._callback = null;
       player.__fnResponded = true;
       cb(payload || {});
       return true;
@@ -432,10 +439,14 @@
         this.root.querySelector(`#fnmjWind${id}`).textContent = infoWind;
 
         const player = m.shoupai[l];
-        const hand = this.root.querySelector(`#fnmjHand${id}`);
-        if (id === this.seat) {
-          hand.innerHTML = renderHand(player, true);
-          if (this.discardChoices && this.discardChoices.player === this.human) {
+        const relativeSeat = seatClassForPlayer(id, this.seat);
+        const seatRoot = this.root.querySelector(`.fnmj-player-${relativeSeat}`);
+        const hand = this.root.querySelector(`#fnmjSeatHand${id}`);
+        const meldBox = this.root.querySelector(`#fnmjMelds${id}`);
+        if (hand) {
+          hand.innerHTML = id === this.seat ? renderHand(player, true) : renderOpponentHand(player);
+          hand.classList.toggle("is-turn", id === turnSeat);
+          if (id === this.seat && this.discardChoices && this.discardChoices.player === this.human) {
             hand.querySelectorAll(".fnmj-tile-wrap[data-raw]").forEach(node => {
               const raw = node.dataset.raw;
               if (this.discardChoices.tiles.includes(tileKey(raw))) {
@@ -446,17 +457,20 @@
               }
             });
           }
-        } else {
-          hand.innerHTML = renderOpponentHand(player);
         }
-        hand.classList.toggle("is-turn", id === turnSeat);
+        if (meldBox) {
+          meldBox.innerHTML = renderMelds(player);
+          meldBox.classList.toggle("has-meld", !!(player?._fulou?.length));
+        }
 
         const river = this.root.querySelector(`#fnmjRiver${id}`);
         river.innerHTML = renderRiver(m.he[l]);
         river.classList.toggle("is-turn", id === turnSeat);
 
-        const seat = this.root.querySelector(`[data-seat="${seatClassForPlayer(id, this.seat)}"]`);
-        if (seat) { seat.classList.toggle("active-seat", id === turnSeat); seat.classList.toggle("is-current-turn", id === turnSeat); }
+        if (seatRoot) {
+          seatRoot.classList.toggle("active-seat", id === turnSeat);
+          seatRoot.classList.toggle("is-current-turn", id === turnSeat);
+        }
       }
 
       this.detectVisualEvent(m);
@@ -577,37 +591,59 @@
   }
 
   function renderMeld(m) {
-    const nums = m.match(/[0-9]/g) || [];
+    if (!m) return "";
+    const digits = m.match(/\d/g) || [];
     const suit = m[0];
-    // Concealed kan: first and last tiles are face-down.
-    if (/^[mpsz]\d{4}$/.test(m)) {
-      const backs = nums.map((n, i) => (i === 0 || i === 3)
-        ? '<i class="fnmj-meld-back"></i>'
-        : tileImg(suit + n)).join("");
-      return `<span class="fnmj-meld ankan">${backs}</span>`;
+    const calledIndex = digits.length ? digits.length - 1 : -1;
+    const open = /[+=-]$/.test(m);
+    const ankan = digits.length === 4 && !open;
+    const openKan = digits.length === 4 && open;
+
+    if (ankan) {
+      return `<span class="fnmj-meld ankan">${digits.map((n,i) =>
+        (i === 0 || i === 3) ? '<i class="fnmj-meld-back"></i>' : tileImg(suit+n)
+      ).join("")}</span>`;
     }
-    // Open melds encode the claimed tile with +, =, or - immediately before it.
-    const mark = m.match(/[+=-]/);
-    const markAt = mark ? mark.index : -1;
-    const calledIndex = markAt >= 0 ? ((m.slice(0, markAt).match(/[0-9]/g) || []).length) : -1;
-    return `<span class="fnmj-meld${mark ? ` called-${mark[0]}` : ""}">${nums.map((n,i) => {
-      const called = i === calledIndex;
-      return called ? `<span class="fnmj-meld-called">${tileImg(suit+n)}</span>` : tileImg(suit+n);
+
+    return `<span class="fnmj-meld ${openKan ? "open-kan" : ""}">${digits.map((n,i) => {
+      const called = open && i === calledIndex;
+      return `<span class="fnmj-meld-tile${called ? " called" : ""}">${tileImg(suit+n)}</span>`;
     }).join("")}</span>`;
+  }
+
+  function renderMelds(sp) {
+    return (sp?._fulou || []).map(renderMeld).join("");
   }
 
   function renderHand(sp, selectable) {
     if (!sp) return "";
     const concealed = concealedTiles(sp, false);
-    const zimo = (sp._zimo && sp._zimo.length === 2 && sp._zimo !== "_") ? tileKey(sp._zimo) : "";
-    const melds = (sp._fulou || []).map(renderMeld).join("");
+    const zimo = sp._zimo && sp._zimo !== "_" ? tileKey(sp._zimo) : "";
     const body = concealed.map((p, i) =>
       `<span class="fnmj-tile-wrap" data-raw="${p}" data-index="${i}">${tileImg(p)}</span>`
     ).join("");
-    const zimoHtml = (sp._zimo && sp._zimo.length === 2 && sp._zimo !== "_")
-      ? `<span class="fnmj-zimo-gap"></span><span class="fnmj-tile-wrap zimo-tile" data-raw="${zimo}" data-index="${concealed.length}">${tileImg(zimo)}</span>`
+    const zimoHtml = zimo
+      ? `<span class="fnmj-zimo-gap" aria-hidden="true"></span><span class="fnmj-tile-wrap zimo-tile" data-raw="${zimo}" data-index="${concealed.length}">${tileImg(zimo)}</span>`
       : "";
-    return `<span class="fnmj-melds">${melds}</span><span class="fnmj-concealed">${body}</span>${zimoHtml}`;
+    return `<span class="fnmj-concealed">${body}</span>${zimoHtml}`;
+  }
+
+  function renderOpponentHand(sp) {
+    const meldCount = (sp?._fulou || []).reduce((n,m) => n + (m.match(/[0-9]/g) || []).length, 0);
+    const total = countVisibleTiles(sp);
+    const closed = Math.max(0, total - meldCount);
+    const backCount = Math.min(14, closed);
+    return `<span class="fnmj-opponent-backs">${Array.from({length:backCount}, () => '<i class="fnmj-opponent-back"></i>').join("")}</span>`;
+  }
+
+  function renderRiver(he) {
+    if (!he?._pai) return "";
+    return he._pai.map(p => {
+      const riichi = /\*$/.test(p);
+      const called = /[+=-]$/.test(p);
+      const raw = p.replace(/[+=*\-]$/, "");
+      return `<span class="fnmj-river-tile${called ? " called" : ""}${riichi ? " riichi" : ""}">${tileImg(raw)}</span>`;
+    }).join("");
   }
 
   function countVisibleTiles(sp) {
@@ -616,25 +652,6 @@
     if (sp._zimo && sp._zimo.length === 2 && sp._zimo !== "_") n += 1;
     for (const m of sp._fulou || []) n += (m.match(/[0-9]/g) || []).length;
     return n;
-  }
-
-  function renderOpponentHand(sp) {
-    const meldCount = (sp?._fulou || []).reduce((n,m) => n + (m.match(/[0-9]/g)||[]).length, 0);
-    const closed = Math.max(0, countVisibleTiles(sp) - meldCount);
-    const backCount = Math.min(14, closed);
-    const backs = Array.from({length: backCount}, () => '<i class="fnmj-opponent-back"></i>').join("");
-    const melds = (sp?._fulou || []).map(renderMeld).join("");
-    return `<span class="fnmj-melds">${melds}</span><span class="fnmj-opponent-backs">${backs}</span>`;
-  }
-
-  function renderRiver(he) {
-    if (!he?._pai) return "";
-    return he._pai.map(p => {
-      const mark = p.match(/[+=-]$/);
-      const raw = p.replace(/[+=-]$/, "");
-      const cls = mark ? ` called called-${mark[0]}` : "";
-      return `<span class="fnmj-river-tile${cls}">${tileImg(raw)}</span>`;
-    }).join("");
   }
 
   async function load() {
@@ -671,6 +688,7 @@
         const cb = this._callback;
         if (typeof cb !== "function" || this.__fnResponded) return;
         this.__fnResponded = true;
+        this._callback = null;
         cb(payload || {});
       }
 
@@ -804,7 +822,7 @@
 
   async function start() {
     if (runtime) return runtime;
-    const STYLE_BUILD = "20260925-table-final-01";
+    const STYLE_BUILD = "20260925-seat-regions-01";
     document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
       try {
         const href = link.getAttribute("href") || "";
