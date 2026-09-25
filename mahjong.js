@@ -127,18 +127,11 @@
               <div class="fnmj-center-round" id="fnmjCenterRound">東1局</div>
               <div class="fnmj-center-honba" id="fnmjCenterHonba">0本場</div>
               <div class="fnmj-center-main">
-                <div class="fnmj-seat-score fnmj-seat-score-top" id="fnmjSeatScore2">南 25,000</div>
-                <div class="fnmj-seat-score fnmj-seat-score-left" id="fnmjSeatScore3">西 25,000</div>
-                <div class="fnmj-seat-score fnmj-seat-score-right" id="fnmjSeatScore1">北 25,000</div>
-                <div class="fnmj-seat-score fnmj-seat-score-bottom" id="fnmjSeatScore0">東 25,000</div>
                 <div class="fnmj-center-dora-label">ドラ表示牌</div>
                 <div class="fnmj-dora" id="fnmjDora"></div>
                 <div class="fnmj-center-stick" id="fnmjCenterStick">供託 0本　積棒 0</div>
                 <div class="fnmj-center-wall" id="fnmjCenterWall">残り70枚</div>
               </div>
-              <div class="fnmj-turn" id="fnmjTurn">配牌中</div>
-              <div class="fnmj-count" id="fnmjCount">0巡目</div>
-              <div class="fnmj-status" id="fnmjStatus"></div>
             </div>
 
             <div class="fnmj-timer" id="fnmjTimer" aria-hidden="true"></div>
@@ -274,7 +267,7 @@
       this.discardChoices = { player, tiles: normalDapai.map(tileKey) };
       this.riichiSelecting = false;
       this.selectedDiscardIndex = null;
-      this.message = gangzimo ? "槓の嶺上牌" : (afterFulou ? "鳴いた後の打牌" : "あなたのツモ");
+      this.message = gangzimo ? "槓の嶺上牌" : (afterFulou ? "鳴いた後の打牌" : "");
       this.startDecisionTimer(20);
       this.render();
     }
@@ -303,7 +296,8 @@
         return;
       }
 
-      const p = this.riichiSelecting ? `${raw.replace(/\*$/, "")}*` : raw;
+      const engineTile = raw.endsWith("_") ? raw : raw;
+      const p = this.riichiSelecting ? `${engineTile.replace(/_$/, "")}*` : engineTile;
       this.discardChoices = null;
       this.riichiSelecting = false;
       this.selectedDiscardIndex = null;
@@ -413,14 +407,10 @@
 
       this.root.querySelector("#fnmjCenterRound").textContent = round;
       this.root.querySelector("#fnmjCenterHonba").textContent = `${m.changbang || 0}本場`;
-      this.root.querySelector("#fnmjTurn").textContent = turnSeat < 0 ? "配牌中" : (turnSeat === this.seat ? "あなたの番" : `${WIND[this.seatWind(m, turnSeat)]}家の番`);
-      this.root.querySelector("#fnmjCount").textContent = `${turnCount}巡目`;
-      this.root.querySelector("#fnmjCenterWall").textContent = `残り${wall}枚`;
-      this.root.querySelector("#fnmjCenterStick").textContent = `供託 ${Number(m.lizhibang || 0)}本　積棒 ${Number(m.changbang || 0)}`;
-      if (turnSeat !== this.seat && this.game._status === "zimo" && !this.discardChoices) {
-        this.message = `${WIND[this.seatWind(m, turnSeat)]}家のツモを処理中`;
-      }
-      this.root.querySelector("#fnmjStatus").textContent = this.message || "";
+      const centerWall = this.root.querySelector("#fnmjCenterWall");
+      if (centerWall) centerWall.textContent = `残り ${wall}`;
+      const centerStick = this.root.querySelector("#fnmjCenterStick");
+      if (centerStick) centerStick.textContent = `供託 ${Number(m.lizhibang || 0)}　積棒 ${Number(m.changbang || 0)}`;
       const timer = this.root.querySelector("#fnmjTimer");
       if (timer) {
         const left = this._decisionUntil ? Math.max(0, Math.ceil((this._decisionUntil - performance.now()) / 1000)) : 0;
@@ -439,8 +429,6 @@
         this.root.querySelector(`#fnmjScore${id}`).textContent = score;
         this.root.querySelector(`#fnmjName${id}`).textContent = id === this.seat ? "YOU" : `AI ${id}`;
         this.root.querySelector(`#fnmjWind${id}`).textContent = infoWind;
-        const centerScore = this.root.querySelector(`#fnmjSeatScore${id}`);
-        if (centerScore) centerScore.textContent = `${infoWind} ${score}`;
 
         const player = m.shoupai[l];
         const hand = this.root.querySelector(`#fnmjHand${id}`);
@@ -467,7 +455,7 @@
         river.classList.toggle("is-turn", id === turnSeat);
 
         const seat = this.root.querySelector(`[data-seat="${seatClassForPlayer(id, this.seat)}"]`);
-        if (seat) seat.classList.toggle("active-seat", id === turnSeat);
+        if (seat) { seat.classList.toggle("active-seat", id === turnSeat); seat.classList.toggle("is-current-turn", id === turnSeat); }
       }
 
       this.detectVisualEvent(m);
