@@ -202,15 +202,9 @@
     fitArena() {
       const arena = this.root.querySelector(".fnmj-arena");
       if (!arena) return;
-      const vv = window.visualViewport;
-      const w = Math.max(320, Number(vv?.width) || window.innerWidth || document.documentElement.clientWidth || 320);
-      const h = Math.max(180, Number(vv?.height) || window.innerHeight || document.documentElement.clientHeight || 180);
-      // The CSS arena is exactly 1280x720. Scale that exact logical canvas so
-      // every seat region, river and meld lane keeps its intended geometry.
-      const BASE_W = 1280;
-      const BASE_H = 720;
-      const scale = Math.min((w - 16) / BASE_W, (h - 16) / BASE_H);
-      arena.style.setProperty("--fnmj-scale", Math.max(0.42, scale).toFixed(4));
+      // The arena has its real responsive 16:9 CSS size. Do not apply a
+      // second transform scale; that was the source of the off-screen table.
+      arena.style.removeProperty("--fnmj-scale");
     }
 
     startDecisionTimer(seconds = 20) {
