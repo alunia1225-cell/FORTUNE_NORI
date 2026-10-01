@@ -23,7 +23,7 @@ const RULES=Object.freeze({
  startPoints:25000,returnPoints:25000,firstRequiredPoints:30000,
  uma:[15,5,-5,-15],riichiCost:1000,honbaRon:300,honbaTsumo:100,notenTotal:3000,
  kuitan:true,atozuke:true,red:[1,1,1],multipleRon:true,nagashiMangan:true,abortiveDraws:true,
- tobi:true,maxKan:4,maxRound:11
+ tobi:true,maxKan:4,maxRound:11,riichiMinWall:4
 });
 const $=(root,sel)=>root.querySelector(sel);
 const tileBase=t=>RED[t]||t;
@@ -448,7 +448,7 @@ function aiCallEvaluation(game,p,type,used,called){
 }
 function discardLeavesTenpai(p,tile){const h=p.hand.slice(),i=h.findIndex(x=>x===tile);if(i<0)return false;h.splice(i,1);return waitsFor({...p,hand:h}).length>0}
 function canRiichiTile(p,tile,game){
-  if(p.riichi||!closedHand(p)||p.score<1000||game.wall.length<1)return false;
+  if(p.riichi||!closedHand(p)||p.score<1000||game.wall.length<RULES.riichiMinWall)return false;
   return discardLeavesTenpai(p,tile);
 }
 function kanPreservesWaits(game,seat,target){
@@ -467,7 +467,7 @@ class Game{
   reset(){
     this.players=[];this.wall=[];this.dead=[];this.rinshan=[];this.doraIndicators=[];this.uraIndicators=[];
     this.roundIndex=0;this.dealer=0;this.startDealer=0;this.honba=0;this.riichiSticks=0;this.current=0;this.phase='idle';this.lastDiscard=null;this.lastActor=null;this.pending=null;
-    this.turnNo=0;this.anyCall=false;this.firstDiscards=[];this.kanCount=0;this.kanOwners=new Set();this._advance=0;this.ended=false;this.discardSerial=0;this.kanAbortPending=false;this.callSeq=0;this.lastCall=null;this.reactionPassed=new Set();
+    this.turnNo=0;this.anyCall=false;this.firstDiscards=[];this.kanCount=0;this.kanOwners=new Set();this._advance=0;this.ended=false;this.discardSerial=0;this.kanAbortPending=false;this.pendingKanDora=false;this.callSeq=0;this.lastCall=null;this.reactionPassed=new Set();
   }
   start(){
     this.players=Array.from({length:4},(_,seat)=>({
@@ -487,7 +487,7 @@ class Game{
     this.wall=[];for(const t of TYPES)for(let i=0;i<4;i++)this.wall.push(t);
     for(const [r,b] of Object.entries(RED)){const i=this.wall.indexOf(b);if(i>=0)this.wall[i]=r}
     shuffle(this.wall);this.dead=this.wall.splice(-14);this.rinshan=this.dead.slice(0,4);this.doraIndicators=[this.dead[4]];this.uraIndicators=[this.dead[5]];
-    this.current=this.dealer;this.turnNo=0;this.lastDiscard=null;this.lastActor=null;this.pending=null;this.phase='discard';this.anyCall=false;this.firstDiscards=[];this.kanCount=0;this.kanOwners=new Set();this.kanAbortPending=false;this.callSeq=0;this.lastCall=null;this.reactionPassed=new Set();
+    this.current=this.dealer;this.turnNo=0;this.lastDiscard=null;this.lastActor=null;this.pending=null;this.phase='discard';this.anyCall=false;this.firstDiscards=[];this.kanCount=0;this.kanOwners=new Set();this.kanAbortPending=false;this.pendingKanDora=false;this.callSeq=0;this.lastCall=null;this.reactionPassed=new Set();
     for(let s=0;s<4;s++){
       const p=this.players[s];p.wind=(s-this.dealer+4)%4;p.roundWind=Math.min(3,Math.floor(this.roundIndex/4));p.hand=[];p.melds=[];p.river=[];p.riichi=false;p.doubleRiichi=false;p.ippatsu=false;p.temporaryFuriten=false;p.riichiFuriten=false;p.forbidden=[];p.lastDraw=null;p.rinshanDraw=false;p.called=false;p.paoDaisangen=null;p.paoDaisuushii=null;
     }
@@ -525,6 +525,7 @@ class Game{
     p.rinshanDraw=false;
     const discard={id:++this.discardSerial,tile:out,riichi:declareRiichi,seat};
     p.river.push(discard);
+    if(this.pendingKanDora){this.revealKanDora();this.pendingKanDora=false;}
     p.forbidden=[];
     if(p.riichi&&!declareRiichi)p.ippatsu=false;
     if(p.river.length===1)this.firstDiscards.push(out);
@@ -533,7 +534,7 @@ class Game{
   }
   nextAfterNoCall(){const next=(this.lastActor+1)%4;this.draw(next);}
   lastRiverId(){const p=this.players[this.lastActor];return p?.river?.[p.river.length-1]?.id??null}
-  ronCandidates(){if(this.phase!=='reaction'||this.lastDiscard==null)return [];const out=[];for(let d=1;d<=3;d++){const seat=(this.lastActor+d)%4,p=this.players[seat];const waits=waitsFor(p);if(p.temporaryFuriten||p.riichiFuriten||waits.some(w=>p.river.some(r=>tileBase(r.tile)===tileBase(w))))continue;const score=calcWin(p,this.lastDiscard,{tsumo:false,seatWind:p.wind,roundWind:p.roundWind,doraIndicators:this.doraIndicators,uraIndicators:this.uraIndicators,houtei:this.wall.length===0});if(score.valid)out.push({seat,distance:d,score})}return out}
+  ronCandidates(){if(this.phase!=='reaction'||this.lastDiscard==null)return [];const out=[];for(let d=1;d<=3;d++){const seat=(this.lastActor+d)%4,p=this.players[seat];if(this.reactionPassed.has(seat))continue;const waits=waitsFor(p);if(p.temporaryFuriten||p.riichiFuriten||waits.some(w=>p.river.some(r=>tileBase(r.tile)===tileBase(w))))continue;const score=calcWin(p,this.lastDiscard,{tsumo:false,seatWind:p.wind,roundWind:p.roundWind,doraIndicators:this.doraIndicators,uraIndicators:this.uraIndicators,houtei:this.wall.length===0});if(score.valid)out.push({seat,distance:d,score})}return out}
   actionOptions(seat){
     if(this.phase!=='reaction'||this.lastDiscard==null)return {ron:false,pon:false,daiminkan:false,chi:[]};
     const p=this.players[seat],t=this.lastDiscard;if(!p||seat===this.lastActor)return {ron:false,pon:false,daiminkan:false,chi:[]};
@@ -651,10 +652,17 @@ class Game{
     if(type!=='ankan')p.called=true;
     p.lastDraw=null;
     p.forbidden=[];
-    this.revealKanDora();
+    if(type==='ankan')this.revealKanDora();
+    else this.pendingKanDora=true;
     this.kanAbortPending=this.kanCount===4&&this.kanOwners.size>1;
+    // Four-kan abort is declared immediately after the fourth kan; no rinshan draw
+    // or settlement occurs in this case.
+    if(this.kanAbortPending){
+      this.phase='abortive';
+      this.pending={reason:'四槓散了'};
+      return;
+    }
     this.draw(seat,true);
-    if(this.kanAbortPending&&this.phase!=='win')this.phase='discard';
   }
   kyuushukyuhai(seat){const p=this.players[seat];if(!p||p.called||p.river.length||this.anyCall||this.turnNo>4)return false;return new Set(p.hand.filter(isYao).map(tileBase)).size>=9}
   abortiveReason(){
@@ -714,21 +722,21 @@ class MahjongUI{
           <div class="fnm-wall fnm-wall-left" id="wallLeft"></div>
 
           <section class="fnm-seat fnm-seat-top">
-            <div class="fnm-card" id="card2"><i>西</i><b id="name2">AI 2</b><strong id="score2">25,000</strong></div>
+            <div class="fnm-card" id="card2"><i>西</i><b id="name2">AI 2</b><strong id="score2">25,000</strong><em class="fnm-card-riichi" hidden>リーチ</em></div>
             <div class="fnm-hand opp-top" id="hand2"></div>
             <div class="fnm-river river-top" id="river2"></div>
             <div class="fnm-meld meld-top" id="meld2"></div>
           </section>
 
           <section class="fnm-seat fnm-seat-left">
-            <div class="fnm-card" id="card3"><i>北</i><b id="name3">AI 3</b><strong id="score3">25,000</strong></div>
+            <div class="fnm-card" id="card3"><i>北</i><b id="name3">AI 3</b><strong id="score3">25,000</strong><em class="fnm-card-riichi" hidden>リーチ</em></div>
             <div class="fnm-hand opp-left" id="hand3"></div>
             <div class="fnm-river river-left" id="river3"></div>
             <div class="fnm-meld meld-left" id="meld3"></div>
           </section>
 
           <section class="fnm-seat fnm-seat-right">
-            <div class="fnm-card" id="card1"><i>南</i><b id="name1">AI 1</b><strong id="score1">25,000</strong></div>
+            <div class="fnm-card" id="card1"><i>南</i><b id="name1">AI 1</b><strong id="score1">25,000</strong><em class="fnm-card-riichi" hidden>リーチ</em></div>
             <div class="fnm-hand opp-right" id="hand1"></div>
             <div class="fnm-river river-right" id="river1"></div>
             <div class="fnm-meld meld-right" id="meld1"></div>
@@ -741,19 +749,22 @@ class MahjongUI{
           </section>
 
           <div class="fnm-center" id="center">
-            <div class="fnm-center-seat center-seat-top"><i id="centerWind2">西</i><b id="centerScore2">25,000</b></div>
-            <div class="fnm-center-seat center-seat-left"><i id="centerWind3">北</i><b id="centerScore3">25,000</b></div>
-            <div class="fnm-center-seat center-seat-right"><i id="centerWind1">南</i><b id="centerScore1">25,000</b></div>
-            <div class="fnm-center-seat center-seat-bottom"><i id="centerWind0">東</i><b id="centerScore0">25,000</b></div>
-            <div class="fnm-round">
+            <div class="fnm-center-topline">
               <strong id="roundText">東1局</strong>
               <span id="honbaText">0本場</span>
-              <span class="fnm-riichi-inline"><img src="./assets/images/mahjong_points_icon.png" alt="" draggable="false"><b id="stickCountText">×0</b></span>
+              <span class="fnm-kyotaku"><span class="fnm-stick-label">供託</span><span id="stickArea"></span></span>
             </div>
-            <div class="fnm-remain"><span>残り牌</span><b id="remainText">70</b></div>
-            <div class="fnm-dora-label">ドラ表示牌</div>
-            <div class="fnm-dora" id="doraArea"></div>
-            <div class="fnm-turn" id="turnText"></div>
+            <div class="fnm-center-meta">
+              <div class="fnm-remain"><span>残り牌</span><b id="remainText">70</b></div>
+              <div class="fnm-honba"><span id="honbaStickArea"></span></div>
+            </div>
+            <div class="fnm-scoregrid">
+              <div class="fnm-scoreitem" data-center-seat="2"><i id="centerWind2">西</i><b id="centerScore2">25,000</b><em id="centerRiichi2" class="fnm-riichi-badge" hidden>リーチ</em></div>
+              <div class="fnm-scoreitem" data-center-seat="3"><i id="centerWind3">北</i><b id="centerScore3">25,000</b><em id="centerRiichi3" class="fnm-riichi-badge" hidden>リーチ</em></div>
+              <div class="fnm-scoreitem" data-center-seat="0"><i id="centerWind0">東</i><b id="centerScore0">25,000</b><em id="centerRiichi0" class="fnm-riichi-badge" hidden>リーチ</em></div>
+              <div class="fnm-scoreitem" data-center-seat="1"><i id="centerWind1">南</i><b id="centerScore1">25,000</b><em id="centerRiichi1" class="fnm-riichi-badge" hidden>リーチ</em></div>
+            </div>
+            <div class="fnm-dora-block"><span>ドラ表示牌</span><div class="fnm-dora" id="doraArea"></div></div>
           </div>
 
           <div class="fnm-callcutin hidden" id="callCutin"></div>
@@ -828,12 +839,14 @@ class MahjongUI{
   schedule(){
     if(!this.running)return;
     if(this.timer)clearTimeout(this.timer);
+    const g=this.game;
+    const delay=g.phase==='reaction'?850:(g.phase==='discard'&&g.current!==0?1350:250);
     this.timer=setTimeout(()=>{
       if(!this.running)return;
       try{this.stepAI()}
       catch(err){console.error('[FORTUNE NOIR Mahjong]',err);this.showRuntimeError(err)}
       if(this.running)this.schedule();
-    },550);
+    },delay);
   }
 
   stepAI(){
@@ -1265,43 +1278,36 @@ class MahjongUI{
   riverGridPosition(s,i){
     const n=Math.min(17,Math.max(0,i));
     const row=Math.floor(n/6),col=n%6;
-    // Keep the discard order in each player's own local coordinate system.
-    // The four mappings are literal 0/90/270/180 degree table rotations.
-    if(s===0)return {col:col+1,row:row+1};              // self: left-top -> right-bottom
-    if(s===3)return {col:3-row,row:col+1};              // left seat: first at top-right
-    if(s===1)return {col:row+1,row:6-col};              // right seat: first at bottom-left
-    return {col:6-col,row:3-row};                       // top seat: first at bottom-right
+    // Every player gets the same local river order: left -> right, then next row.
+    // The entire river grid is rotated by CSS into that player's physical view.
+    return {col:col+1,row:row+1};
   }
 
   renderMeld(m,s){
     const raw=m.tiles.slice();
+    const calledTile=m.calledTile!=null?tileBase(m.calledTile):null;
     const calledIndex=m.type==='ankan'?-1:(m.calledAt??calledSlot(s,m.from??s));
     const addedIndex=m.addedIndex??-1;
     let slots=raw.slice();
 
-    if(m.type==='chi'){
-      const calledPos=Math.max(0,Math.min(2,calledIndex));
-      const called=raw.find(t=>tileBase(t)===tileBase(m.calledTile))??raw[raw.length-1];
+    if(m.type!=='ankan'&&calledTile!=null){
+      const actualIndex=raw.findIndex(t=>tileBase(t)===calledTile);
+      const called=actualIndex>=0?raw[actualIndex]:raw[raw.length-1];
       const rest=raw.slice();
-      const idx=rest.findIndex(t=>t===called);
+      const idx=rest.indexOf(called);
       if(idx>=0)rest.splice(idx,1);
       rest.sort((a,b)=>idOf(a)-idOf(b));
+      const pos=Math.max(0,Math.min(raw.length-1,calledIndex>=0?calledIndex:raw.length-1));
       slots=[];
-      for(let i=0;i<3;i++)slots.push(i===calledPos?called:rest.shift());
-    }else if(m.type!=='ankan'&&calledIndex>=0&&calledIndex<raw.length){
-      const called=raw[calledIndex];
-      const rest=raw.filter((_,i)=>i!==calledIndex);
-      slots=[];
-      for(let i=0;i<raw.length;i++)slots.push(i===calledIndex?called:rest.shift());
+      for(let i=0;i<raw.length;i++)slots.push(i===pos?called:rest.shift());
     }
 
-    // Keep the meld's tile order in the caller's local coordinate system. CSS maps
-    // that local direction to the physical top/right/bottom/left screen edge.
     return `<span class="fnm-meld-group ${esc(m.type)}">${slots.map((t,i)=>{
-      const isCalled=i===calledIndex&&m.type!=='ankan';
+      const pos=Math.max(0,Math.min(raw.length-1,calledIndex>=0?calledIndex:raw.length-1));
+      const isCalled=m.type!=='ankan'&&calledTile!=null&&i===pos;
       const isAdded=i===addedIndex;
-      const face=(m.type==='ankan'&&(i===0||i===3))?backTile():imageTile(t);
-      return `<span class="fnm-meld-tile${isCalled?' is-called':''}${isAdded?' is-added':''}" title="${isCalled?'鳴いた牌':''}">${face}</span>`;
+      const face=(m.type==='ankan'&&(i===0||i===raw.length-1))?backTile():imageTile(t);
+      return `<span class="fnm-meld-tile${isCalled?' is-called':''}${isAdded?' is-added':''}">${face}</span>`;
     }).join('')}</span>`;
   }
 
@@ -1311,26 +1317,39 @@ class MahjongUI{
     const num=(g.roundIndex%4)+1;
     $(this.host,'#roundText').textContent=`${wind}${num}局`;
     $(this.host,'#honbaText').textContent=`${g.honba}本場`;
-    $(this.host,'#stickCountText').textContent=`×${g.riichiSticks}`;
     $(this.host,'#remainText').textContent=fmt(g.wall.length);
+
+    const stickArea=$(this.host,'#stickArea');
+    if(stickArea){
+      stickArea.innerHTML=Array.from({length:g.riichiSticks},()=>'<img class="fnm-point-stick riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false">').join('');
+      stickArea.classList.toggle('has-sticks',g.riichiSticks>0);
+    }
+    const honbaArea=$(this.host,'#honbaStickArea');
+    if(honbaArea){
+      honbaArea.innerHTML=Array.from({length:g.honba},()=>'<img class="fnm-point-stick honba-stick" src="./assets/images/100.gif" alt="" draggable="false">').join('');
+    }
     $(this.host,'#doraArea').innerHTML=g.doraIndicators.map(t=>imageTile(t)).join('');
+
     for(let s=0;s<4;s++){
       const p=g.players[s];
+      const item=$(this.host,`[data-center-seat="${s}"]`);
       const w=$(this.host,`#centerWind${s}`);
       const score=$(this.host,`#centerScore${s}`);
-      if(w){
-        w.textContent=WINDS[p.wind];
-        w.parentElement.classList.toggle('is-self',s===0);
-        w.parentElement.classList.toggle('is-active',g.current===s);
+      const riichi=$(this.host,`#centerRiichi${s}`);
+      if(item){
+        item.classList.toggle('is-self',s===0);
+        item.classList.toggle('is-active',g.current===s);
+        item.classList.toggle('is-riichi',p.riichi);
       }
+      if(w)w.textContent=WINDS[p.wind];
       if(score)score.textContent=fmt(p.score);
+      if(riichi)riichi.hidden=!p.riichi;
+      const card=$(this.host,`#card${s}`);
+      if(card){
+        const badge=card.querySelector('.fnm-card-riichi');
+        if(badge)badge.hidden=!p.riichi;
+      }
     }
-    $(this.host,'#turnText').textContent=
-      g.phase==='reaction'?'ロン・鳴き選択':
-      g.phase==='win'?'和了':
-      g.phase==='drawEnd'?'流局':
-      g.phase==='abortive'?'途中流局':
-      g.current===0?'あなたの番':`${g.players[g.current].name}の番`;
   }
 
   renderActions(){
@@ -1341,11 +1360,8 @@ class MahjongUI{
   }
 
   renderPrompt(){
-    const g=this.game,el=$(this.host,'#prompt');
-    if(this.riichiMode)el.textContent='立直：宣言牌を選択';
-    else if(g.phase==='discard'&&g.current===0)el.textContent=pTxt(g.players[0]);
-    else if(g.phase==='reaction'&&this.humanActions().length)el.textContent='操作を選択';
-    else el.textContent='';
+    const el=$(this.host,'#prompt');
+    el.textContent=this.riichiMode?'立直：宣言牌を選択':'';
   }
 
   renderCallCutin(){
@@ -1505,13 +1521,31 @@ class MahjongUI{
   }
 
   applyDraw(){
-    const g=this.game,r=g.pending||{},ten=new Set(r.tenpai||[]),n=ten.size;
-    if(n&&n<4){
-      const gain=RULES.notenTotal/n,loss=RULES.notenTotal/(4-n);
-      for(const p of g.players)p.score+=ten.has(p.seat)?gain:-loss;
+    const g=this.game,r=g.pending||{},nagashi=[...(r.nagashi||[])],nagashiSet=new Set(nagashi),ten=new Set(r.tenpai||[]);
+    if(nagashi.length){
+      for(const seat of nagashi){
+        const p=g.players[seat];
+        if(p.wind===0){
+          const pay=4000;
+          for(const q of g.players)if(q.seat!==seat&&!nagashiSet.has(q.seat)){q.score-=pay;p.score+=pay}
+        }else{
+          const childPay=2000,dealerPay=4000;
+          for(const q of g.players){
+            if(q.seat===seat||nagashiSet.has(q.seat))continue;
+            const pay=q.wind===0?dealerPay:childPay;
+            q.score-=pay;p.score+=pay;
+          }
+        }
+      }
+    }else{
+      const n=ten.size;
+      if(n&&n<4){
+        const gain=RULES.notenTotal/n,loss=RULES.notenTotal/(4-n);
+        for(const p of g.players)p.score+=ten.has(p.seat)?gain:-loss;
+      }
     }
     if(g.players.some(p=>p.score<0)){g.endSession('飛び終了');return}
-    const dealerTen=ten.has(g.dealer);
+    const dealerTen=ten.has(g.dealer)||nagashiSet.has(g.dealer);
     const leader=Math.max(...g.players.map(p=>p.score));
     const south4=g.roundIndex===7,west4=g.roundIndex===11;
     if(south4&&dealerTen&&g.players[g.dealer].score>=RULES.firstRequiredPoints){g.endSession('テンパイやめ');return}

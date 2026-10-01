@@ -700,3 +700,78 @@
 /* When side melds become dense, allow the wall UI to disappear behind the play area. */
 .fn-mahjong-host .fnm-arena.hide-side-walls .fnm-wall-left,
 .fn-mahjong-host .fnm-arena.hide-side-walls .fnm-wall-right{opacity:0;visibility:hidden}
+
+
+/* 2026-10-01 Mahjong UI revision: dead-wall display off, local player perspective,
+   compact center panel, edge scores removed, clearer riichi, point-stick assets. */
+.fn-mahjong-host .fnm-wall{display:none!important}
+
+/* Every seat sees the table from its own local orientation. */
+.fn-mahjong-host .opp-top{left:50%;top:82px;flex-direction:row;transform:translateX(-50%) rotate(180deg)}
+.fn-mahjong-host .opp-left{left:115px;top:360px;flex-direction:row;transform:translate(-50%,-50%) rotate(90deg);transform-origin:center center}
+.fn-mahjong-host .opp-right{right:auto;left:1165px;top:360px;flex-direction:row;transform:translate(-50%,-50%) rotate(-90deg);transform-origin:center center}
+
+/* Rivers use one 6x3 local grid for all seats; the whole grid is rotated per seat. */
+.fn-mahjong-host .fnm-river{grid-template-columns:repeat(6,31px);grid-template-rows:repeat(3,41px);grid-auto-flow:row;width:186px;height:123px}
+.fn-mahjong-host .river-bottom{left:50%;top:auto;bottom:126px;transform:translateX(-50%)}
+.fn-mahjong-host .river-top{left:50%;top:174px;transform:translateX(-50%) rotate(180deg)}
+.fn-mahjong-host .river-left{left:116px;top:360px;width:186px;height:123px;grid-template-columns:repeat(6,31px);grid-template-rows:repeat(3,41px);grid-auto-flow:row;transform:translate(-50%,-50%) rotate(90deg);transform-origin:center center}
+.fn-mahjong-host .river-right{right:auto;left:1164px;top:360px;width:186px;height:123px;grid-template-columns:repeat(6,31px);grid-template-rows:repeat(3,41px);grid-auto-flow:row;transform:translate(-50%,-50%) rotate(-90deg);transform-origin:center center}
+.fn-mahjong-host .river-left .fnm-river-tile .fnm-tile,.fn-mahjong-host .river-right .fnm-river-tile .fnm-tile{transform:none}
+.fn-mahjong-host .fnm-river-tile.riichi-discard .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)!important}
+
+/* Melds are horizontal in each player's local frame; the group itself rotates with the seat. */
+.fn-mahjong-host .fnm-meld{gap:8px}
+.fn-mahjong-host .meld-bottom{left:auto;right:110px;top:auto;bottom:76px;flex-direction:row;transform:none}
+.fn-mahjong-host .meld-top{left:110px;right:auto;top:72px;bottom:auto;flex-direction:row;transform:rotate(180deg);transform-origin:center center}
+.fn-mahjong-host .meld-left{left:74px;right:auto;top:96px;bottom:auto;flex-direction:row;transform:rotate(90deg);transform-origin:center center}
+.fn-mahjong-host .meld-right{left:auto;right:74px;top:auto;bottom:96px;flex-direction:row;transform:rotate(-90deg);transform-origin:center center}
+.fn-mahjong-host .meld-bottom .fnm-meld-group,.fn-mahjong-host .meld-top .fnm-meld-group,.fn-mahjong-host .meld-left .fnm-meld-group,.fn-mahjong-host .meld-right .fnm-meld-group{flex-direction:row}
+.fn-mahjong-host .fnm-meld-tile.is-called .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)!important}
+
+/* Edge scores are removed; name/wind cards remain small unobtrusive seat markers. */
+.fn-mahjong-host .fnm-card strong{display:none!important}
+.fn-mahjong-host .fnm-card{width:150px;height:32px}
+.fn-mahjong-host .fnm-card-riichi{display:inline-grid;place-items:center;margin-left:auto;padding:2px 6px;border:1px solid #d96a5b;border-radius:4px;background:rgba(110,28,24,.72);color:#ffd8d2;font-size:9px;font-style:normal;font-weight:1000;letter-spacing:.06em}
+.fn-mahjong-host .fnm-card-riichi[hidden]{display:none!important}
+.fn-mahjong-host .fnm-card.riichi{border-color:#df7568;box-shadow:0 0 0 2px rgba(220,86,73,.22),0 6px 17px rgba(0,0,0,.34)}
+
+/* Central information panel: all four scores live inside it, not around the arena. */
+.fn-mahjong-host .fnm-center{width:310px;height:252px;border-radius:17px;background:linear-gradient(180deg,rgba(8,22,33,.985),rgba(2,9,15,.995));box-shadow:0 18px 42px rgba(0,0,0,.55),inset 0 1px rgba(255,255,255,.08),inset 0 0 0 1px rgba(233,205,98,.08)}
+.fn-mahjong-host .fnm-center::before{top:52px;left:18px;right:18px}
+.fn-mahjong-host .fnm-center::after{bottom:58px;left:18px;right:18px}
+.fn-mahjong-host .fnm-center-topline{position:absolute;left:16px;right:16px;top:13px;height:32px;display:flex;align-items:center;justify-content:center;gap:10px}
+.fn-mahjong-host .fnm-center-topline>strong{font-size:26px;line-height:1;color:#fff;letter-spacing:.02em;text-shadow:0 2px 12px rgba(0,0,0,.55)}
+.fn-mahjong-host .fnm-center-topline>#honbaText{font-size:11px;color:#d1dde4;font-weight:900}
+.fn-mahjong-host .fnm-kyotaku{display:flex;align-items:center;gap:5px;min-width:66px;justify-content:center}
+.fn-mahjong-host .fnm-stick-label{font-size:8px;color:#8fa3ad;font-weight:900}
+.fn-mahjong-host #stickArea{display:flex;gap:3px;align-items:center;max-width:90px;overflow:hidden}
+.fn-mahjong-host .fnm-point-stick{display:block;object-fit:contain;flex:0 0 auto;height:auto}
+.fn-mahjong-host .riichi-stick{width:34px;height:4px}
+.fn-mahjong-host .fnm-center-meta{position:absolute;left:16px;right:16px;top:61px;height:28px;display:flex;align-items:center;justify-content:space-between}
+.fn-mahjong-host .fnm-remain{position:static;display:flex;align-items:baseline;gap:7px;color:#8ba0aa;font-size:9px;font-weight:900;letter-spacing:.06em}
+.fn-mahjong-host .fnm-remain b{font-size:22px;color:#f4f7f8;letter-spacing:0;line-height:1}
+.fn-mahjong-host .fnm-honba{height:18px;display:flex;align-items:center;max-width:132px;overflow:hidden}
+.fn-mahjong-host #honbaStickArea{display:flex;gap:3px;align-items:center;flex-wrap:nowrap;overflow:hidden}
+.fn-mahjong-host .honba-stick{width:29px;height:3px}
+.fn-mahjong-host .fnm-scoregrid{position:absolute;left:16px;right:16px;top:95px;height:88px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6px}
+.fn-mahjong-host .fnm-scoreitem{position:relative;display:grid;grid-template-columns:23px 1fr auto;align-items:center;gap:6px;padding:0 8px;border:1px solid rgba(210,226,239,.14);border-radius:7px;background:rgba(255,255,255,.035);min-width:0}
+.fn-mahjong-host .fnm-scoreitem.is-active{border-color:#e8cc67;box-shadow:inset 0 0 0 1px rgba(232,204,103,.18)}
+.fn-mahjong-host .fnm-scoreitem.is-riichi{border-color:rgba(216,92,80,.7);box-shadow:inset 0 0 0 1px rgba(216,92,80,.12)}
+.fn-mahjong-host .fnm-scoreitem.is-self{background:rgba(232,205,100,.07)}
+.fn-mahjong-host .fnm-scoreitem>i{display:grid;place-items:center;width:21px;height:21px;border-radius:50%;background:#39566d;color:#fff;font-style:normal;font-size:10px;font-weight:1000}
+.fn-mahjong-host .fnm-scoreitem.is-self>i{background:linear-gradient(180deg,#eed775,#ad8128);color:#171107}
+.fn-mahjong-host .fnm-scoreitem>b{font-size:13px;color:#fff;text-align:left;white-space:nowrap}
+.fn-mahjong-host .fnm-riichi-badge{padding:2px 4px;border:1px solid #d9695b;border-radius:4px;background:rgba(115,31,26,.82);color:#ffd8d3;font-style:normal;font-size:7px;font-weight:1000;letter-spacing:.02em}
+.fn-mahjong-host .fnm-riichi-badge[hidden]{display:none!important}
+.fn-mahjong-host .fnm-dora-block{position:absolute;left:16px;right:16px;bottom:10px;height:43px;display:flex;align-items:center;justify-content:center;gap:9px}
+.fn-mahjong-host .fnm-dora-block>span{font-size:8px;color:#8ea1ab;font-weight:900;letter-spacing:.08em}
+.fn-mahjong-host .fnm-dora{position:static;height:33px;display:flex;align-items:center;justify-content:flex-start;gap:2px}
+.fn-mahjong-host .fnm-dora .fnm-tile{width:24px;height:31px}
+.fn-mahjong-host .fnm-turn{display:none!important}
+.fn-mahjong-host .fnm-prompt{display:none!important}
+
+/* Local orientation also applies to the call announcement tile row. */
+.fn-mahjong-host .fnm-callcutin.seat-2{transform:translateY(-50%) rotate(90deg)}
+.fn-mahjong-host .fnm-callcutin.seat-1{transform:translateY(-50%) rotate(-90deg)}
+.fn-mahjong-host .fnm-callcutin.seat-3{transform:translateX(-50%) rotate(180deg)}
