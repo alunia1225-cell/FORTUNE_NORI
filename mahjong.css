@@ -775,3 +775,182 @@
 .fn-mahjong-host .fnm-callcutin.seat-2{transform:translateY(-50%) rotate(90deg)}
 .fn-mahjong-host .fnm-callcutin.seat-1{transform:translateY(-50%) rotate(-90deg)}
 .fn-mahjong-host .fnm-callcutin.seat-3{transform:translateX(-50%) rotate(180deg)}
+
+/* 2026-10-01 / Mahjong table cleanup v2
+   - remove edge player score/name cards
+   - compact the center like the reference table
+   - keep every river in the same 6x3 local order, rotated only as a table view
+   - keep meld groups inside the arena even at 3-4 open melds
+   - local player's hand shifts right to leave room for melds
+*/
+.fn-mahjong-host .fnm-card{display:none!important}
+
+/* Keep the rivers as a local 6 x 3 grid for every player.
+   Screen rotation is applied to the whole grid, not individual tile faces. */
+.fn-mahjong-host .fnm-river{
+  grid-template-columns:repeat(6,30px);
+  grid-template-rows:repeat(3,40px);
+  width:180px;
+  height:120px;
+  gap:0;
+}
+.fn-mahjong-host .fnm-river-tile{width:30px;height:40px}
+.fn-mahjong-host .fnm-river-tile .fnm-tile{width:30px;height:40px}
+.fn-mahjong-host .river-bottom{left:50%;top:auto;bottom:128px;transform:translateX(-50%)}
+.fn-mahjong-host .river-top{left:50%;top:170px;transform:translateX(-50%) rotate(180deg)}
+.fn-mahjong-host .river-left{left:116px;top:360px;width:180px;height:120px;transform:translate(-50%,-50%) rotate(90deg)}
+.fn-mahjong-host .river-right{left:1164px;right:auto;top:360px;width:180px;height:120px;transform:translate(-50%,-50%) rotate(-90deg)}
+
+/* Compact, local-positioned meld zones. Four groups fit without leaving the arena. */
+.fn-mahjong-host .fnm-meld{
+  display:flex;
+  flex-wrap:nowrap;
+  gap:6px;
+  overflow:visible;
+  max-width:none;
+}
+.fn-mahjong-host .fnm-meld-group{gap:0;flex:0 0 auto}
+.fn-mahjong-host .fnm-meld-tile,
+.fn-mahjong-host .fnm-meld-tile .fnm-tile,
+.fn-mahjong-host .fnm-meld-tile .fnm-back{width:30px;height:40px}
+.fn-mahjong-host .meld-bottom{
+  left:48px;right:auto;bottom:78px;top:auto;
+  flex-direction:row;
+}
+.fn-mahjong-host .meld-top{
+  left:48px;right:auto;top:68px;bottom:auto;
+  flex-direction:row;
+  transform:rotate(180deg);
+  transform-origin:center center;
+}
+.fn-mahjong-host .meld-left{
+  left:28px;right:auto;top:340px;bottom:auto;
+  flex-direction:row;
+  transform:rotate(90deg);
+  transform-origin:center center;
+}
+.fn-mahjong-host .meld-right{
+  left:auto;right:28px;top:auto;bottom:340px;
+  flex-direction:row;
+  transform:rotate(-90deg);
+  transform-origin:center center;
+}
+.fn-mahjong-host .meld-bottom .fnm-meld-group,
+.fn-mahjong-host .meld-top .fnm-meld-group,
+.fn-mahjong-host .meld-left .fnm-meld-group,
+.fn-mahjong-host .meld-right .fnm-meld-group{flex-direction:row}
+
+/* Preserve the physical 90-degree marker that identifies the source of a call. */
+.fn-mahjong-host .fnm-meld-tile.is-called .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)!important}
+.fn-mahjong-host .meld-top .fnm-meld-tile.is-called .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)!important}
+.fn-mahjong-host .meld-left .fnm-meld-tile.is-called .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)!important}
+.fn-mahjong-host .meld-right .fnm-meld-tile.is-called .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)!important}
+
+/* Bottom hand moves only when open melds exist. */
+.fn-mahjong-host .fnm-seat-bottom.has-melds .fnm-self-hand{
+  transform:translateX(calc(-50% + var(--meld-shift,40px)));
+}
+
+/* The center follows the compact reference: round in the middle, four small score
+   markers around it, visible remaining tiles, and point-stick images. */
+.fn-mahjong-host .fnm-center{
+  width:198px;
+  height:188px;
+  border-radius:15px;
+  background:
+    linear-gradient(180deg,rgba(8,20,31,.985),rgba(2,8,14,.995));
+  box-shadow:0 12px 28px rgba(0,0,0,.52),inset 0 1px rgba(255,255,255,.07),inset 0 0 0 1px rgba(233,205,98,.08);
+}
+.fn-mahjong-host .fnm-center::before{top:41px;left:13px;right:13px}
+.fn-mahjong-host .fnm-center::after{bottom:39px;left:13px;right:13px}
+.fn-mahjong-host .fnm-center-topline{
+  left:28px;right:28px;top:12px;height:25px;gap:7px;
+}
+.fn-mahjong-host .fnm-center-topline>strong{font-size:19px}
+.fn-mahjong-host .fnm-center-topline>#honbaText{
+  font-size:8px;color:#d7e0e6;font-weight:900;
+}
+.fn-mahjong-host .fnm-kyotaku{min-width:42px;gap:3px}
+.fn-mahjong-host .fnm-stick-label{font-size:6px;color:#8397a2}
+.fn-mahjong-host #stickArea{gap:1px;max-width:54px}
+.fn-mahjong-host .riichi-stick{width:23px;height:3px}
+.fn-mahjong-host .fnm-center-meta{
+  left:0;right:0;top:48px;height:31px;justify-content:center;
+}
+.fn-mahjong-host .fnm-remain{
+  gap:5px;color:#93a7b1;font-size:8px;letter-spacing:.02em;
+}
+.fn-mahjong-host .fnm-remain b{
+  font-size:27px;line-height:1;color:#fff;
+}
+.fn-mahjong-host .fnm-honba{display:none}
+.fn-mahjong-host .fnm-scoregrid{position:absolute;inset:0;display:block;height:auto}
+.fn-mahjong-host .fnm-scoreitem{
+  position:absolute;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  width:78px;
+  height:22px;
+  padding:0 4px;
+  border:0;
+  border-radius:6px;
+  background:rgba(255,255,255,.025);
+  box-shadow:none;
+}
+.fn-mahjong-host .fnm-scoreitem.is-riichi{
+  border:1px solid rgba(224,89,73,.62);
+  background:rgba(106,24,20,.24);
+  box-shadow:0 0 10px rgba(221,69,52,.16);
+}
+.fn-mahjong-host .fnm-scoreitem.is-active{box-shadow:0 0 0 1px rgba(232,204,103,.55)}
+.fn-mahjong-host .fnm-scoreitem.is-self{background:rgba(232,205,100,.08)}
+.fn-mahjong-host .fnm-scoreitem>i{
+  width:18px;height:18px;flex:0 0 18px;font-size:9px;
+}
+.fn-mahjong-host .fnm-scoreitem>b{
+  font-size:10px;line-height:1;font-weight:900;
+}
+.fn-mahjong-host .fnm-riichi-badge{
+  padding:1px 3px;border-radius:3px;font-size:6px;line-height:1;
+}
+.fn-mahjong-host [data-center-seat="2"]{left:50%;top:4px;transform:translateX(-50%)}
+.fn-mahjong-host [data-center-seat="1"]{right:2px;top:50%;transform:translateY(-50%)}
+.fn-mahjong-host [data-center-seat="0"]{left:50%;bottom:4px;transform:translateX(-50%)}
+.fn-mahjong-host [data-center-seat="3"]{left:2px;top:50%;transform:translateY(-50%)}
+.fn-mahjong-host .fnm-scoreitem.is-riichi::after{
+  content:"";
+  position:absolute;
+  width:4px;height:4px;border-radius:50%;
+  background:#eb7568;
+  box-shadow:0 0 7px rgba(236,91,77,.75);
+}
+.fn-mahjong-host [data-center-seat="2"].is-riichi::after,
+.fn-mahjong-host [data-center-seat="0"].is-riichi::after{right:5px;top:4px}
+.fn-mahjong-host [data-center-seat="1"].is-riichi::after,
+.fn-mahjong-host [data-center-seat="3"].is-riichi::after{right:5px;top:50%;transform:translateY(-50%)}
+.fn-mahjong-host .fnm-dora-block{
+  left:15px;right:15px;bottom:11px;height:30px;gap:5px;
+}
+.fn-mahjong-host .fnm-dora-block>span{font-size:6px;letter-spacing:.06em}
+.fn-mahjong-host .fnm-dora{height:27px;gap:1px}
+.fn-mahjong-host .fnm-dora .fnm-tile{width:19px;height:25px}
+
+/* No textual prompt such as "あなたの番" over the table. */
+.fn-mahjong-host .fnm-prompt{display:none!important}
+
+/* Exhaustive-draw reveal state: only tenpai hands are face-up. */
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .fnm-hand{visibility:visible}
+
+/* Fine alignment of the compact center so score markers, round text, remaining tiles,
+   dora and 100-point honba sticks never overlap. */
+.fn-mahjong-host .fnm-center::before{top:56px}
+.fn-mahjong-host .fnm-center::after{bottom:28px}
+.fn-mahjong-host .fnm-center-topline{left:28px;right:28px;top:28px;height:24px}
+.fn-mahjong-host .fnm-center-meta{left:50%;right:auto;top:64px;width:86px;height:31px;transform:translateX(-50%)}
+.fn-mahjong-host .fnm-dora-block{bottom:31px;height:25px}
+.fn-mahjong-host .fnm-dora{height:25px}
+.fn-mahjong-host .fnm-dora .fnm-tile{width:18px;height:24px}
+.fn-mahjong-host [data-center-seat="2"]{top:3px}
+.fn-mahjong-host [data-center-seat="0"]{bottom:3px}

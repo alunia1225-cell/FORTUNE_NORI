@@ -502,7 +502,7 @@ class Game{
       t=this.rinshan.shift();
       if(t&&this.wall.length)this.rinshan.push(this.wall.shift());
     }else t=this.wall.shift();
-    if(!t){this.phase='drawEnd';return null}
+    if(!t){this.exhaustive();return null}
     p.hand.push(t);p.hand=sortTiles(p.hand);p.lastDraw=t;p.rinshanDraw=!!rinshan;p.temporaryFuriten=false;this.current=seat;this.phase='discard';this.turnNo++;
     if(rinshan&&this.kanAbortPending){
       const w=calcWin(p,t,{tsumo:true,seatWind:p.wind,roundWind:p.roundWind,doraIndicators:this.doraIndicators,uraIndicators:this.uraIndicators,rinshan:true,haitei:false});
@@ -534,7 +534,35 @@ class Game{
   }
   nextAfterNoCall(){const next=(this.lastActor+1)%4;this.draw(next);}
   lastRiverId(){const p=this.players[this.lastActor];return p?.river?.[p.river.length-1]?.id??null}
-  ronCandidates(){if(this.phase!=='reaction'||this.lastDiscard==null)return [];const out=[];for(let d=1;d<=3;d++){const seat=(this.lastActor+d)%4,p=this.players[seat];if(this.reactionPassed.has(seat))continue;const waits=waitsFor(p);if(p.temporaryFuriten||p.riichiFuriten||waits.some(w=>p.river.some(r=>tileBase(r.tile)===tileBase(w))))continue;const score=calcWin(p,this.lastDiscard,{tsumo:false,seatWind:p.wind,roundWind:p.roundWind,doraIndicators:this.doraIndicators,uraIndicators:this.uraIndicators,houtei:this.wall.length===0});if(score.valid)out.push({seat,distance:d,score})}return out}
+  ronScore(seat){
+    if(this.phase!=='reaction'||this.lastDiscard==null||this.lastActor==null)return null;
+    const p=this.players[seat];
+    if(!p||seat===this.lastActor||this.reactionPassed.has(seat))return null;
+    if(p.temporaryFuriten||p.riichiFuriten)return null;
+    // Permanent furiten: a player cannot Ron on a tile type already present in their river.
+    if(p.river.some(r=>tileBase(r.tile)===tileBase(this.lastDiscard)))return null;
+    const score=calcWin(p,this.lastDiscard,{
+      tsumo:false,
+      seatWind:p.wind,
+      roundWind:p.roundWind,
+      doraIndicators:this.doraIndicators,
+      uraIndicators:this.uraIndicators,
+      houtei:this.wall.length===0
+    });
+    // Ron must have a real yaku. Dora/red-dora alone are not a yaku and cannot enable a Ron.
+    const hasYaku=!!score?.valid&&Array.isArray(score.yaku)&&score.yaku.some(y=>!['ドラ','裏ドラ','赤ドラ'].includes(y.name));
+    return score?.valid&&hasYaku?score:null;
+  }
+  ronCandidates(){
+    if(this.phase!=='reaction'||this.lastDiscard==null||this.lastActor==null)return [];
+    const out=[];
+    for(let d=1;d<=3;d++){
+      const seat=(this.lastActor+d)%4;
+      const score=this.ronScore(seat);
+      if(score)out.push({seat,distance:d,score});
+    }
+    return out;
+  }
   actionOptions(seat){
     if(this.phase!=='reaction'||this.lastDiscard==null)return {ron:false,pon:false,daiminkan:false,chi:[]};
     const p=this.players[seat],t=this.lastDiscard;if(!p||seat===this.lastActor)return {ron:false,pon:false,daiminkan:false,chi:[]};
@@ -840,7 +868,7 @@ class MahjongUI{
     if(!this.running)return;
     if(this.timer)clearTimeout(this.timer);
     const g=this.game;
-    const delay=g.phase==='reaction'?850:(g.phase==='discard'&&g.current!==0?1350:250);
+    const delay=g.phase==='reaction'?1200:(g.phase==='discard'&&g.current!==0?1800:250);
     this.timer=setTimeout(()=>{
       if(!this.running)return;
       try{this.stepAI()}
@@ -1252,13 +1280,17 @@ class MahjongUI{
       const hand=$(this.host,`#hand${s}`);
       const meld=$(this.host,`#meld${s}`);
       const river=$(this.host,`#river${s}`);
+      const seatEl=card?.closest('.fnm-seat') || hand?.closest('.fnm-seat');
+      seatEl?.classList.toggle('has-melds',p.melds.length>0);
+      seatEl?.style.setProperty('--meld-count',String(p.melds.length));
+      seatEl?.style.setProperty('--meld-shift',`${Math.min(155,40+(p.melds.length*38))}px`);
       meld.innerHTML=p.melds.map(m=>this.renderMeld(m,s)).join('');
       river.innerHTML=p.river.map((r,i)=>{
         const pos=this.riverGridPosition(s,i);
         return `<span class="fnm-river-tile${r.riichi?' riichi-discard':''}${r.id===g.discardSerial?' last':''}" style="grid-column:${pos.col};grid-row:${pos.row}">${imageTile(r.tile)}</span>`;
       }).join('');
 
-      if(s===0){
+      if(s===0 && g.phase!=='drawEnd'){
         const entries=p.hand.map((t,i)=>({t,i}));
         const drawIndex=p.lastDraw==null?-1:[...entries].map((x)=>x.t===p.lastDraw?x.i:-1).filter(i=>i>=0).pop()??-1;
         hand.innerHTML=entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
@@ -1269,7 +1301,10 @@ class MahjongUI{
           hand.innerHTML+=`<button class="fnm-hand-tile fnm-tsumo" data-hand-index="${drawIndex}">${imageTile(t)}</button>`;
         }
       }else{
-        hand.innerHTML=Array.from({length:p.hand.length},()=>backTile()).join('');
+        const reveal= g.phase==='drawEnd' && (g.pending?.tenpai||[]).includes(s);
+        hand.innerHTML=reveal
+          ? p.hand.map(t=>imageTile(t)).join('')
+          : Array.from({length:p.hand.length},()=>backTile()).join('');
       }
     }
   }
@@ -1316,7 +1351,7 @@ class MahjongUI{
     const wind=g.roundIndex<4?'東':g.roundIndex<8?'南':'西';
     const num=(g.roundIndex%4)+1;
     $(this.host,'#roundText').textContent=`${wind}${num}局`;
-    $(this.host,'#honbaText').textContent=`${g.honba}本場`;
+    $(this.host,'#honbaText').textContent=g.honba>0?`${g.honba}本場`:'0本場';
     $(this.host,'#remainText').textContent=fmt(g.wall.length);
 
     const stickArea=$(this.host,'#stickArea');
