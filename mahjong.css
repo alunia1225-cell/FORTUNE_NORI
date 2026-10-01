@@ -1,0 +1,702 @@
+:root{color-scheme:dark}
+
+#modalContent.fn-mahjong-host{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  width:100dvw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  min-width:100vw!important;
+  min-width:100dvw!important;
+  min-height:100vh!important;
+  min-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#07111a!important;
+}
+
+.fn-mahjong-host .fnm-root{
+  position:fixed;
+  inset:0;
+  width:100vw;
+  width:100dvw;
+  height:100vh;
+  height:100dvh;
+  overflow:hidden;
+  box-sizing:border-box;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background:radial-gradient(circle at 50% 45%,#203d57 0,#102333 58%,#071016 100%);
+  color:#fff;
+  font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  user-select:none;
+  -webkit-user-select:none;
+  touch-action:none;
+  overscroll-behavior:none;
+  -webkit-text-size-adjust:100%;
+}
+
+.fn-mahjong-host .fnm-arena{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:1280px;
+  height:720px;
+  transform:translate(-50%,-50%) scale(var(--scale,1));
+  transform-origin:center center;
+  overflow:hidden;
+}
+
+.fn-mahjong-host .fnm-table{
+  position:absolute;
+  left:38px;
+  top:22px;
+  width:1204px;
+  height:676px;
+  box-sizing:border-box;
+  border:8px solid #42586a;
+  border-radius:18px;
+  background:linear-gradient(180deg,#29577d 0,#214a6d 48%,#193a58 100%);
+  box-shadow:0 24px 60px rgba(0,0,0,.55),inset 0 0 0 2px rgba(255,255,255,.08);
+  pointer-events:none;
+}
+.fn-mahjong-host .fnm-inner{
+  position:absolute;
+  left:72px;
+  top:56px;
+  width:1136px;
+  height:608px;
+  box-sizing:border-box;
+  border:2px solid rgba(222,235,246,.1);
+  border-radius:10px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,0)),
+    radial-gradient(circle at 50% 48%,rgba(67,127,171,.25),rgba(20,55,81,.05) 68%);
+  pointer-events:none;
+}
+
+/* Player HUD */
+.fn-mahjong-host .fnm-seat{
+  position:absolute;
+  inset:0;
+  z-index:20;
+  pointer-events:none;
+}
+.fn-mahjong-host .fnm-card{
+  position:absolute;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  width:176px;
+  height:34px;
+  padding:0 10px;
+  box-sizing:border-box;
+  border:1px solid rgba(219,231,241,.3);
+  border-radius:7px;
+  background:linear-gradient(180deg,rgba(15,25,34,.95),rgba(7,14,20,.96));
+  box-shadow:0 5px 13px rgba(0,0,0,.32);
+  font-size:12px;
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-card.active{
+  border-color:#f0cf63;
+  box-shadow:0 0 0 1px rgba(240,207,99,.22),0 6px 16px rgba(0,0,0,.35);
+}
+.fn-mahjong-host .fnm-card.riichi{border-color:#d9695a}
+.fn-mahjong-host .fnm-card i{
+  display:grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
+  border-radius:50%;
+  background:#385269;
+  color:#fff;
+  font-style:normal;
+  font-size:10px;
+  font-weight:900;
+}
+.fn-mahjong-host .fnm-seat-bottom .fnm-card i{background:#d2a537;color:#181208}
+.fn-mahjong-host .fnm-card b{overflow:hidden;text-overflow:ellipsis;font-weight:900}
+.fn-mahjong-host .fnm-card strong{margin-left:auto;font-size:12px}
+.fn-mahjong-host .fnm-seat-top .fnm-card{left:50%;top:5px;transform:translateX(-50%)}
+.fn-mahjong-host .fnm-seat-left .fnm-card{left:8px;top:250px}
+.fn-mahjong-host .fnm-seat-right .fnm-card{right:8px;top:250px}
+.fn-mahjong-host .fnm-seat-bottom .fnm-card{display:none!important}
+
+/* Wall: physically consistent 17 stacks per side. */
+.fn-mahjong-host .fnm-wall{
+  position:absolute;
+  z-index:6;
+  display:flex;
+  gap:0;
+  pointer-events:none;
+}
+.fn-mahjong-host .fnm-wall-top,
+.fn-mahjong-host .fnm-wall-bottom{
+  left:50%;
+  width:510px;
+  height:26px;
+  transform:translateX(-50%);
+}
+.fn-mahjong-host .fnm-wall-top{top:51px}
+.fn-mahjong-host .fnm-wall-bottom{bottom:47px}
+.fn-mahjong-host .fnm-wall-left,
+.fn-mahjong-host .fnm-wall-right{
+  top:103px;
+  width:26px;
+  height:510px;
+  flex-direction:column;
+}
+.fn-mahjong-host .fnm-wall-left{left:75px}
+.fn-mahjong-host .fnm-wall-right{right:75px}
+
+.fn-mahjong-host .fnm-stack{
+  position:relative;
+  width:30px;
+  height:26px;
+  flex:0 0 30px;
+}
+.fn-mahjong-host .fnm-wall-left .fnm-stack,
+.fn-mahjong-host .fnm-wall-right .fnm-stack{
+  width:26px;
+  height:30px;
+  flex-basis:30px;
+}
+.fn-mahjong-host .fnm-stack i{
+  position:absolute;
+  left:0;
+  right:0;
+  height:50%;
+  box-sizing:border-box;
+  border:1px solid #8c6a43;
+  border-radius:2px;
+  background:linear-gradient(180deg,#ebbd76 0,#c7853b 68%,#9c5e27 100%);
+  box-shadow:0 1px 0 #643c1f,inset 0 1px rgba(255,243,213,.65);
+}
+.fn-mahjong-host .fnm-stack i:first-child{top:0}
+.fn-mahjong-host .fnm-stack i:last-child{top:50%}
+
+/* Concealed hands */
+.fn-mahjong-host .fnm-hand{
+  position:absolute;
+  z-index:30;
+  display:flex;
+  gap:0;
+  line-height:0;
+}
+.fn-mahjong-host .opp-top{
+  left:50%;
+  top:82px;
+  transform:translateX(-50%) rotate(180deg);
+}
+.fn-mahjong-host .opp-left{
+  left:96px;
+  top:125px;
+  flex-direction:column;
+}
+.fn-mahjong-host .opp-right{
+  right:96px;
+  top:125px;
+  flex-direction:column;
+}
+.fn-mahjong-host .fnm-back{
+  position:relative;
+  display:block;
+  width:29px;
+  height:40px;
+  flex:0 0 auto;
+  box-sizing:border-box;
+  border:1px solid #93836b;
+  border-radius:3px;
+  background:linear-gradient(180deg,#f0e1c6,#c9b798);
+  box-shadow:0 1px 3px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.9);
+}
+.fn-mahjong-host .opp-left .fnm-back,
+.fn-mahjong-host .opp-right .fnm-back{width:30px;height:40px}
+.fn-mahjong-host .fnm-back::after{
+  content:"";
+  position:absolute;
+  inset:4px;
+  border:1px solid rgba(65,91,112,.36);
+  border-radius:2px;
+  background:linear-gradient(145deg,#345877,#203d56);
+  box-shadow:inset 0 0 0 2px rgba(0,0,0,.08);
+}
+
+.fn-mahjong-host .fnm-tile{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  pointer-events:none;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.24));
+}
+
+/* Rivers follow the player's own left-to-right discard order. Side rivers are 3 columns x 6 rows; tile faces stay upright like Mahjong Soul. */
+.fn-mahjong-host .fnm-river{
+  position:absolute;
+  z-index:32;
+  display:grid;
+  grid-template-columns:repeat(6,31px);
+  grid-template-rows:repeat(3,41px);
+  grid-auto-flow:row;
+  gap:0;
+  width:186px;
+  height:123px;
+  padding:0;
+  margin:0;
+  line-height:0;
+}
+.fn-mahjong-host .river-top{
+  left:50%;
+  top:176px;
+  transform:translateX(-50%);
+}
+.fn-mahjong-host .river-bottom{
+  left:50%;
+  bottom:116px;
+  transform:translateX(-50%);
+}
+.fn-mahjong-host .river-left{
+  left:126px;
+  top:267px;
+  width:93px;
+  height:246px;
+  grid-template-columns:repeat(3,31px);
+  grid-template-rows:repeat(6,41px);
+  grid-auto-flow:column;
+}
+.fn-mahjong-host .river-right{
+  right:126px;
+  top:267px;
+  width:93px;
+  height:246px;
+  grid-template-columns:repeat(3,31px);
+  grid-template-rows:repeat(6,41px);
+  grid-auto-flow:column;
+}
+.fn-mahjong-host .fnm-river-tile{
+  position:relative;
+  display:flex;
+  overflow:visible;
+  align-items:center;
+  justify-content:center;
+  width:31px;
+  height:41px;
+  padding:0;
+  margin:0;
+  line-height:0;
+}
+.fn-mahjong-host .fnm-river-tile .fnm-tile{width:31px;height:41px}
+
+.fn-mahjong-host .river-left .fnm-river-tile .fnm-tile,
+.fn-mahjong-host .river-right .fnm-river-tile .fnm-tile{transform:none;}
+
+.fn-mahjong-host .fnm-river-tile.last::after{
+  content:"";
+  position:absolute;
+  inset:1px;
+  border:2px solid #f1d065;
+  border-radius:2px;
+  pointer-events:none;
+}
+.fn-mahjong-host .fnm-river-tile.riichi-discard{z-index:4;overflow:visible}
+.fn-mahjong-host .fnm-river-tile.riichi-discard .fnm-tile{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:31px;
+  height:41px;
+  object-fit:contain;
+}
+.fn-mahjong-host .river-bottom .fnm-river-tile.riichi-discard .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)}
+.fn-mahjong-host .river-top .fnm-river-tile.riichi-discard .fnm-tile{transform:translate(-50%,-50%) rotate(-90deg)}
+.fn-mahjong-host .river-left .fnm-river-tile.riichi-discard .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)}
+.fn-mahjong-host .river-right .fnm-river-tile.riichi-discard .fnm-tile{transform:translate(-50%,-50%) rotate(-90deg)}
+
+/* Melds: each caller's local right edge. Tile groups also retain the caller's local direction. */
+.fn-mahjong-host .fnm-meld{
+  position:absolute;
+  z-index:36;
+  display:flex;
+  gap:7px;
+  pointer-events:none;
+  align-items:flex-start;
+  overflow:visible;
+}
+.fn-mahjong-host .meld-bottom{
+  left:auto;
+  right:112px;
+  bottom:74px;
+  flex-direction:row;
+}
+.fn-mahjong-host .meld-top{
+  left:112px;
+  right:auto;
+  top:70px;
+  flex-direction:row-reverse;
+}
+.fn-mahjong-host .meld-left{
+  left:104px;
+  top:auto;
+  bottom:78px;
+  flex-direction:column;
+}
+.fn-mahjong-host .meld-right{
+  right:104px;
+  top:78px;
+  bottom:auto;
+  flex-direction:column-reverse;
+}
+.fn-mahjong-host .fnm-meld-group{
+  display:flex;
+  gap:0;
+  align-items:flex-end;
+  flex:0 0 auto;
+}
+.fn-mahjong-host .meld-bottom .fnm-meld-group{flex-direction:row}
+.fn-mahjong-host .meld-top .fnm-meld-group{flex-direction:row-reverse}
+.fn-mahjong-host .meld-left .fnm-meld-group{flex-direction:column}
+.fn-mahjong-host .meld-right .fnm-meld-group{flex-direction:column-reverse}
+.fn-mahjong-host .fnm-meld-tile{
+  position:relative;
+  display:block;
+  width:30px;
+  height:40px;
+  flex:0 0 30px;
+  overflow:visible;
+}
+.fn-mahjong-host .fnm-meld-tile .fnm-tile,
+.fn-mahjong-host .fnm-meld-tile .fnm-back{
+  width:30px;
+  height:40px;
+  object-fit:contain;
+}
+.fn-mahjong-host .fnm-meld-tile.is-called{z-index:3}
+.fn-mahjong-host .fnm-meld-tile.is-called .fnm-tile{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:30px;
+  height:40px;
+  object-fit:contain;
+  transform:translate(-50%,-50%) rotate(90deg);
+}
+.fn-mahjong-host .meld-top .fnm-meld-tile.is-called .fnm-tile,
+.fn-mahjong-host .meld-right .fnm-meld-tile.is-called .fnm-tile{
+  transform:translate(-50%,-50%) rotate(-90deg);
+}
+.fn-mahjong-host .fnm-meld-tile.is-added .fnm-tile{box-shadow:0 0 0 2px rgba(241,208,101,.38)}
+
+/* Center: compact, direction-aware Mahjong Soul-style information panel. */
+.fn-mahjong-host .fnm-center{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:218px;
+  height:218px;
+  transform:translate(-50%,-50%);
+  z-index:60;
+  box-sizing:border-box;
+  border:1px solid rgba(235,211,116,.48);
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 50% 34%,rgba(64,96,117,.32),transparent 46%),
+    linear-gradient(180deg,rgba(13,29,42,.985),rgba(3,10,17,.995));
+  box-shadow:0 16px 38px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.08),inset 0 0 0 1px rgba(233,205,98,.07);
+  text-align:center;
+  pointer-events:none;
+}
+.fn-mahjong-host .fnm-center::before,
+.fn-mahjong-host .fnm-center::after{
+  content:"";
+  position:absolute;
+  left:19px;right:19px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(231,205,102,.35),transparent);
+}
+.fn-mahjong-host .fnm-center::before{top:49px}
+.fn-mahjong-host .fnm-center::after{bottom:44px}
+.fn-mahjong-host .fnm-center-seat{
+  position:absolute;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-width:70px;
+  color:#dfe9ef;
+  font-size:10px;
+  font-weight:900;
+  z-index:2;
+}
+.fn-mahjong-host .fnm-center-seat i{
+  display:grid;
+  place-items:center;
+  width:24px;
+  height:24px;
+  flex:0 0 24px;
+  border-radius:50%;
+  background:linear-gradient(180deg,#466379,#273f51);
+  color:#fff;
+  font-style:normal;
+  font-size:11px;
+  font-weight:1000;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 2px 8px rgba(0,0,0,.26);
+}
+.fn-mahjong-host .fnm-center-seat b{font-size:12px;color:#fff;letter-spacing:.01em}
+.fn-mahjong-host .fnm-center-seat.is-self i{
+  background:linear-gradient(180deg,#efd875,#ad8128);
+  color:#171107;
+  box-shadow:0 0 0 1px rgba(247,219,121,.6),0 0 16px rgba(231,201,89,.2);
+}
+.fn-mahjong-host .fnm-center-seat.is-self::after{
+  content:"自風";
+  position:absolute;
+  left:12px;
+  top:25px;
+  color:#ecd16f;
+  font-size:7px;
+  letter-spacing:.12em;
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-center-seat.is-active b{color:#f0d675}
+.fn-mahjong-host .center-seat-top{left:50%;top:10px;transform:translateX(-50%);justify-content:center}
+.fn-mahjong-host .center-seat-bottom{left:50%;bottom:10px;transform:translateX(-50%);justify-content:center}
+.fn-mahjong-host .center-seat-left{left:10px;top:50%;transform:translateY(-50%)}
+.fn-mahjong-host .center-seat-right{right:10px;top:50%;transform:translateY(-50%);flex-direction:row-reverse}
+.fn-mahjong-host .fnm-round{
+  position:absolute;
+  left:0;right:0;top:62px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-round strong{font-size:25px;line-height:1;color:#fff;letter-spacing:.02em;text-shadow:0 2px 12px rgba(0,0,0,.55)}
+.fn-mahjong-host .fnm-round>span:not(.fnm-riichi-inline){color:#aebdc7;font-size:8px;font-weight:900}
+.fn-mahjong-host .fnm-riichi-inline{display:inline-flex;align-items:center;gap:2px;color:#efd46e;font-size:9px;font-weight:1000}
+.fn-mahjong-host .fnm-riichi-inline img{width:17px;height:17px;object-fit:contain;display:block}
+.fn-mahjong-host .fnm-riichi-inline b{font-size:10px;color:#f4db78}
+.fn-mahjong-host .fnm-remain{
+  position:absolute;left:0;right:0;top:97px;
+  display:flex;justify-content:center;align-items:baseline;gap:5px;
+  color:#788d9b;font-size:7px;font-weight:900;letter-spacing:.08em;
+}
+.fn-mahjong-host .fnm-remain b{font-size:12px;color:#f5f7f8;letter-spacing:0}
+.fn-mahjong-host .fnm-dora-label{position:absolute;left:0;right:0;top:119px;color:#738792;font-size:7px;letter-spacing:.1em}
+.fn-mahjong-host .fnm-dora{
+  position:absolute;left:0;right:0;top:129px;
+  display:flex;justify-content:center;gap:2px;height:31px;
+}
+.fn-mahjong-host .fnm-dora .fnm-tile{width:23px;height:30px}
+.fn-mahjong-host .fnm-turn{
+  position:absolute;left:0;right:0;bottom:21px;
+  color:#dfe8ee;font-size:8px;font-weight:900;letter-spacing:.05em;
+  text-shadow:0 2px 5px rgba(0,0,0,.8);
+}
+
+/* Human controls */
+.fn-mahjong-host .fnm-self-hand{
+  position:absolute;
+  left:50%;
+  bottom:0;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:flex-end;
+  height:88px;
+  z-index:80;
+  pointer-events:auto;
+}
+.fn-mahjong-host .fnm-hand-tile{
+  width:52px;
+  height:76px;
+  margin:0;
+  padding:0;
+  border:0;
+  outline:0;
+  border-radius:0;
+  background:transparent;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-appearance:none;
+}
+.fn-mahjong-host .fnm-hand-tile.fnm-tsumo{
+  margin-left:13px;
+}
+.fn-mahjong-host .fnm-hand-tile.disabled{opacity:.42}
+.fn-mahjong-host .fnm-hand-tile:hover .fnm-tile{transform:translateY(-4px)}
+
+.fn-mahjong-host .fnm-ops{
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  position:absolute;
+  right:46px;
+  bottom:69px;
+  z-index:100;
+  width:145px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  pointer-events:auto;
+}
+.fn-mahjong-host .fnm-ops:empty{display:none}
+.fn-mahjong-host .fnm-ops button{
+  width:100%;
+  height:44px;
+  margin:0;
+  padding:0 10px;
+  box-sizing:border-box;
+  border:1px solid rgba(217,232,241,.35);
+  border-radius:7px;
+  background:linear-gradient(180deg,#4d687d,#2e4558);
+  color:#fff;
+  font-size:13px;
+  font-weight:900;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-appearance:none;
+}
+.fn-mahjong-host .fnm-ops button.primary{
+  background:linear-gradient(180deg,#e1c354,#b48828);
+  color:#1c1507;
+  border-color:#f2d775;
+}
+.fn-mahjong-host .fnm-ops button.danger{
+  background:linear-gradient(180deg,#d46656,#95382f);
+  border-color:#ec9d91;
+}
+.fn-mahjong-host .fnm-prompt{
+  position:absolute;
+  left:50%;
+  bottom:79px;
+  transform:translateX(-50%);
+  z-index:85;
+  font-size:11px;
+  font-weight:900;
+  white-space:nowrap;
+  text-shadow:0 2px 5px rgba(0,0,0,.8);
+  pointer-events:none;
+}
+
+/* Call announcement: anchored above the caller's own river.
+   The location, not text, identifies who called. */
+.fn-mahjong-host .fnm-callcutin{
+  position:absolute;
+  z-index:140;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-width:300px;
+  min-height:96px;
+  padding:10px 16px;
+  box-sizing:border-box;
+  border:2px solid rgba(241,208,101,.72);
+  border-radius:10px;
+  background:rgba(4,13,22,.94);
+  box-shadow:0 12px 34px rgba(0,0,0,.58),0 0 18px rgba(241,208,101,.16);
+  pointer-events:none;
+  animation:fnm-call-in .18s ease-out;
+}
+.fn-mahjong-host .fnm-callcutin.hidden{display:none!important}
+.fn-mahjong-host .fnm-callcutin .fnm-call-label{
+  padding:6px 10px;
+  border-radius:6px;
+  background:#e2c65d;
+  color:#171107;
+  font-size:30px;
+  font-weight:1000;
+  letter-spacing:.06em;
+}
+.fn-mahjong-host .fnm-cut-tiles{display:flex;gap:0;height:58px;align-items:center}
+.fn-mahjong-host .fnm-cut-tiles .fnm-tile{width:42px;height:58px}
+.fn-mahjong-host .fnm-callcutin.seat-0{left:50%;bottom:225px;transform:translateX(-50%)}
+.fn-mahjong-host .fnm-callcutin.seat-1{right:150px;top:285px;transform:translateY(-50%)}
+.fn-mahjong-host .fnm-callcutin.seat-2{left:150px;top:285px;transform:translateY(-50%)}
+.fn-mahjong-host .fnm-callcutin.seat-3{left:50%;top:92px;transform:translateX(-50%)}
+@keyframes fnm-call-in{from{opacity:0;scale:.88}to{opacity:1;scale:1}}
+
+/* Overlay */
+.fn-mahjong-host .hidden{display:none!important}
+.fn-mahjong-host .fnm-overlay{
+  position:absolute;
+  inset:0;
+  z-index:150;
+  display:grid;
+  place-items:center;
+  background:rgba(2,7,12,.72);
+  backdrop-filter:blur(2px);
+}
+.fn-mahjong-host .fnm-choose,
+.fn-mahjong-host .fnm-result{
+  min-width:440px;
+  max-width:800px;
+  padding:22px 26px;
+  box-sizing:border-box;
+  border:1px solid rgba(210,226,239,.34);
+  border-radius:9px;
+  background:linear-gradient(180deg,#20384c,#101e2c);
+  box-shadow:0 24px 70px rgba(0,0,0,.62);
+  text-align:center;
+}
+.fn-mahjong-host .fnm-choose b{display:block;font-size:23px}
+.fn-mahjong-host .fnm-choose span{display:block;margin-top:4px;color:#c5d0d8;font-size:12px}
+.fn-mahjong-host .fnm-choose-hand{
+  display:flex;
+  justify-content:center;
+  gap:0;
+  margin:20px 0 12px;
+}
+.fn-mahjong-host .fnm-choose-hand button{
+  width:39px;height:58px;padding:0;border:0;background:transparent;
+}
+.fn-mahjong-host .fnm-choose>button,
+.fn-mahjong-host .fnm-result>button{
+  min-width:120px;
+  height:40px;
+  border:1px solid rgba(255,255,255,.26);
+  border-radius:7px;
+  background:#3a5364;
+  color:#fff;
+  font-weight:900;
+}
+.fn-mahjong-host .fnm-result small{color:#e6cb5e;letter-spacing:.1em}
+.fn-mahjong-host .fnm-result h2{margin:7px 0 13px;font-size:28px}
+.fn-mahjong-host .fnm-result section{padding:9px 0;border-top:1px solid rgba(255,255,255,.12)}
+.fn-mahjong-host .fnm-result section>b{display:block;font-size:16px}
+.fn-mahjong-host .fnm-yaku{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:5px;
+  margin:8px 0;
+}
+.fn-mahjong-host .fnm-yaku span{
+  padding:4px 7px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:5px;
+  background:rgba(0,0,0,.17);
+  color:#ece7db;
+  font-size:11px;
+}
+.fn-mahjong-host .fnm-result section>strong{font-size:18px}
+.fn-mahjong-host .fnm-result p{margin:7px 0 0;color:#e0e4e7}
+.fn-mahjong-host .fnm-result>button{
+  margin-top:14px;
+  background:linear-gradient(180deg,#e4c458,#b78b28);
+  color:#1d1608;
+  border-color:#f2d676;
+}
+
+@media(max-height:760px){
+  .fn-mahjong-host .fnm-arena{--scale:var(--scale,1)}
+}
+
+/* When side melds become dense, allow the wall UI to disappear behind the play area. */
+.fn-mahjong-host .fnm-arena.hide-side-walls .fnm-wall-left,
+.fn-mahjong-host .fnm-arena.hide-side-walls .fnm-wall-right{opacity:0;visibility:hidden}
