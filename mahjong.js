@@ -472,31 +472,16 @@ function mahjongAudioPool(name){
   return pool;
 }
 function unlockMahjongAudio(){
-  // Prime every sound element during a real user gesture without producing an
-  // audible burst. The first actual action then owns the audible playback.
+  // iOS/Safari: do NOT call play() for every sound during the first gesture.
+  // Doing so causes the entire sound bank to be heard at game start.
+  // Only create/preload the pools here; the actual game action owns playback.
   if(MAHJONG_AUDIO_UNLOCKED)return;
   try{if(typeof S!=='undefined'&&!S.sound)return}catch(_){ }
   MAHJONG_AUDIO_UNLOCKED=true;
   for(const name of ['dahai11','pon','chii','kan','richi','ron','tsumo','puchun']){
     const pool=mahjongAudioPool(name);
-    for(const a of pool){
-      try{
-        a.load();
-        a.muted=true;
-        const p=a.play();
-        if(p&&typeof p.then==='function')p.then(()=>{
-          try{a.pause();a.currentTime=0;a.muted=false}catch(_){ }
-        }).catch(()=>{try{a.muted=false}catch(_){ }});
-      }catch(_){try{a.muted=false}catch(__){}}
-    }
+    for(const a of pool){try{a.load()}catch(_){} }
   }
-}
-
-const MAHJONG_AUDIO_TIMERS=new Set();
-function mahjongAudioLater(name,delay){
-  const id=setTimeout(()=>{MAHJONG_AUDIO_TIMERS.delete(id);mahjongAudio(name)},Math.max(0,delay|0));
-  MAHJONG_AUDIO_TIMERS.add(id);
-  return id;
 }
 function cancelMahjongAudioTimers(){
   for(const id of MAHJONG_AUDIO_TIMERS)clearTimeout(id);
@@ -1252,9 +1237,13 @@ class MahjongUI{
       return;
     }
     if(action==='pon'){
+      const opts=g.actionOptions(0);
+      if(!opts.pon)return;
       const used=takeMatching(g.players[0].hand,g.lastDiscard,2);
-      if(used.length===2&&g.callMeld(0,'pon',used))this.render();
-      else if(g.ronCandidates().some(x=>x.seat!==0))this.resolveAIReactions(),this.render();
+      if(used.length!==2)return;
+      if(g.callMeld(0,'pon',used)){
+        this.render();
+      }
       return;
     }
     if(action==='daiminkan'){
