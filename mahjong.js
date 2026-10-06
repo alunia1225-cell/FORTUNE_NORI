@@ -459,17 +459,35 @@ function riichiWaitsAfterDiscard(p,tile){
 function formatWaits(waits){
   return waits.map(t=>LABEL[t]||t).join('・');
 }
+const MAHJONG_AUDIO_POOL=Object.create(null);
+let MAHJONG_AUDIO_UNLOCKED=false;
+function mahjongAudioPool(name){
+  if(MAHJONG_AUDIO_POOL[name])return MAHJONG_AUDIO_POOL[name];
+  const file=`./assets/audio/${name}.wav`;
+  const pool=[];
+  for(let i=0;i<3;i++){
+    try{const a=new Audio(file);a.preload='auto';a.volume=.72;pool.push(a)}catch(_){}
+  }
+  MAHJONG_AUDIO_POOL[name]=pool;
+  return pool;
+}
+function unlockMahjongAudio(){
+  if(MAHJONG_AUDIO_UNLOCKED)return;
+  try{if(typeof S!=='undefined'&&!S.sound)return}catch(_){}
+  MAHJONG_AUDIO_UNLOCKED=true;
+  for(const name of ['dahai11','pon','chii','kan','richi','ron','tsumo','puchun']){
+    const a=mahjongAudioPool(name)[0];
+    if(!a)continue;
+    try{const p=a.play();if(p&&typeof p.then==='function')p.then(()=>{a.pause();a.currentTime=0}).catch(()=>{})}catch(_){}
+  }
+}
 function mahjongAudio(name){
   try{if(typeof S!=='undefined'&&!S.sound)return false}catch(_){}
-  const file=`./assets/audio/${name}.wav`;
-  try{
-    if(typeof audioFile==='function'){audioFile(file);return true}
-  }catch(_){}
-  try{
-    const a=new Audio(file);a.volume=.7;a.preload='auto';
-    const play=a.play();if(play&&typeof play.catch==='function')play.catch(()=>{});
-    return true;
-  }catch(_){return false}
+  const pool=mahjongAudioPool(name);
+  const a=pool.find(x=>x.paused||x.ended)||pool[0];
+  if(!a)return false;
+  try{a.currentTime=0}catch(_){}
+  try{const p=a.play();if(p&&typeof p.catch==='function')p.catch(()=>{});return true}catch(_){return false}
 }
 function waitImages(waits){
   return waits.map(t=>imageTile(t,'fnm-wait-tile')).join('');
@@ -842,6 +860,8 @@ class MahjongUI{
     if(!this.callBound){
       // iPhone/iPad are the primary target: handle native touch events first.
       // Desktop pointer/click handling remains only as a compatibility path.
+      this.host.addEventListener('touchstart',()=>unlockMahjongAudio(),{passive:true,capture:true});
+      this.host.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'||e.pointerType==='mouse')unlockMahjongAudio()},{passive:true,capture:true});
       this.host.addEventListener('touchend',e=>this.onTouchEnd(e),{passive:false,capture:true});
       this.host.addEventListener('pointerup',e=>this.onPointerUp(e),{passive:false,capture:true});
       this.host.addEventListener('click',e=>this.onClick(e));
