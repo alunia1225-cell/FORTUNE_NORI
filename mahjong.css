@@ -954,3 +954,118 @@
 .fn-mahjong-host .fnm-dora .fnm-tile{width:18px;height:24px}
 .fn-mahjong-host [data-center-seat="2"]{top:3px}
 .fn-mahjong-host [data-center-seat="0"]{bottom:3px}
+
+
+/* 2026-10-01 / Riichi wait + river alignment fix
+   - Show the waits for each legal riichi declaration tile.
+   - Show the current waits above the hand after riichi.
+   - Start side rivers at the center-panel edges.
+   - Keep the opposite river's first row clear of the center panel.
+   - Keep all AI turns/reactions on the unified JS cadence. */
+.fn-mahjong-host .fnm-choose-hand{
+  align-items:flex-end;
+  overflow:visible;
+}
+.fn-mahjong-host .fnm-riichi-choice{
+  position:relative;
+  width:39px;
+  height:82px;
+  padding:22px 0 0;
+  box-sizing:border-box;
+  border:0;
+  background:transparent;
+  overflow:visible;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.fn-mahjong-host .fnm-riichi-choice .fnm-tile{
+  width:39px;
+  height:58px;
+  display:block;
+}
+.fn-mahjong-host .fnm-riichi-wait{
+  position:absolute;
+  left:50%;
+  top:0;
+  transform:translateX(-50%);
+  min-height:16px;
+  max-width:150px;
+  padding:2px 5px;
+  box-sizing:border-box;
+  border:1px solid rgba(232,204,103,.55);
+  border-radius:4px;
+  background:rgba(4,12,19,.96);
+  color:#f0d66c;
+  font-size:8px;
+  line-height:1.15;
+  font-weight:1000;
+  text-align:center;
+  white-space:nowrap;
+  z-index:3;
+  pointer-events:none;
+}
+.fn-mahjong-host .fnm-riichi-choice:not(.has-wait) .fnm-riichi-wait{
+  display:none;
+}
+.fn-mahjong-host .fnm-riichi-choice.has-wait:hover .fnm-riichi-wait,
+.fn-mahjong-host .fnm-riichi-choice.has-wait:focus-visible .fnm-riichi-wait{
+  border-color:#f0d66c;
+  box-shadow:0 0 10px rgba(232,204,103,.18);
+}
+.fn-mahjong-host .fnm-riichi-wait-banner{
+  position:absolute;
+  left:50%;
+  bottom:100%;
+  transform:translate(-50%,-7px);
+  z-index:90;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 8px;
+  border:1px solid rgba(232,204,103,.58);
+  border-radius:5px;
+  background:rgba(4,12,19,.96);
+  box-shadow:0 5px 15px rgba(0,0,0,.35);
+  color:#dce7ed;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.fn-mahjong-host .fnm-riichi-wait-banner span{
+  color:#9cafba;
+  font-size:8px;
+  font-weight:900;
+}
+.fn-mahjong-host .fnm-riichi-wait-banner b{
+  color:#f0d66c;
+  font-size:11px;
+  font-weight:1000;
+}
+.fn-mahjong-host .fnm-self-hand{
+  position:absolute;
+}
+
+/* Side rivers: their nearest edge is flush with the center panel. */
+.fn-mahjong-host .river-left{
+  left:481px!important;
+  right:auto!important;
+  top:360px!important;
+  width:180px!important;
+  height:120px!important;
+  transform:translate(-50%,-50%) rotate(90deg)!important;
+}
+.fn-mahjong-host .river-right{
+  left:799px!important;
+  right:auto!important;
+  top:360px!important;
+  width:180px!important;
+  height:120px!important;
+  transform:translate(-50%,-50%) rotate(-90deg)!important;
+}
+
+/* The top/opposite river must sit above the compact center panel. */
+.fn-mahjong-host .river-top{
+  left:50%!important;
+  top:142px!important;
+  bottom:auto!important;
+  transform:translateX(-50%) rotate(180deg)!important;
+}

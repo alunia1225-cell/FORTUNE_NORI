@@ -451,6 +451,14 @@ function canRiichiTile(p,tile,game){
   if(p.riichi||!closedHand(p)||p.score<1000||game.wall.length<RULES.riichiMinWall)return false;
   return discardLeavesTenpai(p,tile);
 }
+function riichiWaitsAfterDiscard(p,tile){
+  const h=removeTiles(p.hand,[tile]);
+  if(!h)return [];
+  return waitsFor({...p,hand:sortTiles(h)});
+}
+function formatWaits(waits){
+  return waits.map(t=>LABEL[t]||t).join('・');
+}
 function kanPreservesWaits(game,seat,target){
   const p=game.players[seat];if(!p.riichi)return true;
   const before=waitsFor(p);
@@ -868,7 +876,8 @@ class MahjongUI{
     if(!this.running)return;
     if(this.timer)clearTimeout(this.timer);
     const g=this.game;
-    const delay=g.phase==='reaction'?1200:(g.phase==='discard'&&g.current!==0?1800:250);
+    // Keep every AI decision/reaction on the same cadence.
+    const delay=(g.phase==='reaction'||(g.phase==='discard'&&g.current!==0))?1200:250;
     this.timer=setTimeout(()=>{
       if(!this.running)return;
       try{this.stepAI()}
@@ -1238,8 +1247,12 @@ class MahjongUI{
     const ov=$(this.host,'#overlay');
     if(this.riichiMode){
       ov.classList.remove('hidden');
-      const hand=this.game.players[0].hand;
-      ov.innerHTML=`<div class="fnm-choose"><b>立直</b><span>宣言牌を選択</span><div class="fnm-choose-hand">${hand.map((t,i)=>`<button data-choose-index="${i}">${imageTile(t)}</button>`).join('')}</div><button data-riichi-cancel>キャンセル</button></div>`;
+      const p=this.game.players[0],hand=p.hand;
+      ov.innerHTML=`<div class="fnm-choose"><b>立直</b><span>宣言牌を選択 — 牌の上に表示された待ちを確認できます</span><div class="fnm-choose-hand">${hand.map((t,i)=>{
+        const waits=canRiichiTile(p,t,this.game)?riichiWaitsAfterDiscard(p,t):[];
+        const waitText=waits.length?formatWaits(waits):'';
+        return `<button class="fnm-riichi-choice${waits.length?' has-wait':''}" data-choose-index="${i}" aria-label="${esc(waits.length?`待ち ${waitText}`:'立直不可')}"><span class="fnm-riichi-wait">${esc(waitText)}</span>${imageTile(t)}</button>`;
+      }).join('')}</div><button data-riichi-cancel>キャンセル</button></div>`;
     }else if(this.game.phase!=='win'&&this.game.phase!=='drawEnd'&&this.game.phase!=='abortive'&&this.game.phase!=='sessionEnd'){
       ov.classList.add('hidden');
       ov.innerHTML='';
@@ -1293,7 +1306,11 @@ class MahjongUI{
       if(s===0 && g.phase!=='drawEnd'){
         const entries=p.hand.map((t,i)=>({t,i}));
         const drawIndex=p.lastDraw==null?-1:[...entries].map((x)=>x.t===p.lastDraw?x.i:-1).filter(i=>i>=0).pop()??-1;
-        hand.innerHTML=entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
+        const riichiWaits=p.riichi?waitsFor(p):[];
+        const waitBanner=p.riichi&&riichiWaits.length
+          ? `<div class="fnm-riichi-wait-banner"><span>待ち</span><b>${esc(formatWaits(riichiWaits))}</b></div>`
+          : '';
+        hand.innerHTML=waitBanner+entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
           `<button class="fnm-hand-tile${p.forbidden.includes(tileBase(t))?' disabled':''}" data-hand-index="${i}">${imageTile(t)}</button>`
         ).join('');
         if(drawIndex>=0){
