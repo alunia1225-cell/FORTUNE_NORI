@@ -447,17 +447,9 @@ function aiCallEvaluation(game,p,type,used,called){
   return {...best,accept,path,baseSh,baseUke};
 }
 function discardLeavesTenpai(p,tile){const h=p.hand.slice(),i=h.findIndex(x=>x===tile);if(i<0)return false;h.splice(i,1);return waitsFor({...p,hand:sortTiles(h),lastDraw:null}).length>0}
-function waitsAfterDiscard(p,tile){
-  const h=removeTiles(p.hand,[tile]);
-  return h?waitsFor({...p,hand:sortTiles(h),lastDraw:null}):[];
-}
-function currentWaits(p){
-  if(p.riichi&&p.lastDraw!=null)return waitsAfterDiscard(p,p.lastDraw);
-  return waitsFor(p);
-}
-function hasRealYaku(score){
-  return !!score?.valid&&Array.isArray(score.yaku)&&score.yaku.some(y=>!['ドラ','裏ドラ','赤ドラ'].includes(y.name));
-}
+function waitsAfterDiscard(p,tile){const h=removeTiles(p.hand,[tile]);return h?waitsFor({...p,hand:sortTiles(h),lastDraw:null}):[]}
+function currentWaits(p){return waitsFor(p)}
+function hasRealYaku(score){return !!score?.valid&&Array.isArray(score.yaku)&&score.yaku.some(y=>!['ドラ','裏ドラ','赤ドラ'].includes(y.name))}
 function canRiichiTile(p,tile,game){
   if(p.riichi||!closedHand(p)||p.score<1000||game.wall.length<RULES.riichiMinWall)return false;
   return discardLeavesTenpai(p,tile);
@@ -744,11 +736,10 @@ class MahjongUI{
     this.lastCallId=0;
     this.suppressClickUntil=0;
     this.suppressClickTarget=null;
-    this.suppressChooseClickUntil=0;
     this.riichiPreviewIndex=-1;
-    this.lastWinPresentationKey=null;
     this.winAudio=null;
     this.winEffectTimer=null;
+    this.lastWinPresentationKey='';
     this.mount();
   }
 
@@ -788,7 +779,6 @@ class MahjongUI{
           <section class="fnm-seat fnm-seat-bottom">
             <div class="fnm-river river-bottom" id="river0"></div>
             <div class="fnm-meld meld-bottom" id="meld0"></div>
-            <div class="fnm-wait-display hidden" id="waitDisplay"></div>
             <div class="fnm-self-hand" id="hand0"></div>
           </section>
 
@@ -812,7 +802,7 @@ class MahjongUI{
           </div>
 
           <div class="fnm-callcutin hidden" id="callCutin"></div>
-          <div class="fnm-yakuman-effect hidden" id="yakumanEffect" aria-hidden="true"></div>
+          <div class="fnm-yakuman-effect hidden" id="yakumanEffect"></div>
           <div class="fnm-ops" id="ops"></div>
           <div class="fnm-prompt" id="prompt"></div>
           <div class="fnm-overlay hidden" id="overlay"></div>
@@ -864,7 +854,6 @@ class MahjongUI{
     this.riichiMode=false;
     this.riichiPreviewIndex=-1;
     this.lastCallId=0;
-    this.lastWinPresentationKey=null;
     this.render();
     this.schedule();
   }
@@ -892,7 +881,7 @@ class MahjongUI{
     if(!this.running)return;
     if(this.timer)clearTimeout(this.timer);
     const g=this.game;
-    const delay=g.phase==='reaction'?1200:(g.phase==='discard'&&g.current!==0?1200:300);
+    const delay=g.phase==='reaction'?1200:(g.phase==='discard'&&g.current!==0?1800:250);
     this.timer=setTimeout(()=>{
       if(!this.running)return;
       try{this.stepAI()}
@@ -937,7 +926,7 @@ class MahjongUI{
           tenhou:p.seat===g.dealer&&g.turnNo===1,
           chihou:p.seat!==g.dealer&&g.turnNo<=4&&!g.anyCall
         });
-        if(hasRealYaku(win)){
+        if(win.valid){
           g.phase='win';
           g.pending={winners:[{seat:p.seat,tile:draw,tsumo:true,score:win,from:p.seat}],ctx:{tsumo:true}};
           this.render();
@@ -1073,19 +1062,14 @@ class MahjongUI{
   }
 
   onTouchEnd(e){
-    const choose=e.target?.closest?.('#overlay [data-choose-index]');
-    if(choose&&this.host.contains(choose)){
-      e.preventDefault();
-      e.stopPropagation();
-      const index=Number(choose.dataset.chooseIndex);
-      const now=typeof performance!=='undefined'?performance.now():Date.now();
-      this.suppressChooseClickUntil=now+900;
-      if(this.riichiPreviewIndex===index){
-        this.handleRiichiTile(index);
-      }else{
-        this.riichiPreviewIndex=index;
-        this.render();
-      }
+    const ri=e.target?.closest?.('[data-choose-index]');
+    if(ri&&this.host.contains(ri)&&this.riichiMode){
+      e.preventDefault();e.stopPropagation();
+      this.suppressClickTarget=ri;
+      this.suppressClickUntil=(typeof performance!=='undefined'?performance.now():Date.now())+900;
+      const index=Number(ri.dataset.chooseIndex);
+      if(this.riichiPreviewIndex===index)this.handleRiichiTile(index);
+      else this.previewRiichiTile(index);
       return;
     }
     const t=e.target?.closest?.('#ops [data-action]');
@@ -1117,12 +1101,7 @@ class MahjongUI{
     const t=e.target?.closest?.('[data-action],[data-hand-index],[data-riichi-cancel],[data-next],[data-close],[data-choose-index]');
     if(!t||!this.host.contains(t))return;
     const now=typeof performance!=='undefined'?performance.now():Date.now();
-    if(t.dataset.chooseIndex!=null&&now<this.suppressChooseClickUntil){
-      this.suppressChooseClickUntil=0;
-      e.preventDefault();
-      return;
-    }
-    if(t.dataset.action&&this.suppressClickTarget===t&&now<this.suppressClickUntil){
+    if((t.dataset.action||t.dataset.chooseIndex!=null)&&this.suppressClickTarget===t&&now<this.suppressClickUntil){
       this.suppressClickTarget=null;
       this.suppressClickUntil=0;
       e.preventDefault();
@@ -1131,7 +1110,7 @@ class MahjongUI{
     e.preventDefault();
     if(t.dataset.action){this.handleAction(t.dataset.action);return}
     if(t.dataset.handIndex!=null){this.handleTile(Number(t.dataset.handIndex));return}
-    if(t.dataset.chooseIndex!=null){this.handleRiichiTile(Number(t.dataset.chooseIndex));return}
+    if(t.dataset.chooseIndex!=null){this.handleRiichiChoice(Number(t.dataset.chooseIndex));return}
     if(t.hasAttribute('data-riichi-cancel')){this.riichiMode=false;this.riichiPreviewIndex=-1;this.render();return}
     if(t.hasAttribute('data-next')){this.advanceAfterResult();return}
     if(t.hasAttribute('data-close')){try{window.closeGame?.()}catch(_){}}
@@ -1224,6 +1203,20 @@ class MahjongUI{
     this.render();
   }
 
+  previewRiichiTile(index){
+    const p=this.game.players[0],t=p?.hand?.[index];
+    if(!this.riichiMode||!t||!canRiichiTile(p,t,this.game))return;
+    this.riichiPreviewIndex=index;
+    this.render();
+  }
+
+  handleRiichiChoice(index){
+    const p=this.game.players[0],t=p?.hand?.[index];
+    if(!this.riichiMode||!t||!canRiichiTile(p,t,this.game))return;
+    if(this.riichiPreviewIndex!==index){this.previewRiichiTile(index);return;}
+    this.handleRiichiTile(index);
+  }
+
   handleRiichiTile(index){
     const g=this.game,p=g.players[0];
     if(!this.riichiMode||g.phase!=='discard'||g.current!==0)return;
@@ -1249,7 +1242,7 @@ class MahjongUI{
           chihou:p.seat!==g.dealer&&g.turnNo<=4&&!g.anyCall
         };
         const w=calcWin(p,p.lastDraw,ctx);
-        if(hasRealYaku(w))a.push({id:'tsumo',label:'ツモ',primary:true});
+        if(w.valid)a.push({id:'tsumo',label:'ツモ',primary:true});
       }
       if(!p.riichi&&g.kyuushukyuhai(0))a.push({id:'kyuushukyuhai',label:'九種九牌'});
       for(const k of g.kanOptions(0)){
@@ -1284,12 +1277,18 @@ class MahjongUI{
     const ov=$(this.host,'#overlay');
     if(this.riichiMode){
       ov.classList.remove('hidden');
-      const p=this.game.players[0],hand=p.hand;
-      ov.innerHTML=`<div class="fnm-choose"><b>立直</b><span>牌に触れると、その牌を切った後の待ちを確認できます。もう一度触れると宣言します。</span><div class="fnm-choose-hand">${hand.map((t,i)=>{
-        const waits=canRiichiTile(p,t,this.game)?waitsAfterDiscard(p,t):[];
-        const preview=this.riichiPreviewIndex===i;
-        return `<button class="fnm-riichi-choice${waits.length?' legal':''}${preview?' is-preview':''}" data-choose-index="${i}" aria-label="${esc(waits.length?'待ち '+waits.map(x=>LABEL[x]||x).join('、'):'立直不可')}"><span class="fnm-riichi-waits">${waits.length?waits.map(x=>imageTile(x,'fnm-wait-tile')).join(''):''}</span>${imageTile(t)}</button>`;
-      }).join('')}</div><button data-riichi-cancel>キャンセル</button></div>`;
+      const hand=this.game.players[0].hand;
+      const p=this.game.players[0];
+      const choices=hand.map((t,i)=>{
+        const legal=canRiichiTile(p,t,this.game);
+        const waits=legal?waitsAfterDiscard(p,t):[];
+        const active=this.riichiPreviewIndex===i;
+        const preview=active&&waits.length
+          ? `<div class="fnm-riichi-preview"><span>待ち</span>${waits.map(w=>imageTile(w,'fnm-wait-tile')).join('')}</div>`
+          : '';
+        return `<button class="fnm-riichi-choice${legal?' legal':''}${active?' active':''}" data-choose-index="${i}">${preview}${imageTile(t)}</button>`;
+      }).join('');
+      ov.innerHTML=`<div class="fnm-choose"><b>立直</b><span>宣言牌に触れると待ちを表示。もう一度触れて確定</span><div class="fnm-choose-hand">${choices}</div><button data-riichi-cancel>キャンセル</button></div>`;
     }else if(this.game.phase!=='win'&&this.game.phase!=='drawEnd'&&this.game.phase!=='abortive'&&this.game.phase!=='sessionEnd'){
       ov.classList.add('hidden');
       ov.innerHTML='';
@@ -1341,9 +1340,13 @@ class MahjongUI{
       }).join('');
 
       if(s===0 && g.phase!=='drawEnd'){
+        const waitTiles=p.riichi?currentWaits(p):[];
+        const waitMarkup=p.riichi&&waitTiles.length
+          ? `<div class="fnm-riichi-wait-banner"><span>待ち</span><div>${waitTiles.map(t=>imageTile(t,'fnm-wait-tile')).join('')}</div></div>`
+          : '';
         const entries=p.hand.map((t,i)=>({t,i}));
         const drawIndex=p.lastDraw==null?-1:[...entries].map((x)=>x.t===p.lastDraw?x.i:-1).filter(i=>i>=0).pop()??-1;
-        hand.innerHTML=entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
+        hand.innerHTML=waitMarkup+entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
           `<button class="fnm-hand-tile${p.forbidden.includes(tileBase(t))?' disabled':''}" data-hand-index="${i}">${imageTile(t)}</button>`
         ).join('');
         if(drawIndex>=0){
@@ -1356,16 +1359,6 @@ class MahjongUI{
           ? p.hand.map(t=>imageTile(t)).join('')
           : Array.from({length:p.hand.length},()=>backTile()).join('');
       }
-    }
-
-    const waitEl=$(this.host,'#waitDisplay');
-    if(waitEl){
-      const p=g.players[0];
-      const waits=g.phase==='drawEnd'||g.phase==='win'||g.phase==='abortive'||g.phase==='sessionEnd'?[]:currentWaits(p);
-      waitEl.classList.toggle('hidden',waits.length===0);
-      waitEl.innerHTML=waits.length
-        ? `<span class="fnm-wait-label">待ち</span><span class="fnm-wait-tiles">${waits.map(t=>imageTile(t,'fnm-wait-tile')).join('')}</span>`
-        : '';
     }
   }
 
@@ -1474,14 +1467,18 @@ class MahjongUI{
     this.callTimer=setTimeout(()=>box.classList.add('hidden'),1600);
   }
 
+  showRuntimeError(err){
+    const ov=$(this.host,'#overlay');
+    if(!ov)return;
+    ov.classList.remove('hidden');
+    ov.innerHTML=`<div class="fnm-result fnm-error"><small>対局エラー</small><h2>対局を停止しました</h2><p>${esc(err?.stack||err?.message||String(err))}</p></div>`;
+  }
+
   playSound(src){
     try{
-      if(this.winAudio){try{this.winAudio.pause()}catch(_){}this.winAudio=null}
+      if(this.winAudio){this.winAudio.pause();this.winAudio.currentTime=0;}
       const audio=new Audio(src);
-      audio.preload='auto';
-      audio.currentTime=0;
       this.winAudio=audio;
-      audio.addEventListener('ended',()=>{if(this.winAudio===audio)this.winAudio=null},{once:true});
       const p=audio.play();
       if(p?.catch)p.catch(()=>{});
       return audio;
@@ -1490,37 +1487,29 @@ class MahjongUI{
 
   playYakumanTsumoEffect(w){
     if(w?.seat!==0||!w?.tsumo||!w?.score?.yakuman)return;
-    const g=this.game,key=`${g.roundIndex}|${w.seat}|${w.tile}|${w.score.yakuman}|${g.discardSerial}|${g.callSeq}`;
+    const g=this.game,key=`${g.roundIndex}|${w.seat}|${w.tile}|${w.score.yakuman}`;
     if(this.lastWinPresentationKey===key)return;
     this.lastWinPresentationKey=key;
     const box=$(this.host,'#yakumanEffect');
     if(!box)return;
     if(this.winEffectTimer){clearTimeout(this.winEffectTimer);this.winEffectTimer=null}
-    box.innerHTML='<video class="fnm-yakuman-video" src="./assets/video/puchun_effect.mp4" playsinline preload="auto" autoplay></video>';
+    box.innerHTML='<video class="fnm-yakuman-video" playsinline preload="auto"></video>';
     box.classList.remove('hidden');
     const video=box.querySelector('video');
     let finished=false;
     const finish=()=>{
-      if(finished)return;
-      finished=true;
-      box.classList.add('hidden');
-      box.innerHTML='';
-      this.winEffectTimer=null;
-      // puchun_effect.mp4 contains its own audio; tsumo.wav begins only after it ends.
+      if(finished)return;finished=true;
+      box.classList.add('hidden');box.innerHTML='';this.winEffectTimer=null;
       this.playSound('./assets/audio/tsumo.wav');
     };
     video.addEventListener('ended',finish,{once:true});
-    video.addEventListener('error',finish,{once:true});
-    const playResult=video.play();
-    if(playResult?.catch)playResult.catch(()=>{finish()});
-    this.winEffectTimer=setTimeout(finish,2600);
-  }
-
-  showRuntimeError(err){
-    const ov=$(this.host,'#overlay');
-    if(!ov)return;
-    ov.classList.remove('hidden');
-    ov.innerHTML=`<div class="fnm-result fnm-error"><small>対局エラー</small><h2>対局を停止しました</h2><p>${esc(err?.stack||err?.message||String(err))}</p></div>`;
+    video.addEventListener('error',()=>{
+      if(video.src.endsWith('puchun_effect.mp4')){video.src='./assets/video/puchun_effct.mp4';video.load();video.play().catch(()=>finish());}
+      else finish();
+    });
+    video.src='./assets/video/puchun_effect.mp4';
+    video.play().catch(()=>finish());
+    this.winEffectTimer=setTimeout(finish,5000);
   }
 
   showWin(){
