@@ -459,6 +459,21 @@ function riichiWaitsAfterDiscard(p,tile){
 function formatWaits(waits){
   return waits.map(t=>LABEL[t]||t).join('・');
 }
+function mahjongAudio(name){
+  try{if(typeof S!=='undefined'&&!S.sound)return false}catch(_){}
+  const file=`./assets/audio/${name}.wav`;
+  try{
+    if(typeof audioFile==='function'){audioFile(file);return true}
+  }catch(_){}
+  try{
+    const a=new Audio(file);a.volume=.7;a.preload='auto';
+    const play=a.play();if(play&&typeof play.catch==='function')play.catch(()=>{});
+    return true;
+  }catch(_){return false}
+}
+function waitImages(waits){
+  return waits.map(t=>imageTile(t,'fnm-wait-tile')).join('');
+}
 function kanPreservesWaits(game,seat,target){
   const p=game.players[seat];if(!p.riichi)return true;
   const before=waitsFor(p);
@@ -538,6 +553,7 @@ class Game{
     if(p.riichi&&!declareRiichi)p.ippatsu=false;
     if(p.river.length===1)this.firstDiscards.push(out);
     this.lastDiscard=out;this.lastActor=seat;this.phase='reaction';this.pending=null;
+    mahjongAudio('dahai11');
     return out;
   }
   nextAfterNoCall(){const next=(this.lastActor+1)%4;this.draw(next);}
@@ -627,7 +643,7 @@ class Game{
     }
     return [...out];
   }
-  finishCall(seat){this.anyCall=true;for(const q of this.players)if(q.riichi)q.ippatsu=false;this.current=seat;this.phase='discard';this.lastDiscard=null;this.lastActor=null;this.pending=null;this.players[seat].lastDraw=null}
+  finishCall(seat){this.anyCall=true;for(const q of this.players)if(q.riichi)q.ippatsu=false;this.current=seat;this.phase='discard';this.lastDiscard=null;this.lastActor=null;this.pending=null;this.players[seat].lastDraw=null;mahjongAudio('chii')}
   kanOptions(seat){
     const p=this.players[seat];if(!p)return [];
     const c=counts(p.hand),out=[];
@@ -690,6 +706,7 @@ class Game{
     p.forbidden=[];
     if(type==='ankan')this.revealKanDora();
     else this.pendingKanDora=true;
+    mahjongAudio('chii');
     this.kanAbortPending=this.kanCount===4&&this.kanOwners.size>1;
     // Four-kan abort is declared immediately after the fourth kan; no rinshan draw
     // or settlement occurs in this case.
@@ -742,6 +759,9 @@ class MahjongUI{
     this.lastCallId=0;
     this.suppressClickUntil=0;
     this.suppressClickTarget=null;
+    this.winEffectKey=null;
+    this.winEffectPlaying=false;
+    this.winSoundKey=null;
     this.mount();
   }
 
@@ -853,6 +873,9 @@ class MahjongUI{
     this.game.reset();
     this.game.start();
     this.riichiMode=false;
+    this.winEffectKey=null;
+    this.winEffectPlaying=false;
+    this.winSoundKey=null;
     this.lastCallId=0;
     this.render();
     this.schedule();
@@ -862,6 +885,8 @@ class MahjongUI{
     this.running=false;
     if(this.timer){clearTimeout(this.timer);this.timer=null}
     if(this.callTimer){clearTimeout(this.callTimer);this.callTimer=null}
+    const effectVideo=$(this.host,'.fnm-yakuman-video');
+    if(effectVideo){try{effectVideo.pause()}catch(_){}try{effectVideo.removeAttribute('src');effectVideo.load()}catch(_){}}
     if(this.resizeObserver){this.resizeObserver.disconnect();this.resizeObserver=null}
     if(this.resizeBound){
       window.removeEventListener('resize',this.resizeHandler);
@@ -870,6 +895,9 @@ class MahjongUI{
       this.resizeBound=false;
     }
     this.riichiMode=false;
+    this.winEffectKey=null;
+    this.winEffectPlaying=false;
+    this.winSoundKey=null;
   }
 
   schedule(){
@@ -1248,10 +1276,10 @@ class MahjongUI{
     if(this.riichiMode){
       ov.classList.remove('hidden');
       const p=this.game.players[0],hand=p.hand;
-      ov.innerHTML=`<div class="fnm-choose"><b>立直</b><span>宣言牌を選択 — 牌の上に表示された待ちを確認できます</span><div class="fnm-choose-hand">${hand.map((t,i)=>{
+      ov.innerHTML=`<div class="fnm-choose"><b>立直</b><span>宣言牌を選択</span><div class="fnm-choose-hand">${hand.map((t,i)=>{
         const waits=canRiichiTile(p,t,this.game)?riichiWaitsAfterDiscard(p,t):[];
         const waitText=waits.length?formatWaits(waits):'';
-        return `<button class="fnm-riichi-choice${waits.length?' has-wait':''}" data-choose-index="${i}" aria-label="${esc(waits.length?`待ち ${waitText}`:'立直不可')}"><span class="fnm-riichi-wait">${esc(waitText)}</span>${imageTile(t)}</button>`;
+        return `<button class="fnm-riichi-choice${waits.length?' has-wait':''}" data-choose-index="${i}" aria-label="${esc(waits.length?`待ち ${waitText}`:'立直不可')}">${waits.length?`<span class="fnm-riichi-waits">${waitImages(waits)}</span>`:''}${imageTile(t)}</button>`;
       }).join('')}</div><button data-riichi-cancel>キャンセル</button></div>`;
     }else if(this.game.phase!=='win'&&this.game.phase!=='drawEnd'&&this.game.phase!=='abortive'&&this.game.phase!=='sessionEnd'){
       ov.classList.add('hidden');
@@ -1306,9 +1334,9 @@ class MahjongUI{
       if(s===0 && g.phase!=='drawEnd'){
         const entries=p.hand.map((t,i)=>({t,i}));
         const drawIndex=p.lastDraw==null?-1:[...entries].map((x)=>x.t===p.lastDraw?x.i:-1).filter(i=>i>=0).pop()??-1;
-        const riichiWaits=p.riichi?waitsFor(p):[];
-        const waitBanner=p.riichi&&riichiWaits.length
-          ? `<div class="fnm-riichi-wait-banner"><span>待ち</span><b>${esc(formatWaits(riichiWaits))}</b></div>`
+        const riichiWaits=waitsFor(p);
+        const waitBanner=riichiWaits.length
+          ? `<div class="fnm-riichi-wait-banner"><span>待ち</span><div class="fnm-wait-tiles">${waitImages(riichiWaits)}</div></div>`
           : '';
         hand.innerHTML=waitBanner+entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
           `<button class="fnm-hand-tile${p.forbidden.includes(tileBase(t))?' disabled':''}" data-hand-index="${i}">${imageTile(t)}</button>`
@@ -1438,10 +1466,66 @@ class MahjongUI{
     ov.innerHTML=`<div class="fnm-result fnm-error"><small>対局エラー</small><h2>対局を停止しました</h2><p>${esc(err?.stack||err?.message||String(err))}</p></div>`;
   }
 
+  playYakumanTsumoEffect(key,done){
+    const ov=$(this.host,'#overlay');
+    if(!ov)return;
+    try{if(typeof S!=='undefined'&&!S.sound){this.winEffectPlaying=false;done?.();return}}catch(_){}
+    this.winEffectPlaying=true;
+    ov.classList.remove('hidden');
+    ov.innerHTML=`<div class="fnm-yakuman-effect"><video class="fnm-yakuman-video" playsinline webkit-playsinline preload="auto"></video></div>`;
+    const video=$(this.host,'.fnm-yakuman-video');
+    if(!video){this.winEffectPlaying=false;done?.();return}
+    video.src='./assets/video/puchun_effect.mp4';
+    video.muted=false;
+    video.volume=1;
+    let finished=false;
+    let fallbackTimer=null;
+    const finish=()=>{
+      if(finished)return;
+      finished=true;
+      if(fallbackTimer)clearTimeout(fallbackTimer);
+      try{video.pause()}catch(_){}
+      try{video.removeAttribute('src');video.load()}catch(_){}
+      this.winEffectPlaying=false;
+      mahjongAudio('tsumo');
+      done?.();
+    };
+    video.addEventListener('ended',finish,{once:true});
+    video.addEventListener('error',()=>{
+      if(finished)return;
+      try{mahjongAudio('puchun')}catch(_){}
+      fallbackTimer=setTimeout(finish,1700);
+    },{once:true});
+    fallbackTimer=setTimeout(finish,2100);
+    try{
+      const play=video.play();
+      if(play&&typeof play.catch==='function'){
+        play.catch(()=>{
+          try{video.muted=true;const retry=video.play();if(retry&&typeof retry.catch==='function')retry.catch(()=>{})}catch(_){}
+          try{mahjongAudio('puchun')}catch(_){}
+        });
+      }
+    }catch(_){
+      try{mahjongAudio('puchun')}catch(_){}
+    }
+  }
+
+
   showWin(){
     const g=this.game,w=g.pending?.winners||[],ov=$(this.host,'#overlay');
     if(!w.length)return;
     const names=w.map(x=>g.players[x.seat].name).join('・');
+    const winKey=`${g.roundIndex}:${g.discardSerial}:${w.map(x=>`${x.seat}-${x.tile}-${x.tsumo?'T':'R'}`).join(',')}`;
+    const selfYakumanTsumo=w.length===1&&w[0].seat===0&&w[0].tsumo&&!!w[0].score?.yakuman;
+    if(selfYakumanTsumo&&this.winEffectKey!==winKey){
+      this.winEffectKey=winKey;
+      this.playYakumanTsumoEffect(winKey,()=>this.render());
+      return;
+    }
+    if(!selfYakumanTsumo&&this.winSoundKey!==winKey){
+      this.winSoundKey=winKey;
+      mahjongAudio(w[0].tsumo?'tsumo':'win');
+    }
     ov.classList.remove('hidden');
     ov.innerHTML=`<div class="fnm-result"><small>${w[0].tsumo?'ツモ':'ロン'}${w.length>1?' / '+(w.length===2?'ダブル':'トリプル')+'ロン':''}</small>
       <h2>${esc(names)} 和了</h2>
@@ -1499,6 +1583,9 @@ class MahjongUI{
     g.startHand(false);
     if(g.phase==='sessionEnd'){this.render();return}
     this.riichiMode=false;
+    this.winEffectKey=null;
+    this.winEffectPlaying=false;
+    this.winSoundKey=null;
     const ov=$(this.host,'#overlay');
     ov.classList.add('hidden');
     this.render();
