@@ -553,7 +553,10 @@ class Game{
     if(p.riichi&&!declareRiichi)p.ippatsu=false;
     if(p.river.length===1)this.firstDiscards.push(out);
     this.lastDiscard=out;this.lastActor=seat;this.phase='reaction';this.pending=null;
-    mahjongAudio('dahai11');
+    // The declaration sound can be consumed by the host audio manager if both sounds
+    // are fired in the same frame. Keep the discard sound explicitly after richi.
+    if(declareRiichi)setTimeout(()=>mahjongAudio('dahai11'),260);
+    else mahjongAudio('dahai11');
     return out;
   }
   nextAfterNoCall(){const next=(this.lastActor+1)%4;this.draw(next);}
@@ -904,8 +907,8 @@ class MahjongUI{
     if(!this.running)return;
     if(this.timer)clearTimeout(this.timer);
     const g=this.game;
-    // Keep every AI decision/reaction on the same cadence.
-    const delay=(g.phase==='reaction'||(g.phase==='discard'&&g.current!==0))?1200:250;
+    // All CPU decisions/reactions use one fixed 2-second cadence.
+    const delay=(g.phase==='reaction'||(g.phase==='discard'&&g.current!==0))?2000:250;
     this.timer=setTimeout(()=>{
       if(!this.running)return;
       try{this.stepAI()}
@@ -1008,8 +1011,10 @@ class MahjongUI{
     // has a legal action at the current reaction priority. This is what prevents the
     // CPU from stealing a legal player pon/chi window.
     const humanOpts=g.actionOptions(0);
+    const humanRon=!!g.ronScore(0);
+    if(humanRon)humanOpts.ron=true;
     if(!g.reactionPassed.has(0)){
-      if(humanOpts.ron)return false;
+      if(humanRon)return false;
     }
 
     const rons=g.ronCandidates();
@@ -1140,7 +1145,8 @@ class MahjongUI{
       return;
     }
     if(action==='ron'){
-      const r=g.ronCandidates().find(x=>x.seat===0);
+      const humanRon=g.ronScore(0);
+      const r=humanRon?{seat:0,distance:(0-g.lastActor+4)%4,score:humanRon}:null;
       if(r){
         g.phase='win';
         g.pending={winners:g.ronCandidates().map(x=>({
@@ -1255,7 +1261,9 @@ class MahjongUI{
     }else if(g.phase==='reaction'){
       if(g.reactionPassed?.has(0))return a;
       const o=g.actionOptions(0);
-      if(o.ron)a.push({id:'ron',label:'ロン',danger:true});
+      const humanRon=!!g.ronScore(0);
+      if(humanRon)o.ron=true;
+      if(humanRon)a.push({id:'ron',label:'ロン',danger:true});
       if(o.daiminkan)a.push({id:'daiminkan',label:'大明槓'});
       if(o.pon)a.push({id:'pon',label:'ポン'});
       o.chi.forEach(opt=>a.push({id:`chi:${JSON.stringify(opt)}`,label:`チー ${opt.map(t=>LABEL[t]).join('・')}`}));

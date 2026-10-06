@@ -1312,3 +1312,38 @@
 /* Side-player melds sit beside the side hand, not underneath it. Top/bottom are untouched. */
 .fn-mahjong-host .meld-left{left:132px!important;right:auto!important;top:125px!important;bottom:auto!important;transform:rotate(90deg)!important;transform-origin:center center!important}
 .fn-mahjong-host .meld-right{left:auto!important;right:58px!important;top:125px!important;bottom:auto!important;transform:rotate(-90deg)!important;transform-origin:center center!important}
+
+/* 2026-10-06 / requested-only follow-up
+   - exhaustive-draw tenpai open hands use the same compact tile size as normal hands
+   - every player's open meld block is kept on the visual right side of that player's hand
+   - existing river layout is intentionally untouched
+*/
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .fnm-hand .fnm-tile{
+  width:30px!important;
+  height:40px!important;
+  object-fit:contain;
+}
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-top .fnm-tile,
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-left .fnm-tile,
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-right .fnm-tile{
+  width:30px!important;
+  height:40px!important;
+}
+
+/* Top and bottom hands: place open melds at visual right. Side-player positions
+   remain exactly at their existing right-edge coordinates. */
+.fn-mahjong-host .meld-top{
+  left:auto!important;
+  right:48px!important;
+  top:68px!important;
+  bottom:auto!important;
+  transform:rotate(180deg)!important;
+  transform-origin:center center!important;
+}
+.fn-mahjong-host .meld-bottom{
+  left:auto!important;
+  right:48px!important;
+  top:auto!important;
+  bottom:78px!important;
+  transform:none!important;
+}
