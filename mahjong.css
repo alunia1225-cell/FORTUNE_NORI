@@ -326,30 +326,6 @@
   align-items:flex-start;
   overflow:visible;
 }
-.fn-mahjong-host .meld-bottom{
-  left:auto;
-  right:112px;
-  bottom:74px;
-  flex-direction:row;
-}
-.fn-mahjong-host .meld-top{
-  left:112px;
-  right:auto;
-  top:70px;
-  flex-direction:row-reverse;
-}
-.fn-mahjong-host .meld-left{
-  left:104px;
-  top:auto;
-  bottom:78px;
-  flex-direction:column;
-}
-.fn-mahjong-host .meld-right{
-  right:104px;
-  top:78px;
-  bottom:auto;
-  flex-direction:column-reverse;
-}
 .fn-mahjong-host .fnm-meld-group{
   display:flex;
   gap:0;
@@ -722,10 +698,6 @@
 
 /* Melds are horizontal in each player's local frame; the group itself rotates with the seat. */
 .fn-mahjong-host .fnm-meld{gap:8px}
-.fn-mahjong-host .meld-bottom{left:auto;right:110px;top:auto;bottom:76px;flex-direction:row;transform:none}
-.fn-mahjong-host .meld-top{left:110px;right:auto;top:72px;bottom:auto;flex-direction:row;transform:rotate(180deg);transform-origin:center center}
-.fn-mahjong-host .meld-left{left:74px;right:auto;top:96px;bottom:auto;flex-direction:row;transform:rotate(90deg);transform-origin:center center}
-.fn-mahjong-host .meld-right{left:auto;right:74px;top:auto;bottom:96px;flex-direction:row;transform:rotate(-90deg);transform-origin:center center}
 .fn-mahjong-host .meld-bottom .fnm-meld-group,.fn-mahjong-host .meld-top .fnm-meld-group,.fn-mahjong-host .meld-left .fnm-meld-group,.fn-mahjong-host .meld-right .fnm-meld-group{flex-direction:row}
 .fn-mahjong-host .fnm-meld-tile.is-called .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)!important}
 
@@ -813,28 +785,6 @@
 .fn-mahjong-host .fnm-meld-tile,
 .fn-mahjong-host .fnm-meld-tile .fnm-tile,
 .fn-mahjong-host .fnm-meld-tile .fnm-back{width:30px;height:40px}
-.fn-mahjong-host .meld-bottom{
-  left:48px;right:auto;bottom:78px;top:auto;
-  flex-direction:row;
-}
-.fn-mahjong-host .meld-top{
-  left:48px;right:auto;top:68px;bottom:auto;
-  flex-direction:row;
-  transform:rotate(180deg);
-  transform-origin:center center;
-}
-.fn-mahjong-host .meld-left{
-  left:28px;right:auto;top:340px;bottom:auto;
-  flex-direction:row;
-  transform:rotate(90deg);
-  transform-origin:center center;
-}
-.fn-mahjong-host .meld-right{
-  left:auto;right:28px;top:auto;bottom:340px;
-  flex-direction:row;
-  transform:rotate(-90deg);
-  transform-origin:center center;
-}
 .fn-mahjong-host .meld-bottom .fnm-meld-group,
 .fn-mahjong-host .meld-top .fnm-meld-group,
 .fn-mahjong-host .meld-left .fnm-meld-group,
@@ -1213,22 +1163,6 @@
 /* Side-player melds: local right edge.
    Left player -> screen bottom. Right player -> screen top.
    Top/bottom meld positions are intentionally untouched. */
-.fn-mahjong-host .meld-left{
-  left:28px;
-  right:auto;
-  top:auto;
-  bottom:88px;
-  transform:rotate(90deg);
-  transform-origin:center center;
-}
-.fn-mahjong-host .meld-right{
-  left:auto;
-  right:28px;
-  top:88px;
-  bottom:auto;
-  transform:rotate(-90deg);
-  transform-origin:center center;
-}
 
 /* Waits are rendered with the actual tile images, never text tile names. */
 .fn-mahjong-host .fnm-riichi-waits,
@@ -1310,8 +1244,6 @@
   justify-content:center!important; gap:5px!important; margin:0!important; white-space:nowrap!important;
 }
 /* Side-player melds sit beside the side hand, not underneath it. Top/bottom are untouched. */
-.fn-mahjong-host .meld-left{left:132px!important;right:auto!important;top:125px!important;bottom:auto!important;transform:rotate(90deg)!important;transform-origin:center center!important}
-.fn-mahjong-host .meld-right{left:auto!important;right:58px!important;top:125px!important;bottom:auto!important;transform:rotate(-90deg)!important;transform-origin:center center!important}
 
 /* 2026-10-06 / requested-only follow-up
    - exhaustive-draw tenpai open hands use the same compact tile size as normal hands
@@ -1332,21 +1264,6 @@
 
 /* Top and bottom hands: place open melds at visual right. Side-player positions
    remain exactly at their existing right-edge coordinates. */
-.fn-mahjong-host .meld-top{
-  left:auto!important;
-  right:48px!important;
-  top:68px!important;
-  bottom:auto!important;
-  transform:rotate(180deg)!important;
-  transform-origin:center center!important;
-}
-.fn-mahjong-host .meld-bottom{
-  left:auto!important;
-  right:48px!important;
-  top:auto!important;
-  bottom:78px!important;
-  transform:none!important;
-}
 
 
 /* 2026-10-07 / requested-only follow-up
@@ -1361,10 +1278,6 @@
 .fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-right .fnm-tile{width:24px!important;height:32px!important}
 
 /* Local right-side meld placement. Top player's local right is screen-left. */
-.fn-mahjong-host .meld-top{left:auto!important;right:48px!important;top:68px!important;bottom:auto!important;transform:rotate(180deg)!important;transform-origin:center center!important}
-.fn-mahjong-host .meld-bottom{left:auto!important;right:48px!important;top:auto!important;bottom:78px!important;transform:none!important}
-.fn-mahjong-host .meld-left{left:80px!important;right:auto!important;top:125px!important;bottom:auto!important;transform:rotate(90deg)!important;transform-origin:center center!important}
-.fn-mahjong-host .meld-right{left:auto!important;right:28px!important;top:125px!important;bottom:auto!important;transform:rotate(-90deg)!important;transform-origin:center center!important}
 
 .fn-mahjong-host .fnm-center-meta{left:0!important;right:0!important;width:100%!important;transform:none!important;top:57px!important;justify-content:center!important}
 .fn-mahjong-host .fnm-remain{position:static!important;display:flex!important;align-items:baseline!important;justify-content:center!important;gap:5px!important;margin:0!important;white-space:nowrap!important}
@@ -1461,23 +1374,27 @@
 }
 
 
-/* 2026-10-07 / authoritative local-perspective meld placement
-   Each open meld block is placed to the caller's LEFT from that caller's
-   own viewpoint.  Do not use screen-space "right side" placement here.
-   Seat mapping: bottom=self, top=opposite, left=shimocha, right=kamicha. */
+
+/* 2026-10-07 / canonical meld placement — caller-local RIGHT side
+   Coordinate mapping is based on each seat's own facing direction.
+   seat 0 bottom/self  -> screen RIGHT
+   seat 1 right/kamicha -> screen TOP
+   seat 2 top/opposite  -> screen LEFT
+   seat 3 left/shimocha -> screen BOTTOM
+   Do not convert this to a single screen-space side. */
 .fn-mahjong-host .meld-bottom{
-  left:48px!important; right:auto!important; top:auto!important; bottom:78px!important;
-  transform:none!important; transform-origin:center center!important;
-}
-.fn-mahjong-host .meld-top{
-  left:48px!important; right:auto!important; top:68px!important; bottom:auto!important;
-  transform:rotate(180deg)!important; transform-origin:center center!important;
-}
-.fn-mahjong-host .meld-left{
-  left:80px!important; right:auto!important; top:auto!important; bottom:125px!important;
-  transform:rotate(90deg)!important; transform-origin:center center!important;
+  left:auto!important;right:48px!important;top:auto!important;bottom:78px!important;
+  transform:none!important;transform-origin:center center!important;
 }
 .fn-mahjong-host .meld-right{
-  left:auto!important; right:28px!important; top:125px!important; bottom:auto!important;
-  transform:rotate(-90deg)!important; transform-origin:center center!important;
+  left:auto!important;right:28px!important;top:125px!important;bottom:auto!important;
+  transform:rotate(-90deg)!important;transform-origin:center center!important;
+}
+.fn-mahjong-host .meld-top{
+  left:48px!important;right:auto!important;top:68px!important;bottom:auto!important;
+  transform:rotate(180deg)!important;transform-origin:center center!important;
+}
+.fn-mahjong-host .meld-left{
+  left:80px!important;right:auto!important;top:auto!important;bottom:125px!important;
+  transform:rotate(90deg)!important;transform-origin:center center!important;
 }

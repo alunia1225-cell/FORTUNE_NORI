@@ -629,16 +629,14 @@ class Game{
     const p=this.players[seat],t=this.lastDiscard;if(!p||seat===this.lastActor)return {ron:false,pon:false,daiminkan:false,chi:[]};
     const selfRon=!!this.ronScore(seat);
     const allRons=this.ronCandidates();
-    const r=selfRon;
-    // Any Ron has priority over all calls. Therefore a player never sees
-    // Pon/Chi/Kan while any Ron is legally available at this discard.
+    // Ron is the only reaction that outranks every call.  Otherwise the caller's
+    // legal Pon/Chi/Kan options must remain available until that caller passes.
     if(selfRon||allRons.length)return {ron:selfRon,pon:false,daiminkan:false,chi:[]};
     if(this.abortiveReason())return {ron:false,pon:false,daiminkan:false,chi:[]};
     if(p.riichi||this.kanCount>=RULES.maxKan)return {ron:false,pon:false,daiminkan:false,chi:[]};
     const pon=legalPon(p,t),daiminkan=legalDaiminkan(p,t);
-    // Chi is only legal for the player immediately following the discarder in turn order.
     const chi=seat===(this.lastActor+1)%4?chiOptions(p.hand,t):[];
-    return {ron:r,pon,daiminkan,chi};
+    return {ron:false,pon,daiminkan,chi};
   }
   pass(seat){
     if(this.phase!=='reaction')return false;
@@ -1251,13 +1249,15 @@ class MahjongUI{
       return;
     }
     if(action==='pon'){
-      const opts=g.actionOptions(0);
-      if(!opts.pon)return;
-      const used=takeMatching(g.players[0].hand,g.lastDiscard,2);
-      if(used.length!==2)return;
-      if(g.callMeld(0,'pon',used)){
-        this.render();
-      }
+      // Re-check the player's own legal Pon at click time.  This prevents a stale
+      // rendered action row from silently turning into a pass after a reaction update.
+      if(g.phase!=='reaction'||g.lastDiscard==null||g.lastActor===0)return;
+      const p=g.players[0];
+      if(!p||p.riichi||g.reactionPassed.has(0)||g.abortiveReason())return;
+      if(g.ronCandidates().length)return;
+      const used=takeMatching(p.hand,g.lastDiscard,2);
+      if(used.length!==2||!legalPon(p,g.lastDiscard))return;
+      if(g.callMeld(0,'pon',used))this.render();
       return;
     }
     if(action==='daiminkan'){
@@ -1363,9 +1363,12 @@ class MahjongUI{
       if(humanRon)o.ron=true;
       if(humanRon)a.push({id:'ron',label:'ロン',danger:true});
       if(o.daiminkan)a.push({id:'daiminkan',label:'大明槓'});
-      if(o.pon)a.push({id:'pon',label:'ポン'});
+      // Pon is re-evaluated directly from the player's hand.  This intentionally
+      // covers honors and every discard source; actionOptions still enforces Ron priority.
+      const directPon=!humanRon&&o.pon&&legalPon(p,g.lastDiscard);
+      if(directPon)a.push({id:'pon',label:'ポン'});
       o.chi.forEach(opt=>a.push({id:`chi:${JSON.stringify(opt)}`,label:`チー ${opt.map(t=>LABEL[t]).join('・')}`}));
-      if(o.ron||o.daiminkan||o.pon||o.chi.length)a.push({id:'pass',label:'パス'});
+      if(o.ron||o.daiminkan||directPon||o.chi.length)a.push({id:'pass',label:'パス'});
     }
     return a;
   }
