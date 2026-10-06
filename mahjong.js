@@ -1142,7 +1142,12 @@ class MahjongUI{
         if(humanHasPon && bestAI.prio<3)return false;
         if(humanHasChi && bestAI.prio<2)return false;
         const humanDist=(0-g.lastActor+4)%4;
-        if(humanHasPon&&bestAI.prio===3&&bestAI.distance<humanDist)return false;
+        // A human player's legal Pon/kan window must remain selectable.
+        // Do not let an AI of the same call priority steal the player's call
+        // merely because its seat is closer to the discarder. AI calls are
+        // evaluated only after the human passes. Ron still retains absolute
+        // priority through actionOptions()/ronCandidates().
+        if(humanHasPon&&bestAI.prio===3)return false;
         if(humanHasChi&&bestAI.prio===2)return false;
         // The AI has the higher-priority call, so it may proceed.
       }

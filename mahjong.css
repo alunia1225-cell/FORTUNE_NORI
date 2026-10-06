@@ -1459,3 +1459,25 @@
   margin:0!important;
   object-fit:fill!important;
 }
+
+
+/* 2026-10-07 / authoritative local-perspective meld placement
+   Each open meld block is placed to the caller's LEFT from that caller's
+   own viewpoint.  Do not use screen-space "right side" placement here.
+   Seat mapping: bottom=self, top=opposite, left=shimocha, right=kamicha. */
+.fn-mahjong-host .meld-bottom{
+  left:48px!important; right:auto!important; top:auto!important; bottom:78px!important;
+  transform:none!important; transform-origin:center center!important;
+}
+.fn-mahjong-host .meld-top{
+  left:48px!important; right:auto!important; top:68px!important; bottom:auto!important;
+  transform:rotate(180deg)!important; transform-origin:center center!important;
+}
+.fn-mahjong-host .meld-left{
+  left:80px!important; right:auto!important; top:auto!important; bottom:125px!important;
+  transform:rotate(90deg)!important; transform-origin:center center!important;
+}
+.fn-mahjong-host .meld-right{
+  left:auto!important; right:28px!important; top:125px!important; bottom:auto!important;
+  transform:rotate(-90deg)!important; transform-origin:center center!important;
+}
