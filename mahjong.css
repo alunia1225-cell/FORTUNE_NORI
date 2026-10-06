@@ -1299,3 +1299,16 @@
   border:1px solid rgba(232,204,103,.35);
   box-shadow:0 18px 55px rgba(0,0,0,.65);
 }
+
+/* 2026-10-06 / Requested-only: center remaining count + side meld placement */
+.fn-mahjong-host .fnm-center-meta{
+  left:0!important; right:0!important; width:auto!important; transform:none!important;
+  top:57px!important; justify-content:center!important;
+}
+.fn-mahjong-host .fnm-remain{
+  position:static!important; display:flex!important; align-items:baseline!important;
+  justify-content:center!important; gap:5px!important; margin:0!important; white-space:nowrap!important;
+}
+/* Side-player melds sit beside the side hand, not underneath it. Top/bottom are untouched. */
+.fn-mahjong-host .meld-left{left:132px!important;right:auto!important;top:125px!important;bottom:auto!important;transform:rotate(90deg)!important;transform-origin:center center!important}
+.fn-mahjong-host .meld-right{left:auto!important;right:58px!important;top:125px!important;bottom:auto!important;transform:rotate(-90deg)!important;transform-origin:center center!important}

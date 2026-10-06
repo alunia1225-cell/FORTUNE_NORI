@@ -541,7 +541,7 @@ class Game{
     if(p.forbidden.includes(tileBase(tile)))return null;
     if(declareRiichi&&!canRiichiTile(p,tile,this))return null;
     const idx=p.hand.findIndex(t=>t===tile);if(idx<0)return null;
-    if(declareRiichi){p.riichi=true;p.doubleRiichi=!this.anyCall&&p.river.length===0;p.ippatsu=true;p.score-=RULES.riichiCost;this.riichiSticks++}
+    if(declareRiichi){p.riichi=true;p.doubleRiichi=!this.anyCall&&p.river.length===0;p.ippatsu=true;p.score-=RULES.riichiCost;this.riichiSticks++;mahjongAudio('richi')}
     const out=p.hand.splice(idx,1)[0];
     p.hand=sortTiles(p.hand);
     p.lastDraw=null;
@@ -633,7 +633,7 @@ class Game{
       p.called=true;p.forbidden=this.forbiddenAfterChi(used,called);
       this.lastCall={id:++this.callSeq,seat,type:'chi',from,tile:called,tiles:meld.tiles.slice()};
     }else return false;
-    this.finishCall(seat);return true;
+    this.finishCall(seat,type);return true;
   }
   forbiddenAfterChi(used,called){
     const ids=[...used.map(idOf),idOf(called)].sort((a,b)=>a-b),out=new Set([tileBase(called)]);
@@ -643,7 +643,7 @@ class Game{
     }
     return [...out];
   }
-  finishCall(seat){this.anyCall=true;for(const q of this.players)if(q.riichi)q.ippatsu=false;this.current=seat;this.phase='discard';this.lastDiscard=null;this.lastActor=null;this.pending=null;this.players[seat].lastDraw=null;mahjongAudio('chii')}
+  finishCall(seat,type){this.anyCall=true;for(const q of this.players)if(q.riichi)q.ippatsu=false;this.current=seat;this.phase='discard';this.lastDiscard=null;this.lastActor=null;this.pending=null;this.players[seat].lastDraw=null;mahjongAudio(type==='pon'?'pon':'chii')}
   kanOptions(seat){
     const p=this.players[seat];if(!p)return [];
     const c=counts(p.hand),out=[];
@@ -706,7 +706,7 @@ class Game{
     p.forbidden=[];
     if(type==='ankan')this.revealKanDora();
     else this.pendingKanDora=true;
-    mahjongAudio('chii');
+    mahjongAudio('kan');
     this.kanAbortPending=this.kanCount===4&&this.kanOwners.size>1;
     // Four-kan abort is declared immediately after the fourth kan; no rinshan draw
     // or settlement occurs in this case.
@@ -1147,6 +1147,7 @@ class MahjongUI{
           seat:x.seat,tile:g.lastDiscard,tsumo:false,score:x.score,
           distance:x.distance,from:g.lastActor
         })),ctx:{tsumo:false}};
+        mahjongAudio('ron');
         this.render();
       }
       return;
@@ -1240,7 +1241,7 @@ class MahjongUI{
           chihou:p.seat!==g.dealer&&g.turnNo<=4&&!g.anyCall
         };
         const w=calcWin(p,p.lastDraw,ctx);
-        if(w.valid)a.push({id:'tsumo',label:'ツモ',primary:true});
+        if(w?.valid===true&&Array.isArray(w.yaku))a.push({id:'tsumo',label:'ツモ',primary:true});
       }
       if(!p.riichi&&g.kyuushukyuhai(0))a.push({id:'kyuushukyuhai',label:'九種九牌'});
       for(const k of g.kanOptions(0)){
@@ -1524,7 +1525,7 @@ class MahjongUI{
     }
     if(!selfYakumanTsumo&&this.winSoundKey!==winKey){
       this.winSoundKey=winKey;
-      mahjongAudio(w[0].tsumo?'tsumo':'win');
+      mahjongAudio(w[0].tsumo?'tsumo':'ron');
     }
     ov.classList.remove('hidden');
     ov.innerHTML=`<div class="fnm-result"><small>${w[0].tsumo?'ツモ':'ロン'}${w.length>1?' / '+(w.length===2?'ダブル':'トリプル')+'ロン':''}</small>
