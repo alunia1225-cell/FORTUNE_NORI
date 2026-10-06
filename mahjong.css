@@ -1431,3 +1431,7 @@
 .fn-mahjong-host .fnm-kyotaku{position:absolute!important;left:auto!important;right:7px!important;top:8px!important;bottom:auto!important;transform:none!important;min-width:0!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:3px!important;z-index:15!important}
 .fn-mahjong-host .fnm-riichi-sticks{position:absolute!important;left:50%!important;bottom:28px!important;transform:translateX(-50%)!important;width:auto!important;min-width:0!important;max-width:112px!important;height:7px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:2px!important;z-index:20!important;pointer-events:none!important}
 .fn-mahjong-host .fnm-riichi-sticks .riichi-stick{width:23px!important;height:3px!important;max-height:3px!important;object-fit:fill!important}
+
+
+/* 2026-10-07 / requested center cleanup: no text badge next to center scores. */
+.fn-mahjong-host .fnm-riichi-badge{display:none!important}

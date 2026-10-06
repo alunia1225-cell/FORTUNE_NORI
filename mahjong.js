@@ -472,13 +472,15 @@ function mahjongAudioPool(name){
   return pool;
 }
 function unlockMahjongAudio(){
+  // Do not play every sound on the first touch. That was causing the first
+  // discard to trigger a burst of all Mahjong sounds on iPhone Safari.
+  // The actual user action starts the requested sound through mahjongAudio().
   if(MAHJONG_AUDIO_UNLOCKED)return;
   try{if(typeof S!=='undefined'&&!S.sound)return}catch(_){}
   MAHJONG_AUDIO_UNLOCKED=true;
   for(const name of ['dahai11','pon','chii','kan','richi','ron','tsumo','puchun']){
-    const a=mahjongAudioPool(name)[0];
-    if(!a)continue;
-    try{const p=a.play();if(p&&typeof p.then==='function')p.then(()=>{a.pause();a.currentTime=0}).catch(()=>{})}catch(_){}
+    const pool=mahjongAudioPool(name);
+    for(const a of pool){try{a.load()}catch(_){} }
   }
 }
 function mahjongAudio(name){
@@ -839,10 +841,10 @@ class MahjongUI{
               <div class="fnm-honba"><span id="honbaStickArea"></span></div>
             </div>
             <div class="fnm-scoregrid">
-              <div class="fnm-scoreitem" data-center-seat="2"><i id="centerWind2">西</i><b id="centerScore2">25,000</b><em id="centerRiichi2" class="fnm-riichi-badge" hidden>リーチ</em></div>
-              <div class="fnm-scoreitem" data-center-seat="3"><i id="centerWind3">北</i><b id="centerScore3">25,000</b><em id="centerRiichi3" class="fnm-riichi-badge" hidden>リーチ</em></div>
-              <div class="fnm-scoreitem" data-center-seat="0"><i id="centerWind0">東</i><b id="centerScore0">25,000</b><em id="centerRiichi0" class="fnm-riichi-badge" hidden>リーチ</em></div>
-              <div class="fnm-scoreitem" data-center-seat="1"><i id="centerWind1">南</i><b id="centerScore1">25,000</b><em id="centerRiichi1" class="fnm-riichi-badge" hidden>リーチ</em></div>
+              <div class="fnm-scoreitem" data-center-seat="2"><i id="centerWind2">西</i><b id="centerScore2">25,000</b></div>
+              <div class="fnm-scoreitem" data-center-seat="3"><i id="centerWind3">北</i><b id="centerScore3">25,000</b></div>
+              <div class="fnm-scoreitem" data-center-seat="0"><i id="centerWind0">東</i><b id="centerScore0">25,000</b></div>
+              <div class="fnm-scoreitem" data-center-seat="1"><i id="centerWind1">南</i><b id="centerScore1">25,000</b></div>
             </div>
             <div class="fnm-dora-block"><span>ドラ表示牌</span><div class="fnm-dora" id="doraArea"></div></div>
           </div>
@@ -1454,7 +1456,6 @@ class MahjongUI{
       const item=$(this.host,`[data-center-seat="${s}"]`);
       const w=$(this.host,`#centerWind${s}`);
       const score=$(this.host,`#centerScore${s}`);
-      const riichi=$(this.host,`#centerRiichi${s}`);
       if(item){
         item.classList.toggle('is-self',s===0);
         item.classList.toggle('is-active',g.current===s);
@@ -1462,7 +1463,6 @@ class MahjongUI{
       }
       if(w)w.textContent=WINDS[p.wind];
       if(score)score.textContent=fmt(p.score);
-      if(riichi)riichi.hidden=!p.riichi;
       const card=$(this.host,`#card${s}`);
       if(card){
         const badge=card.querySelector('.fnm-card-riichi');
