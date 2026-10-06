@@ -1347,3 +1347,40 @@
   bottom:78px!important;
   transform:none!important;
 }
+
+
+/* 2026-10-07 / requested-only follow-up
+   - exhaustive-draw open tenpai hands smaller
+   - local-right meld placement and outward side positioning
+   - center count/dora alignment and riichi sticks above the bottom score
+   - larger, clearer win result
+*/
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .fnm-hand .fnm-tile{width:24px!important;height:32px!important;object-fit:contain}
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-top .fnm-tile,
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-left .fnm-tile,
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-right .fnm-tile{width:24px!important;height:32px!important}
+
+/* Local right-side meld placement. Top player's local right is screen-left. */
+.fn-mahjong-host .meld-top{left:auto!important;right:48px!important;top:68px!important;bottom:auto!important;transform:rotate(180deg)!important;transform-origin:center center!important}
+.fn-mahjong-host .meld-bottom{left:auto!important;right:48px!important;top:auto!important;bottom:78px!important;transform:none!important}
+.fn-mahjong-host .meld-left{left:80px!important;right:auto!important;top:125px!important;bottom:auto!important;transform:rotate(90deg)!important;transform-origin:center center!important}
+.fn-mahjong-host .meld-right{left:auto!important;right:28px!important;top:125px!important;bottom:auto!important;transform:rotate(-90deg)!important;transform-origin:center center!important}
+
+.fn-mahjong-host .fnm-center-meta{left:0!important;right:0!important;width:100%!important;transform:none!important;top:57px!important;justify-content:center!important}
+.fn-mahjong-host .fnm-remain{position:static!important;display:flex!important;align-items:baseline!important;justify-content:center!important;gap:5px!important;margin:0!important;white-space:nowrap!important}
+.fn-mahjong-host .fnm-kyotaku{position:absolute!important;left:50%!important;right:auto!important;top:auto!important;bottom:31px!important;transform:translateX(-50%)!important;min-width:0!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:3px!important;z-index:12!important}
+.fn-mahjong-host .fnm-stick-label{font-size:6px!important;white-space:nowrap}
+.fn-mahjong-host #stickArea{display:flex!important;flex-wrap:nowrap!important;gap:2px!important;align-items:center!important;justify-content:center!important;max-width:110px!important;overflow:hidden!important}
+.fn-mahjong-host .fnm-dora-block{left:0!important;right:0!important;bottom:50px!important;height:25px!important;justify-content:center!important;gap:5px!important}
+.fn-mahjong-host .fnm-dora{height:25px!important;justify-content:center!important;gap:1px!important}
+
+.fn-mahjong-host .fnm-win-result{min-width:500px;max-width:860px;padding:26px 30px 24px}
+.fn-mahjong-host .fnm-win-result h2{margin:8px 0 16px;font-size:32px;line-height:1.08;font-weight:1000;letter-spacing:.03em}
+.fn-mahjong-host .fnm-win-result h2 span{margin-left:8px;color:#e8cc67;font-size:.72em;letter-spacing:.08em}
+.fn-mahjong-host .fnm-win-player{padding:13px 6px 15px;border-top:1px solid rgba(255,255,255,.14)}
+.fn-mahjong-host .fnm-win-player>b{display:block;margin-bottom:8px;color:#d9e2e8;font-size:14px;font-weight:900}
+.fn-mahjong-host .fnm-win-yaku{gap:6px;margin:0 0 10px}
+.fn-mahjong-host .fnm-win-yaku span{padding:5px 9px;border-color:rgba(232,204,103,.3);background:rgba(232,204,103,.08);color:#f4ebc7;font-size:14px;line-height:1.1;font-weight:900}
+.fn-mahjong-host .fnm-win-hanfu{margin:2px 0 5px;color:#b8c4cc;font-size:12px;line-height:1.1;font-weight:900;letter-spacing:.04em}
+.fn-mahjong-host .fnm-win-score{display:block;margin:3px 0 0;color:#f2d66d;font-size:30px;line-height:1;font-weight:1000;letter-spacing:.03em;text-shadow:0 2px 12px rgba(0,0,0,.42)}
+.fn-mahjong-host .fnm-win-payment{display:none}

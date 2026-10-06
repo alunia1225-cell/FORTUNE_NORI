@@ -811,8 +811,8 @@ class MahjongUI{
             <div class="fnm-center-topline">
               <strong id="roundText">東1局</strong>
               <span id="honbaText">0本場</span>
-              <span class="fnm-kyotaku"><span class="fnm-stick-label">供託</span><span id="stickArea"></span></span>
             </div>
+            <div class="fnm-kyotaku"><span class="fnm-stick-label">供託</span><span id="stickArea"></span></div>
             <div class="fnm-center-meta">
               <div class="fnm-remain"><span>残り牌</span><b id="remainText">70</b></div>
               <div class="fnm-honba"><span id="honbaStickArea"></span></div>
@@ -1153,7 +1153,6 @@ class MahjongUI{
           seat:x.seat,tile:g.lastDiscard,tsumo:false,score:x.score,
           distance:x.distance,from:g.lastActor
         })),ctx:{tsumo:false}};
-        mahjongAudio('ron');
         this.render();
       }
       return;
@@ -1221,6 +1220,7 @@ class MahjongUI{
     }
     this.resolveAIReactions();
     this.render();
+    this.schedule();
   }
 
   handleRiichiTile(index){
@@ -1232,6 +1232,7 @@ class MahjongUI{
       this.riichiMode=false;
       this.resolveAIReactions();
       this.render();
+      this.schedule();
     }
   }
 
@@ -1536,12 +1537,13 @@ class MahjongUI{
       mahjongAudio(w[0].tsumo?'tsumo':'ron');
     }
     ov.classList.remove('hidden');
-    ov.innerHTML=`<div class="fnm-result"><small>${w[0].tsumo?'ツモ':'ロン'}${w.length>1?' / '+(w.length===2?'ダブル':'トリプル')+'ロン':''}</small>
-      <h2>${esc(names)} 和了</h2>
-      ${w.map(x=>`<section><b>${esc(g.players[x.seat].name)}</b>
-        <div class="fnm-yaku">${x.score.yaku.map(y=>`<span>${esc(y.name)} ${y.yakuman?'役満':y.han+'翻'}</span>`).join('')}</div>
-        <strong>${x.score.yakuman?x.score.limit:(x.score.han+'翻 '+x.score.fu+'符')}</strong>
-        <p>${esc(this.paymentText(x))}</p></section>`).join('')}
+    ov.innerHTML=`<div class="fnm-result fnm-win-result"><small>${w[0].tsumo?'ツモ':'ロン'}${w.length>1?' / '+(w.length===2?'ダブル':'トリプル')+'ロン':''}</small>
+      <h2>${esc(names)}<span>和了</span></h2>
+      ${w.map(x=>`<section class="fnm-win-player"><b>${esc(g.players[x.seat].name)}</b>
+        <div class="fnm-yaku fnm-win-yaku">${x.score.yaku.map(y=>`<span>${esc(y.name)}${y.yakuman?'・役満':'・'+y.han+'翻'}</span>`).join('')}</div>
+        <div class="fnm-win-hanfu">${x.score.yakuman?x.score.limit:(x.score.han+'翻 '+x.score.fu+'符')}</div>
+        <strong class="fnm-win-score">${esc(this.paymentText(x))}</strong>
+      </section>`).join('')}
       <button data-next>次へ</button></div>`;
   }
 
