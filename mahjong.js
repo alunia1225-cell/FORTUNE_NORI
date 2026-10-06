@@ -472,17 +472,37 @@ function mahjongAudioPool(name){
   return pool;
 }
 function unlockMahjongAudio(){
-  // Do not play every sound on the first touch. That was causing the first
-  // discard to trigger a burst of all Mahjong sounds on iPhone Safari.
-  // The actual user action starts the requested sound through mahjongAudio().
+  // Prime every sound element during a real user gesture without producing an
+  // audible burst. The first actual action then owns the audible playback.
   if(MAHJONG_AUDIO_UNLOCKED)return;
-  try{if(typeof S!=='undefined'&&!S.sound)return}catch(_){}
+  try{if(typeof S!=='undefined'&&!S.sound)return}catch(_){ }
   MAHJONG_AUDIO_UNLOCKED=true;
   for(const name of ['dahai11','pon','chii','kan','richi','ron','tsumo','puchun']){
     const pool=mahjongAudioPool(name);
-    for(const a of pool){try{a.load()}catch(_){} }
+    for(const a of pool){
+      try{
+        a.load();
+        a.muted=true;
+        const p=a.play();
+        if(p&&typeof p.then==='function')p.then(()=>{
+          try{a.pause();a.currentTime=0;a.muted=false}catch(_){ }
+        }).catch(()=>{try{a.muted=false}catch(_){ }});
+      }catch(_){try{a.muted=false}catch(__){}}
+    }
   }
 }
+
+const MAHJONG_AUDIO_TIMERS=new Set();
+function mahjongAudioLater(name,delay){
+  const id=setTimeout(()=>{MAHJONG_AUDIO_TIMERS.delete(id);mahjongAudio(name)},Math.max(0,delay|0));
+  MAHJONG_AUDIO_TIMERS.add(id);
+  return id;
+}
+function cancelMahjongAudioTimers(){
+  for(const id of MAHJONG_AUDIO_TIMERS)clearTimeout(id);
+  MAHJONG_AUDIO_TIMERS.clear();
+}
+
 function mahjongAudio(name){
   try{if(typeof S!=='undefined'&&!S.sound)return false}catch(_){}
   const pool=mahjongAudioPool(name);
@@ -575,7 +595,7 @@ class Game{
     this.lastDiscard=out;this.lastActor=seat;this.phase='reaction';this.pending=null;
     // The declaration sound can be consumed by the host audio manager if both sounds
     // are fired in the same frame. Keep the discard sound explicitly after richi.
-    if(declareRiichi)setTimeout(()=>mahjongAudio('dahai11'),260);
+    if(declareRiichi)mahjongAudioLater('dahai11',260);
     else mahjongAudio('dahai11');
     return out;
   }
@@ -613,10 +633,14 @@ class Game{
   actionOptions(seat){
     if(this.phase!=='reaction'||this.lastDiscard==null)return {ron:false,pon:false,daiminkan:false,chi:[]};
     const p=this.players[seat],t=this.lastDiscard;if(!p||seat===this.lastActor)return {ron:false,pon:false,daiminkan:false,chi:[]};
+    const selfRon=!!this.ronScore(seat);
     const allRons=this.ronCandidates();
-    const r=allRons.some(x=>x.seat===seat);
-    if(this.abortiveReason())return {ron:r,pon:false,daiminkan:false,chi:[]};
-    if(p.riichi||this.kanCount>=RULES.maxKan)return {ron:r,pon:false,daiminkan:false,chi:[]};
+    const r=selfRon;
+    // Any Ron has priority over all calls. Therefore a player never sees
+    // Pon/Chi/Kan while any Ron is legally available at this discard.
+    if(selfRon||allRons.length)return {ron:selfRon,pon:false,daiminkan:false,chi:[]};
+    if(this.abortiveReason())return {ron:false,pon:false,daiminkan:false,chi:[]};
+    if(p.riichi||this.kanCount>=RULES.maxKan)return {ron:false,pon:false,daiminkan:false,chi:[]};
     const pon=legalPon(p,t),daiminkan=legalDaiminkan(p,t);
     // Chi is only legal for the player immediately following the discarder in turn order.
     const chi=seat===(this.lastActor+1)%4?chiOptions(p.hand,t):[];
@@ -785,6 +809,10 @@ class MahjongUI{
     this.winEffectKey=null;
     this.winEffectPlaying=false;
     this.winSoundKey=null;
+    this.winEffectTimers=new Set();
+    this.hostHandlers=null;
+    this.lastActionKey='';
+    this.lastActionAt=0;
     this.mount();
   }
 
@@ -835,16 +863,15 @@ class MahjongUI{
               </div>
               <span class="fnm-kyotaku"><span class="fnm-stick-label">供託</span><b id="kyotakuCount">0</b></span>
             </div>
-            <div class="fnm-riichi-sticks" id="stickArea"></div>
             <div class="fnm-center-meta">
               <div class="fnm-remain"><span>残り牌</span><b id="remainText">70</b></div>
               <div class="fnm-honba"><span id="honbaStickArea"></span></div>
             </div>
             <div class="fnm-scoregrid">
-              <div class="fnm-scoreitem" data-center-seat="2"><i id="centerWind2">西</i><b id="centerScore2">25,000</b></div>
-              <div class="fnm-scoreitem" data-center-seat="3"><i id="centerWind3">北</i><b id="centerScore3">25,000</b></div>
-              <div class="fnm-scoreitem" data-center-seat="0"><i id="centerWind0">東</i><b id="centerScore0">25,000</b></div>
-              <div class="fnm-scoreitem" data-center-seat="1"><i id="centerWind1">南</i><b id="centerScore1">25,000</b></div>
+              <div class="fnm-scoreitem" data-center-seat="2"><span class="fnm-score-riichi-stick" aria-hidden="true"></span><i id="centerWind2">西</i><b id="centerScore2">25,000</b></div>
+              <div class="fnm-scoreitem" data-center-seat="3"><span class="fnm-score-riichi-stick" aria-hidden="true"></span><i id="centerWind3">北</i><b id="centerScore3">25,000</b></div>
+              <div class="fnm-scoreitem" data-center-seat="0"><span class="fnm-score-riichi-stick" aria-hidden="true"></span><i id="centerWind0">東</i><b id="centerScore0">25,000</b></div>
+              <div class="fnm-scoreitem" data-center-seat="1"><span class="fnm-score-riichi-stick" aria-hidden="true"></span><i id="centerWind1">南</i><b id="centerScore1">25,000</b></div>
             </div>
             <div class="fnm-dora-block"><span>ドラ表示牌</span><div class="fnm-dora" id="doraArea"></div></div>
           </div>
@@ -860,13 +887,20 @@ class MahjongUI{
 
   bind(){
     if(!this.callBound){
-      // iPhone/iPad are the primary target: handle native touch events first.
-      // Desktop pointer/click handling remains only as a compatibility path.
-      this.host.addEventListener('touchstart',()=>unlockMahjongAudio(),{passive:true,capture:true});
-      this.host.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'||e.pointerType==='mouse')unlockMahjongAudio()},{passive:true,capture:true});
-      this.host.addEventListener('touchend',e=>this.onTouchEnd(e),{passive:false,capture:true});
-      this.host.addEventListener('pointerup',e=>this.onPointerUp(e),{passive:false,capture:true});
-      this.host.addEventListener('click',e=>this.onClick(e));
+      // Keep stable function references so stop() can remove every listener.
+      // Native touch/pointer/click paths are de-duplicated before dispatch.
+      this.hostHandlers={
+        touchstart:()=>unlockMahjongAudio(),
+        pointerdown:e=>{if(e.pointerType==='touch'||e.pointerType==='mouse')unlockMahjongAudio()},
+        touchend:e=>this.onTouchEnd(e),
+        pointerup:e=>this.onPointerUp(e),
+        click:e=>this.onClick(e)
+      };
+      this.host.addEventListener('touchstart',this.hostHandlers.touchstart,{passive:true,capture:true});
+      this.host.addEventListener('pointerdown',this.hostHandlers.pointerdown,{passive:true,capture:true});
+      this.host.addEventListener('touchend',this.hostHandlers.touchend,{passive:false,capture:true});
+      this.host.addEventListener('pointerup',this.hostHandlers.pointerup,{passive:false,capture:true});
+      this.host.addEventListener('click',this.hostHandlers.click);
       this.callBound=true;
     }
     if(!this.resizeBound){
@@ -897,6 +931,7 @@ class MahjongUI{
   }
 
   start(){
+    cancelMahjongAudioTimers();
     this.running=true;
     this.game.reset();
     this.game.start();
@@ -904,15 +939,31 @@ class MahjongUI{
     this.winEffectKey=null;
     this.winEffectPlaying=false;
     this.winSoundKey=null;
+    for(const id of this.winEffectTimers)clearTimeout(id);
+    this.winEffectTimers.clear();
     this.lastCallId=0;
+    this.lastActionKey='';
+    this.lastActionAt=0;
     this.render();
     this.schedule();
   }
 
   stop(){
+    cancelMahjongAudioTimers();
     this.running=false;
     if(this.timer){clearTimeout(this.timer);this.timer=null}
     if(this.callTimer){clearTimeout(this.callTimer);this.callTimer=null}
+    for(const id of this.winEffectTimers)clearTimeout(id);
+    this.winEffectTimers.clear();
+    if(this.callBound&&this.hostHandlers){
+      this.host.removeEventListener('touchstart',this.hostHandlers.touchstart,{capture:true});
+      this.host.removeEventListener('pointerdown',this.hostHandlers.pointerdown,{capture:true});
+      this.host.removeEventListener('touchend',this.hostHandlers.touchend,{capture:true});
+      this.host.removeEventListener('pointerup',this.hostHandlers.pointerup,{capture:true});
+      this.host.removeEventListener('click',this.hostHandlers.click);
+      this.hostHandlers=null;
+      this.callBound=false;
+    }
     const effectVideo=$(this.host,'.fnm-yakuman-video');
     if(effectVideo){try{effectVideo.pause()}catch(_){}try{effectVideo.removeAttribute('src');effectVideo.load()}catch(_){}}
     if(this.resizeObserver){this.resizeObserver.disconnect();this.resizeObserver=null}
@@ -926,6 +977,8 @@ class MahjongUI{
     this.winEffectKey=null;
     this.winEffectPlaying=false;
     this.winSoundKey=null;
+    this.lastActionKey='';
+    this.lastActionAt=0;
   }
 
   schedule(){
@@ -1036,13 +1089,11 @@ class MahjongUI{
     // has a legal action at the current reaction priority. This is what prevents the
     // CPU from stealing a legal player pon/chi window.
     const humanOpts=g.actionOptions(0);
-    const humanRon=!!g.ronScore(0);
-    if(humanRon)humanOpts.ron=true;
+    const humanRon=!!humanOpts.ron;
     if(!g.reactionPassed.has(0)){
       if(humanRon)return false;
-      // Keep every legal human call window open until the player explicitly
-      // chooses the call or passes. Pon is legal against a discard from ANY
-      // other seat, including all seven honor tiles; only chi is next-player-only.
+      // Keep a legal human call window open until the player chooses it or passes.
+      // Pon is legal against a discard from ANY other seat, including honors.
       if(humanOpts.pon||humanOpts.daiminkan||humanOpts.chi.length)return false;
     }
 
@@ -1119,9 +1170,20 @@ class MahjongUI{
     return true;
   }
 
+  claimActionInput(t){
+    const action=String(t?.dataset?.action||'');
+    const key=action+'|'+String(t?.dataset?.handIndex??t?.dataset?.chooseIndex??t?.id??'');
+    const now=typeof performance!=='undefined'?performance.now():Date.now();
+    if(this.lastActionKey===key&&now-this.lastActionAt<900)return false;
+    this.lastActionKey=key;
+    this.lastActionAt=now;
+    return true;
+  }
+
   onTouchEnd(e){
     const t=e.target?.closest?.('#ops [data-action]');
     if(!t||!this.host.contains(t))return;
+    if(!this.claimActionInput(t))return;
     e.preventDefault();
     e.stopPropagation();
     this.suppressClickTarget=t;
@@ -1138,6 +1200,7 @@ class MahjongUI{
     }
     const t=e.target?.closest?.('#ops [data-action]');
     if(!t||!this.host.contains(t))return;
+    if(!this.claimActionInput(t))return;
     e.preventDefault();
     e.stopPropagation();
     this.suppressClickTarget=t;
@@ -1156,7 +1219,7 @@ class MahjongUI{
       return;
     }
     e.preventDefault();
-    if(t.dataset.action){this.handleAction(t.dataset.action);return}
+    if(t.dataset.action){if(!this.claimActionInput(t))return;this.handleAction(t.dataset.action);return}
     if(t.dataset.handIndex!=null){this.handleTile(Number(t.dataset.handIndex));return}
     if(t.dataset.chooseIndex!=null){this.handleRiichiTile(Number(t.dataset.chooseIndex));return}
     if(t.hasAttribute('data-riichi-cancel')){this.riichiMode=false;this.render();return}
@@ -1175,13 +1238,15 @@ class MahjongUI{
     }
     if(action==='ron'){
       const humanRon=g.ronScore(0);
-      const r=humanRon?{seat:0,distance:(0-g.lastActor+4)%4,score:humanRon}:null;
-      if(r){
-        g.phase='win';
-        g.pending={winners:g.ronCandidates().map(x=>({
+      if(humanRon){
+        const human={seat:0,tile:g.lastDiscard,tsumo:false,score:humanRon,distance:(0-g.lastActor+4)%4,from:g.lastActor};
+        const others=g.ronCandidates().filter(x=>x.seat!==0).map(x=>({
           seat:x.seat,tile:g.lastDiscard,tsumo:false,score:x.score,
           distance:x.distance,from:g.lastActor
-        })),ctx:{tsumo:false}};
+        }));
+        const winners=[human,...others].sort((a,b)=>(a.distance??0)-(b.distance??0));
+        g.phase='win';
+        g.pending={winners,ctx:{tsumo:false}};
         this.render();
       }
       return;
@@ -1438,11 +1503,6 @@ class MahjongUI{
     $(this.host,'#honbaText').textContent=g.honba>0?`${g.honba}本場`:'0本場';
     $(this.host,'#remainText').textContent=fmt(g.wall.length);
 
-    const stickArea=$(this.host,'#stickArea');
-    if(stickArea){
-      stickArea.innerHTML=Array.from({length:g.riichiSticks},()=>'<img class="fnm-point-stick riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false">').join('');
-      stickArea.classList.toggle('has-sticks',g.riichiSticks>0);
-    }
     const kyotakuCount=$(this.host,'#kyotakuCount');
     if(kyotakuCount)kyotakuCount.textContent=String(g.riichiSticks);
     const honbaArea=$(this.host,'#honbaStickArea');
@@ -1463,6 +1523,11 @@ class MahjongUI{
       }
       if(w)w.textContent=WINDS[p.wind];
       if(score)score.textContent=fmt(p.score);
+      const riichiStick=item?.querySelector('.fnm-score-riichi-stick');
+      if(riichiStick){
+        riichiStick.innerHTML=p.riichi?'<img class="fnm-point-stick riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false">':'';
+        riichiStick.hidden=!p.riichi;
+      }
       const card=$(this.host,`#card${s}`);
       if(card){
         const badge=card.querySelector('.fnm-card-riichi');
@@ -1508,7 +1573,7 @@ class MahjongUI{
   playYakumanTsumoEffect(key,done){
     const ov=$(this.host,'#overlay');
     if(!ov)return;
-    try{if(typeof S!=='undefined'&&!S.sound){this.winEffectPlaying=false;done?.();return}}catch(_){}
+    try{if(typeof S!=='undefined'&&!S.sound){this.winEffectPlaying=false;done?.();return}}catch(_){ }
     this.winEffectPlaying=true;
     ov.classList.remove('hidden');
     ov.innerHTML=`<div class="fnm-yakuman-effect"><video class="fnm-yakuman-video" playsinline webkit-playsinline preload="auto"></video></div>`;
@@ -1518,13 +1583,20 @@ class MahjongUI{
     video.muted=false;
     video.volume=1;
     let finished=false;
-    let fallbackTimer=null;
+    const clearEffectTimers=()=>{
+      for(const id of this.winEffectTimers)clearTimeout(id);
+      this.winEffectTimers.clear();
+    };
+    const scheduleEffectFinish=ms=>{
+      const id=setTimeout(()=>{this.winEffectTimers.delete(id);finish()},ms);
+      this.winEffectTimers.add(id);
+    };
     const finish=()=>{
       if(finished)return;
       finished=true;
-      if(fallbackTimer)clearTimeout(fallbackTimer);
-      try{video.pause()}catch(_){}
-      try{video.removeAttribute('src');video.load()}catch(_){}
+      clearEffectTimers();
+      try{video.pause()}catch(_){ }
+      try{video.removeAttribute('src');video.load()}catch(_){ }
       this.winEffectPlaying=false;
       mahjongAudio('tsumo');
       done?.();
@@ -1532,20 +1604,20 @@ class MahjongUI{
     video.addEventListener('ended',finish,{once:true});
     video.addEventListener('error',()=>{
       if(finished)return;
-      try{mahjongAudio('puchun')}catch(_){}
-      fallbackTimer=setTimeout(finish,1700);
+      try{mahjongAudio('puchun')}catch(_){ }
+      scheduleEffectFinish(1700);
     },{once:true});
-    fallbackTimer=setTimeout(finish,2100);
+    scheduleEffectFinish(2100);
     try{
       const play=video.play();
       if(play&&typeof play.catch==='function'){
         play.catch(()=>{
-          try{video.muted=true;const retry=video.play();if(retry&&typeof retry.catch==='function')retry.catch(()=>{})}catch(_){}
-          try{mahjongAudio('puchun')}catch(_){}
+          try{video.muted=true;const retry=video.play();if(retry&&typeof retry.catch==='function')retry.catch(()=>{ })}catch(_){ }
+          try{mahjongAudio('puchun')}catch(_){ }
         });
       }
     }catch(_){
-      try{mahjongAudio('puchun')}catch(_){}
+      try{mahjongAudio('puchun')}catch(_){ }
     }
   }
 

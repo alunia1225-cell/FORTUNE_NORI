@@ -1435,3 +1435,27 @@
 
 /* 2026-10-07 / requested center cleanup: no text badge next to center scores. */
 .fn-mahjong-host .fnm-riichi-badge{display:none!important}
+
+/* 2026-10-07 / audit correction: one riichi stick belongs to the riichi player's
+   own score marker. The old shared center stick strip is no longer used. */
+.fn-mahjong-host .fnm-score-riichi-stick{
+  position:absolute;
+  left:50%;
+  top:-8px;
+  width:34px;
+  height:5px;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:8;
+  pointer-events:none;
+}
+.fn-mahjong-host .fnm-score-riichi-stick[hidden]{display:none!important}
+.fn-mahjong-host .fnm-score-riichi-stick .riichi-stick{
+  display:block;
+  width:34px!important;
+  height:4px!important;
+  margin:0!important;
+  object-fit:fill!important;
+}
