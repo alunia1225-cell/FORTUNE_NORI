@@ -809,10 +809,13 @@ class MahjongUI{
 
           <div class="fnm-center" id="center">
             <div class="fnm-center-topline">
-              <strong id="roundText">東1局</strong>
-              <span id="honbaText">0本場</span>
+              <div class="fnm-round-info">
+                <strong id="roundText">東1局</strong>
+                <span id="honbaText">0本場</span>
+              </div>
+              <span class="fnm-kyotaku"><span class="fnm-stick-label">供託</span><b id="kyotakuCount">0</b></span>
             </div>
-            <div class="fnm-kyotaku"><span class="fnm-stick-label">供託</span><span id="stickArea"></span></div>
+            <div class="fnm-riichi-sticks" id="stickArea"></div>
             <div class="fnm-center-meta">
               <div class="fnm-remain"><span>残り牌</span><b id="remainText">70</b></div>
               <div class="fnm-honba"><span id="honbaStickArea"></span></div>
@@ -1015,6 +1018,10 @@ class MahjongUI{
     if(humanRon)humanOpts.ron=true;
     if(!g.reactionPassed.has(0)){
       if(humanRon)return false;
+      // Keep every legal human call window open until the player explicitly
+      // chooses the call or passes. Pon is legal against a discard from ANY
+      // other seat, including all seven honor tiles; only chi is next-player-only.
+      if(humanOpts.pon||humanOpts.daiminkan||humanOpts.chi.length)return false;
     }
 
     const rons=g.ronCandidates();
@@ -1414,6 +1421,8 @@ class MahjongUI{
       stickArea.innerHTML=Array.from({length:g.riichiSticks},()=>'<img class="fnm-point-stick riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false">').join('');
       stickArea.classList.toggle('has-sticks',g.riichiSticks>0);
     }
+    const kyotakuCount=$(this.host,'#kyotakuCount');
+    if(kyotakuCount)kyotakuCount.textContent=String(g.riichiSticks);
     const honbaArea=$(this.host,'#honbaStickArea');
     if(honbaArea){
       honbaArea.innerHTML=Array.from({length:g.honba},()=>'<img class="fnm-point-stick honba-stick" src="./assets/images/100.gif" alt="" draggable="false">').join('');
