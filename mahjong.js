@@ -460,6 +460,7 @@ function formatWaits(waits){
   return waits.map(t=>LABEL[t]||t).join('・');
 }
 const MAHJONG_AUDIO_POOL=Object.create(null);
+const MAHJONG_AUDIO_TIMERS=new Set();
 let MAHJONG_AUDIO_UNLOCKED=false;
 function mahjongAudioPool(name){
   if(MAHJONG_AUDIO_POOL[name])return MAHJONG_AUDIO_POOL[name];
@@ -486,6 +487,14 @@ function unlockMahjongAudio(){
 function cancelMahjongAudioTimers(){
   for(const id of MAHJONG_AUDIO_TIMERS)clearTimeout(id);
   MAHJONG_AUDIO_TIMERS.clear();
+}
+function mahjongAudioLater(name,delay=0){
+  const id=setTimeout(()=>{
+    MAHJONG_AUDIO_TIMERS.delete(id);
+    mahjongAudio(name);
+  },Math.max(0,Number(delay)||0));
+  MAHJONG_AUDIO_TIMERS.add(id);
+  return id;
 }
 
 function mahjongAudio(name){
