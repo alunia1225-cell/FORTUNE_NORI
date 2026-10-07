@@ -326,30 +326,6 @@
   align-items:flex-start;
   overflow:visible;
 }
-.fn-mahjong-host .meld-bottom{
-  left:auto;
-  right:112px;
-  bottom:74px;
-  flex-direction:row;
-}
-.fn-mahjong-host .meld-top{
-  left:112px;
-  right:auto;
-  top:70px;
-  flex-direction:row-reverse;
-}
-.fn-mahjong-host .meld-left{
-  left:104px;
-  top:auto;
-  bottom:78px;
-  flex-direction:column;
-}
-.fn-mahjong-host .meld-right{
-  right:104px;
-  top:78px;
-  bottom:auto;
-  flex-direction:column-reverse;
-}
 .fn-mahjong-host .fnm-meld-group{
   display:flex;
   gap:0;
@@ -722,10 +698,6 @@
 
 /* Melds are horizontal in each player's local frame; the group itself rotates with the seat. */
 .fn-mahjong-host .fnm-meld{gap:8px}
-.fn-mahjong-host .meld-bottom{left:auto;right:110px;top:auto;bottom:76px;flex-direction:row;transform:none}
-.fn-mahjong-host .meld-top{left:110px;right:auto;top:72px;bottom:auto;flex-direction:row;transform:rotate(180deg);transform-origin:center center}
-.fn-mahjong-host .meld-left{left:74px;right:auto;top:96px;bottom:auto;flex-direction:row;transform:rotate(90deg);transform-origin:center center}
-.fn-mahjong-host .meld-right{left:auto;right:74px;top:auto;bottom:96px;flex-direction:row;transform:rotate(-90deg);transform-origin:center center}
 .fn-mahjong-host .meld-bottom .fnm-meld-group,.fn-mahjong-host .meld-top .fnm-meld-group,.fn-mahjong-host .meld-left .fnm-meld-group,.fn-mahjong-host .meld-right .fnm-meld-group{flex-direction:row}
 .fn-mahjong-host .fnm-meld-tile.is-called .fnm-tile{transform:translate(-50%,-50%) rotate(90deg)!important}
 
@@ -813,28 +785,6 @@
 .fn-mahjong-host .fnm-meld-tile,
 .fn-mahjong-host .fnm-meld-tile .fnm-tile,
 .fn-mahjong-host .fnm-meld-tile .fnm-back{width:30px;height:40px}
-.fn-mahjong-host .meld-bottom{
-  left:48px;right:auto;bottom:78px;top:auto;
-  flex-direction:row;
-}
-.fn-mahjong-host .meld-top{
-  left:48px;right:auto;top:68px;bottom:auto;
-  flex-direction:row;
-  transform:rotate(180deg);
-  transform-origin:center center;
-}
-.fn-mahjong-host .meld-left{
-  left:28px;right:auto;top:340px;bottom:auto;
-  flex-direction:row;
-  transform:rotate(90deg);
-  transform-origin:center center;
-}
-.fn-mahjong-host .meld-right{
-  left:auto;right:28px;top:auto;bottom:340px;
-  flex-direction:row;
-  transform:rotate(-90deg);
-  transform-origin:center center;
-}
 .fn-mahjong-host .meld-bottom .fnm-meld-group,
 .fn-mahjong-host .meld-top .fnm-meld-group,
 .fn-mahjong-host .meld-left .fnm-meld-group,
@@ -956,217 +906,488 @@
 .fn-mahjong-host [data-center-seat="0"]{bottom:3px}
 
 
-/* 2026-10-06 Mahjong UI/audio/tenpai revision
-   - cleaner compact center; round text never wraps
-   - left/right center scores rotate 90deg
-   - riichi point sticks are visibly placed in the center
-   - side melds sit at each side player's local right edge
-   - wait tiles use the actual tile images
-   - touch on a riichi candidate previews waits; second touch confirms
-   - yakuman tsumo effect layer
-*/
-.fn-mahjong-host .fnm-center{
-  width:206px;
-  height:196px;
-  overflow:visible;
-}
-.fn-mahjong-host .fnm-center-topline{
-  left:12px;
-  right:12px;
-  top:11px;
-  height:25px;
-  gap:5px;
-  justify-content:center;
-  white-space:nowrap;
-}
-.fn-mahjong-host .fnm-center-topline>strong{
-  font-size:21px;
-  line-height:1;
-  white-space:nowrap;
-  flex:0 0 auto;
-}
-.fn-mahjong-host .fnm-center-topline>#honbaText{
-  font-size:7px;
-  white-space:nowrap;
-  flex:0 0 auto;
-}
-.fn-mahjong-host .fnm-kyotaku{
-  position:absolute;
-  top:31px;
-  left:50%;
-  transform:translateX(-50%);
-  min-width:54px;
-  height:13px;
-  gap:3px;
-  justify-content:center;
-  pointer-events:none;
-}
-.fn-mahjong-host .fnm-stick-label{font-size:6px;white-space:nowrap}
-.fn-mahjong-host #stickArea{
-  display:flex;
-  gap:2px;
-  align-items:center;
-  justify-content:center;
-  max-width:92px;
-  min-height:5px;
-  overflow:visible;
-}
-.fn-mahjong-host .riichi-stick{width:30px;height:4px;object-fit:fill}
-.fn-mahjong-host .fnm-center-meta{
-  left:50%;
-  right:auto;
-  top:52px;
-  width:82px;
-  height:30px;
-  transform:translateX(-50%);
-  justify-content:center;
-}
-.fn-mahjong-host .fnm-remain{gap:4px;font-size:7px;white-space:nowrap}
-.fn-mahjong-host .fnm-remain b{font-size:25px}
-.fn-mahjong-host .fnm-scoreitem{
-  width:72px;
-  height:20px;
-}
-.fn-mahjong-host [data-center-seat="2"]{left:50%;top:2px;transform:translateX(-50%)}
-.fn-mahjong-host [data-center-seat="0"]{left:50%;bottom:2px;transform:translateX(-50%)}
-.fn-mahjong-host [data-center-seat="1"]{
-  right:-22px;
-  top:50%;
-  transform:translateY(-50%) rotate(-90deg);
-  transform-origin:center center;
-}
-.fn-mahjong-host [data-center-seat="3"]{
-  left:-22px;
-  top:50%;
-  transform:translateY(-50%) rotate(90deg);
-  transform-origin:center center;
-}
-.fn-mahjong-host [data-center-seat="1"] .fnm-riichi-badge,
-.fn-mahjong-host [data-center-seat="3"] .fnm-riichi-badge{font-size:6px;padding:1px 3px}
-.fn-mahjong-host .fnm-dora-block{
-  left:14px;
-  right:14px;
-  bottom:17px;
-  height:24px;
-  gap:4px;
-}
-.fn-mahjong-host .fnm-dora-block>span{font-size:6px;white-space:nowrap}
-.fn-mahjong-host .fnm-dora .fnm-tile{width:18px;height:24px}
-
-/* Side players: their local-right meld edge is the outside edge of the side hand. */
-.fn-mahjong-host .meld-right{
-  left:auto;
-  right:28px;
-  top:64px;
-  bottom:auto;
-  flex-direction:row;
-  transform:rotate(-90deg);
-  transform-origin:center center;
-}
-.fn-mahjong-host .meld-left{
-  left:28px;
-  right:auto;
-  top:auto;
-  bottom:64px;
-  flex-direction:row;
-  transform:rotate(90deg);
-  transform-origin:center center;
-}
-
-/* Wait tiles above the player's hand. This is independent of the hand flex layout. */
-.fn-mahjong-host .fnm-wait-display{
-  position:absolute;
-  left:50%;
-  bottom:91px;
-  transform:translateX(-50%);
-  z-index:96;
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  gap:5px;
-  min-height:34px;
-  padding:4px 7px 3px;
-  border:1px solid rgba(232,204,103,.55);
-  border-radius:6px;
-  background:rgba(4,12,19,.90);
-  box-shadow:0 5px 15px rgba(0,0,0,.35);
-  pointer-events:none;
-  white-space:nowrap;
-}
-.fn-mahjong-host .fnm-wait-display.hidden{display:none!important}
-.fn-mahjong-host .fnm-wait-label{
-  align-self:center;
-  color:#efcf68;
-  font-size:8px;
-  font-weight:1000;
-  margin-right:1px;
-}
-.fn-mahjong-host .fnm-wait-tiles{display:flex;gap:2px;align-items:flex-end}
-.fn-mahjong-host .fnm-wait-tile{display:block!important;width:23px!important;height:31px!important;object-fit:contain}
-
-/* Riichi selection: wait images are revealed on hover, or on the first touch. */
+/* 2026-10-01 / Riichi wait + river alignment fix
+   - Show the waits for each legal riichi declaration tile.
+   - Show the current waits above the hand after riichi.
+   - Start side rivers at the center-panel edges.
+   - Keep the opposite river's first row clear of the center panel.
+   - Keep all AI turns/reactions on the unified JS cadence. */
 .fn-mahjong-host .fnm-choose-hand{
   align-items:flex-end;
-  min-height:102px;
-  margin:18px 0 12px;
+  overflow:visible;
 }
 .fn-mahjong-host .fnm-riichi-choice{
   position:relative;
-  width:40px!important;
-  height:76px!important;
-  padding:20px 0 0!important;
-  margin:0!important;
-  border:0!important;
-  background:transparent!important;
+  width:39px;
+  height:82px;
+  padding:22px 0 0;
+  box-sizing:border-box;
+  border:0;
+  background:transparent;
   overflow:visible;
   cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
 }
-.fn-mahjong-host .fnm-riichi-choice>img.fnm-tile{
-  display:block;
+.fn-mahjong-host .fnm-riichi-choice .fnm-tile{
   width:39px;
   height:58px;
-  margin:0 auto;
+  display:block;
 }
-.fn-mahjong-host .fnm-riichi-waits{
+.fn-mahjong-host .fnm-riichi-wait{
   position:absolute;
   left:50%;
   top:0;
   transform:translateX(-50%);
-  display:none;
-  align-items:flex-end;
-  justify-content:center;
-  gap:1px;
-  min-height:21px;
-  padding:1px 2px;
-  border:1px solid rgba(232,204,103,.42);
+  min-height:16px;
+  max-width:150px;
+  padding:2px 5px;
+  box-sizing:border-box;
+  border:1px solid rgba(232,204,103,.55);
   border-radius:4px;
-  background:rgba(3,10,16,.95);
+  background:rgba(4,12,19,.96);
+  color:#f0d66c;
+  font-size:8px;
+  line-height:1.15;
+  font-weight:1000;
+  text-align:center;
+  white-space:nowrap;
+  z-index:3;
+  pointer-events:none;
+}
+.fn-mahjong-host .fnm-riichi-choice:not(.has-wait) .fnm-riichi-wait{
+  display:none;
+}
+.fn-mahjong-host .fnm-riichi-choice.has-wait:hover .fnm-riichi-wait,
+.fn-mahjong-host .fnm-riichi-choice.has-wait:focus-visible .fnm-riichi-wait{
+  border-color:#f0d66c;
+  box-shadow:0 0 10px rgba(232,204,103,.18);
+}
+.fn-mahjong-host .fnm-riichi-wait-banner{
+  position:absolute;
+  left:50%;
+  bottom:100%;
+  transform:translate(-50%,-7px);
+  z-index:90;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 8px;
+  border:1px solid rgba(232,204,103,.58);
+  border-radius:5px;
+  background:rgba(4,12,19,.96);
+  box-shadow:0 5px 15px rgba(0,0,0,.35);
+  color:#dce7ed;
   white-space:nowrap;
   pointer-events:none;
-  z-index:4;
 }
-.fn-mahjong-host .fnm-riichi-choice:hover .fnm-riichi-waits,
-.fn-mahjong-host .fnm-riichi-choice.is-preview .fnm-riichi-waits{display:flex}
-.fn-mahjong-host .fnm-riichi-choice .fnm-wait-tile{width:21px!important;height:28px!important}
-.fn-mahjong-host .fnm-riichi-choice:not(.legal)>img.fnm-tile{opacity:.36;filter:grayscale(.7)}
-.fn-mahjong-host .fnm-riichi-choice.is-preview>img.fnm-tile{transform:translateY(-3px)}
-.fn-mahjong-host .fnm-choose>span{max-width:620px;white-space:normal;line-height:1.5}
-
-/* Yakuman tsumo presentation. The video itself carries the puchun audio. */
-.fn-mahjong-host .fnm-yakuman-effect{
+.fn-mahjong-host .fnm-riichi-wait-banner span{
+  color:#9cafba;
+  font-size:8px;
+  font-weight:900;
+}
+.fn-mahjong-host .fnm-riichi-wait-banner b{
+  color:#f0d66c;
+  font-size:11px;
+  font-weight:1000;
+}
+.fn-mahjong-host .fnm-self-hand{
   position:absolute;
+}
+
+/* Side rivers: their nearest edge is flush with the center panel. */
+.fn-mahjong-host .river-left{
+  left:481px!important;
+  right:auto!important;
+  top:360px!important;
+  width:180px!important;
+  height:120px!important;
+  transform:translate(-50%,-50%) rotate(90deg)!important;
+}
+.fn-mahjong-host .river-right{
+  left:799px!important;
+  right:auto!important;
+  top:360px!important;
+  width:180px!important;
+  height:120px!important;
+  transform:translate(-50%,-50%) rotate(-90deg)!important;
+}
+
+/* The top/opposite river must sit above the compact center panel. */
+.fn-mahjong-host .river-top{
+  left:50%!important;
+  top:142px!important;
+  bottom:auto!important;
+  transform:translateX(-50%) rotate(180deg)!important;
+}
+
+
+/* 2026-10-06 / Requested-only UI cleanup
+   Center panel, side-player meld placement, wait tile images and win effect only. */
+
+/* Center: remove decorative dividers and reserve clean, non-overlapping zones. */
+.fn-mahjong-host .fnm-center{
+  width:202px;
+  height:190px;
+  border-radius:13px;
+  box-shadow:0 10px 24px rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.06),inset 0 0 0 1px rgba(233,205,98,.07);
+}
+.fn-mahjong-host .fnm-center::before,
+.fn-mahjong-host .fnm-center::after{display:none!important}
+.fn-mahjong-host .fnm-center-topline{
+  left:14px;
+  right:14px;
+  top:25px;
+  height:24px;
+  justify-content:center;
+  gap:6px;
+  white-space:nowrap;
+  overflow:visible;
+}
+.fn-mahjong-host .fnm-center-topline>strong{
+  font-size:18px;
+  line-height:1;
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-center-topline>#honbaText{
+  font-size:7px;
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-kyotaku{
+  position:absolute;
+  right:-2px;
+  top:-3px;
+  min-width:48px;
+  gap:3px;
+  justify-content:flex-end;
+}
+.fn-mahjong-host .fnm-stick-label{
+  font-size:6px;
+  white-space:nowrap;
+}
+.fn-mahjong-host #stickArea{
+  display:flex;
+  flex-wrap:nowrap;
+  gap:2px;
+  align-items:center;
+  max-width:54px;
+  overflow:hidden;
+}
+.fn-mahjong-host .riichi-stick{
+  width:25px;
+  height:auto;
+  max-height:4px;
+}
+.fn-mahjong-host .fnm-center-meta{
+  left:0;
+  right:0;
+  top:57px;
+  width:auto;
+  height:27px;
+  justify-content:center;
+}
+.fn-mahjong-host .fnm-remain{
+  gap:5px;
+  font-size:7px;
+}
+.fn-mahjong-host .fnm-remain b{
+  font-size:24px;
+}
+.fn-mahjong-host .fnm-scoregrid{
   inset:0;
-  z-index:220;
-  display:grid;
-  place-items:center;
-  background:rgba(1,6,10,.18);
+  height:auto;
+}
+.fn-mahjong-host .fnm-scoreitem{
+  width:74px;
+  height:20px;
+  gap:3px;
+  padding:0 3px;
+  border-radius:5px;
+}
+.fn-mahjong-host .fnm-scoreitem>i{
+  width:17px;
+  height:17px;
+  flex:0 0 17px;
+  font-size:8px;
+}
+.fn-mahjong-host .fnm-scoreitem>b{
+  font-size:9px;
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-riichi-badge{
+  padding:1px 3px;
+  font-size:5px;
+}
+.fn-mahjong-host [data-center-seat="2"]{
+  left:50%;
+  top:4px;
+  transform:translateX(-50%);
+}
+.fn-mahjong-host [data-center-seat="0"]{
+  left:50%;
+  bottom:4px;
+  transform:translateX(-50%);
+}
+.fn-mahjong-host [data-center-seat="3"]{
+  left:2px;
+  top:50%;
+  transform:translateY(-50%) rotate(90deg);
+  transform-origin:center center;
+}
+.fn-mahjong-host [data-center-seat="1"]{
+  right:2px;
+  left:auto;
+  top:50%;
+  transform:translateY(-50%) rotate(-90deg);
+  transform-origin:center center;
+}
+.fn-mahjong-host .fnm-dora-block{
+  left:13px;
+  right:13px;
+  bottom:30px;
+  height:26px;
+  gap:4px;
+}
+.fn-mahjong-host .fnm-dora-block>span{
+  font-size:5px;
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-dora{
+  height:25px;
+  gap:1px;
+}
+.fn-mahjong-host .fnm-dora .fnm-tile{
+  width:18px;
+  height:24px;
+}
+
+/* Side-player melds: local right edge.
+   Left player -> screen bottom. Right player -> screen top.
+   Top/bottom meld positions are intentionally untouched. */
+
+/* Waits are rendered with the actual tile images, never text tile names. */
+.fn-mahjong-host .fnm-riichi-waits,
+.fn-mahjong-host .fnm-wait-tiles{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  white-space:nowrap;
   pointer-events:none;
 }
-.fn-mahjong-host .fnm-yakuman-effect.hidden{display:none!important}
+.fn-mahjong-host .fnm-riichi-waits{
+  position:absolute;
+  left:50%;
+  bottom:100%;
+  transform:translateX(-50%);
+  min-height:22px;
+  padding:1px 2px;
+  border:1px solid rgba(232,204,103,.45);
+  border-radius:3px;
+  background:rgba(4,12,19,.96);
+  z-index:5;
+}
+.fn-mahjong-host .fnm-riichi-waits .fnm-wait-tile{
+  width:18px;
+  height:24px;
+  flex:0 0 18px;
+}
+.fn-mahjong-host .fnm-riichi-choice.has-wait:hover{
+  filter:brightness(1.08);
+}
+.fn-mahjong-host .fnm-riichi-choice.has-wait:focus-visible{
+  outline:1px solid rgba(240,214,108,.75);
+  outline-offset:2px;
+}
+.fn-mahjong-host .fnm-wait-tiles .fnm-wait-tile{
+  width:18px;
+  height:24px;
+  flex:0 0 18px;
+}
+.fn-mahjong-host .fnm-riichi-wait-banner{
+  bottom:100%;
+  padding:3px 6px;
+  gap:4px;
+}
+.fn-mahjong-host .fnm-riichi-wait-banner span{
+  font-size:7px;
+}
+.fn-mahjong-host .fnm-riichi-wait-banner .fnm-wait-tiles{
+  gap:1px;
+}
+
+/* Player-owned yakuman tsumo presentation. */
+.fn-mahjong-host .fnm-yakuman-effect{
+  width:min(86vw,720px);
+  height:min(70vh,520px);
+  display:grid;
+  place-items:center;
+  padding:14px;
+  box-sizing:border-box;
+}
 .fn-mahjong-host .fnm-yakuman-video{
   display:block;
   width:100%;
   height:100%;
   object-fit:contain;
-  pointer-events:none;
+  background:#000;
+  border:1px solid rgba(232,204,103,.35);
+  box-shadow:0 18px 55px rgba(0,0,0,.65);
+}
+
+/* 2026-10-06 / Requested-only: center remaining count + side meld placement */
+.fn-mahjong-host .fnm-center-meta{
+  left:0!important; right:0!important; width:auto!important; transform:none!important;
+  top:57px!important; justify-content:center!important;
+}
+.fn-mahjong-host .fnm-remain{
+  position:static!important; display:flex!important; align-items:baseline!important;
+  justify-content:center!important; gap:5px!important; margin:0!important; white-space:nowrap!important;
+}
+/* Side-player melds sit beside the side hand, not underneath it. Top/bottom are untouched. */
+
+/* 2026-10-06 / requested-only follow-up
+   - exhaustive-draw tenpai open hands use the same compact tile size as normal hands
+   - every player's open meld block is kept on the visual right side of that player's hand
+   - existing river layout is intentionally untouched
+*/
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .fnm-hand .fnm-tile{
+  width:30px!important;
+  height:40px!important;
+  object-fit:contain;
+}
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-top .fnm-tile,
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-left .fnm-tile,
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-right .fnm-tile{
+  width:30px!important;
+  height:40px!important;
+}
+
+/* Top and bottom hands: place open melds at visual right. Side-player positions
+   remain exactly at their existing right-edge coordinates. */
+
+
+/* 2026-10-07 / requested-only follow-up
+   - exhaustive-draw open tenpai hands smaller
+   - local-right meld placement and outward side positioning
+   - center count/dora alignment and riichi sticks above the bottom score
+   - larger, clearer win result
+*/
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .fnm-hand .fnm-tile{width:24px!important;height:32px!important;object-fit:contain}
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-top .fnm-tile,
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-left .fnm-tile,
+.fn-mahjong-host .fnm-seat.has-tenpai-reveal .opp-right .fnm-tile{width:24px!important;height:32px!important}
+
+/* Local right-side meld placement. Top player's local right is screen-left. */
+
+.fn-mahjong-host .fnm-center-meta{left:0!important;right:0!important;width:100%!important;transform:none!important;top:57px!important;justify-content:center!important}
+.fn-mahjong-host .fnm-remain{position:static!important;display:flex!important;align-items:baseline!important;justify-content:center!important;gap:5px!important;margin:0!important;white-space:nowrap!important}
+.fn-mahjong-host .fnm-kyotaku{position:absolute!important;left:50%!important;right:auto!important;top:auto!important;bottom:31px!important;transform:translateX(-50%)!important;min-width:0!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:3px!important;z-index:12!important}
+.fn-mahjong-host .fnm-stick-label{font-size:6px!important;white-space:nowrap}
+.fn-mahjong-host #stickArea{display:flex!important;flex-wrap:nowrap!important;gap:2px!important;align-items:center!important;justify-content:center!important;max-width:110px!important;overflow:hidden!important}
+.fn-mahjong-host .fnm-dora-block{left:0!important;right:0!important;bottom:50px!important;height:25px!important;justify-content:center!important;gap:5px!important}
+.fn-mahjong-host .fnm-dora{height:25px!important;justify-content:center!important;gap:1px!important}
+
+.fn-mahjong-host .fnm-win-result{min-width:500px;max-width:860px;padding:26px 30px 24px}
+.fn-mahjong-host .fnm-win-result h2{margin:8px 0 16px;font-size:32px;line-height:1.08;font-weight:1000;letter-spacing:.03em}
+.fn-mahjong-host .fnm-win-result h2 span{margin-left:8px;color:#e8cc67;font-size:.72em;letter-spacing:.08em}
+.fn-mahjong-host .fnm-win-player{padding:13px 6px 15px;border-top:1px solid rgba(255,255,255,.14)}
+.fn-mahjong-host .fnm-win-player>b{display:block;margin-bottom:8px;color:#d9e2e8;font-size:14px;font-weight:900}
+.fn-mahjong-host .fnm-win-yaku{gap:6px;margin:0 0 10px}
+.fn-mahjong-host .fnm-win-yaku span{padding:5px 9px;border-color:rgba(232,204,103,.3);background:rgba(232,204,103,.08);color:#f4ebc7;font-size:14px;line-height:1.1;font-weight:900}
+.fn-mahjong-host .fnm-win-hanfu{margin:2px 0 5px;color:#b8c4cc;font-size:12px;line-height:1.1;font-weight:900;letter-spacing:.04em}
+.fn-mahjong-host .fnm-win-score{display:block;margin:3px 0 0;color:#f2d66d;font-size:30px;line-height:1;font-weight:1000;letter-spacing:.03em;text-shadow:0 2px 12px rgba(0,0,0,.42)}
+.fn-mahjong-host .fnm-win-payment{display:none}
+
+
+/* 2026-10-07 / requested-only: center panel layout */
+.fn-mahjong-host .fnm-center-topline{
+  left:12px!important;right:12px!important;top:9px!important;height:42px!important;
+  display:block!important;
+}
+.fn-mahjong-host .fnm-round-info{
+  position:absolute!important;left:0!important;top:0!important;
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:2px!important;
+}
+.fn-mahjong-host .fnm-round-info #roundText{font-size:18px!important;line-height:1!important}
+.fn-mahjong-host .fnm-round-info #honbaText{font-size:8px!important;line-height:1!important;color:#c7d2d9!important}
+.fn-mahjong-host .fnm-center-topline .fnm-kyotaku{
+  position:absolute!important;right:0!important;top:2px!important;left:auto!important;bottom:auto!important;
+  min-width:0!important;display:flex!important;align-items:center!important;gap:3px!important;transform:none!important;
+}
+.fn-mahjong-host .fnm-kyotaku .fnm-stick-label{font-size:7px!important;white-space:nowrap!important}
+.fn-mahjong-host .fnm-kyotaku #kyotakuCount{font-size:13px!important;line-height:1!important;color:#fff!important}
+.fn-mahjong-host .fnm-riichi-sticks{
+  position:absolute!important;left:50%!important;bottom:29px!important;transform:translateX(-50%)!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;gap:2px!important;
+  min-width:0!important;max-width:110px!important;height:7px!important;z-index:14!important;
+}
+.fn-mahjong-host .fnm-riichi-sticks .riichi-stick{width:23px!important;height:3px!important}
+.fn-mahjong-host .fnm-center-meta{
+  left:0!important;right:0!important;top:55px!important;width:100%!important;height:28px!important;
+  transform:none!important;justify-content:center!important;
+}
+.fn-mahjong-host .fnm-remain{position:static!important;margin:0!important;display:flex!important;justify-content:center!important;align-items:baseline!important;gap:5px!important}
+.fn-mahjong-host .fnm-dora-block{left:0!important;right:0!important;bottom:50px!important;height:27px!important;display:flex!important;justify-content:center!important;align-items:center!important}
+.fn-mahjong-host .fnm-dora{justify-content:center!important;align-items:center!important}
+/* Final alignment: keep dora between the remaining count and score grid. */
+.fn-mahjong-host .fnm-dora-block{top:78px!important;bottom:auto!important;height:22px!important}
+.fn-mahjong-host .fnm-dora{height:22px!important}
+
+
+/* 2026-10-07 / requested center/audio correction */
+.fn-mahjong-host .fnm-center-meta{top:52px!important;height:28px!important;justify-content:center!important}
+.fn-mahjong-host .fnm-remain{position:static!important;display:flex!important;align-items:baseline!important;justify-content:center!important;gap:5px!important}
+.fn-mahjong-host .fnm-dora-block{left:0!important;right:0!important;top:87px!important;bottom:auto!important;height:28px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;z-index:5!important}
+.fn-mahjong-host .fnm-dora-block>span{font-size:5px!important;white-space:nowrap!important}
+.fn-mahjong-host .fnm-dora{height:25px!important;justify-content:center!important;gap:1px!important}
+.fn-mahjong-host .fnm-dora .fnm-tile{width:18px!important;height:24px!important}
+.fn-mahjong-host .fnm-kyotaku{position:absolute!important;left:auto!important;right:7px!important;top:8px!important;bottom:auto!important;transform:none!important;min-width:0!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:3px!important;z-index:15!important}
+.fn-mahjong-host .fnm-riichi-sticks{position:absolute!important;left:50%!important;bottom:28px!important;transform:translateX(-50%)!important;width:auto!important;min-width:0!important;max-width:112px!important;height:7px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:2px!important;z-index:20!important;pointer-events:none!important}
+.fn-mahjong-host .fnm-riichi-sticks .riichi-stick{width:23px!important;height:3px!important;max-height:3px!important;object-fit:fill!important}
+
+
+
+
+/* 2026-10-07 / canonical meld placement — caller-local RIGHT side
+   Local perspective mapping from the human player (seat 0):
+     seat 0 self     -> screen RIGHT
+     seat 1 right    -> screen TOP
+     seat 2 opposite -> screen LEFT
+     seat 3 left     -> screen BOTTOM
+   The meld blocks are placed beside the corresponding hand, not in a generic
+   screen corner. This keeps the same local-side rule for every house. */
+.fn-mahjong-host .meld-bottom{
+  left:auto!important;right:48px!important;top:auto!important;bottom:78px!important;
+  transform:none!important;transform-origin:center center!important;
+}
+.fn-mahjong-host .meld-right{
+  left:auto!important;right:70px!important;top:120px!important;bottom:auto!important;
+  transform:rotate(-90deg)!important;transform-origin:center center!important;
+}
+.fn-mahjong-host .meld-top{
+  left:330px!important;right:auto!important;top:92px!important;bottom:auto!important;
+  transform:rotate(180deg)!important;transform-origin:center center!important;
+}
+.fn-mahjong-host .meld-left{
+  left:70px!important;right:auto!important;top:auto!important;bottom:120px!important;
+  transform:rotate(90deg)!important;transform-origin:center center!important;
+}
+
+
+/* Furiten marker: shown immediately beside the wait tiles. */
+.fn-mahjong-host .fnm-furiten-label{
+  display:inline-flex;
+  align-items:center;
+  margin-left:4px;
+  color:#ff4b4b;
+  font-size:10px;
+  line-height:1;
+  font-weight:1000;
+  text-shadow:0 0 5px rgba(255,50,50,.28);
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-riichi-waits .fnm-furiten-label{
+  align-self:center;
+  margin-left:3px;
+  font-size:8px;
 }
