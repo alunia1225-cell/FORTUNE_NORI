@@ -856,6 +856,24 @@
 }
 .fn-mahjong-host .fnm-scoreitem.is-active{box-shadow:0 0 0 1px rgba(232,204,103,.55)}
 .fn-mahjong-host .fnm-scoreitem.is-self{background:rgba(232,205,100,.08)}
+.fn-mahjong-host .fnm-center-riichi{
+  position:absolute;
+  left:50%;
+  bottom:calc(100% + 3px);
+  transform:translateX(-50%);
+  width:30px;
+  height:5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.fn-mahjong-host .fnm-center-riichi[hidden]{display:none!important}
+.fn-mahjong-host .fnm-center-riichi .riichi-stick{
+  width:27px;
+  height:4px;
+  display:block;
+  object-fit:fill;
+}
 .fn-mahjong-host .fnm-scoreitem>i{
   width:18px;height:18px;flex:0 0 18px;font-size:9px;
 }
@@ -865,10 +883,10 @@
 .fn-mahjong-host .fnm-riichi-badge{
   padding:1px 3px;border-radius:3px;font-size:6px;line-height:1;
 }
-.fn-mahjong-host [data-center-seat="2"]{left:50%;top:4px;transform:translateX(-50%)}
-.fn-mahjong-host [data-center-seat="1"]{right:2px;top:50%;transform:translateY(-50%)}
-.fn-mahjong-host [data-center-seat="0"]{left:50%;bottom:4px;transform:translateX(-50%)}
-.fn-mahjong-host [data-center-seat="3"]{left:2px;top:50%;transform:translateY(-50%)}
+.fn-mahjong-host [data-center-seat="2"]{left:50%;top:8px;transform:translateX(-50%)}
+.fn-mahjong-host [data-center-seat="1"]{right:2px;top:112px;transform:none}
+.fn-mahjong-host [data-center-seat="0"]{left:50%;bottom:8px;transform:translateX(-50%)}
+.fn-mahjong-host [data-center-seat="3"]{left:2px;top:112px;transform:none}
 .fn-mahjong-host .fnm-scoreitem.is-riichi::after{
   content:"";
   position:absolute;
@@ -961,6 +979,29 @@
 .fn-mahjong-host .fnm-riichi-choice.has-wait:focus-visible .fnm-riichi-wait{
   border-color:#f0d66c;
   box-shadow:0 0 10px rgba(232,204,103,.18);
+}
+.fn-mahjong-host .fnm-furiten-label,
+.fn-mahjong-host .fnm-no-yaku-label{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:5px;
+  padding:2px 5px;
+  border-radius:4px;
+  font-size:8px;
+  line-height:1;
+  font-weight:1000;
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-furiten-label{
+  color:#ff6f68;
+  border:1px solid rgba(239,91,82,.65);
+  background:rgba(104,22,18,.42);
+}
+.fn-mahjong-host .fnm-no-yaku-label{
+  color:#e5d4a2;
+  border:1px solid rgba(216,191,117,.5);
+  background:rgba(73,60,27,.38);
 }
 .fn-mahjong-host .fnm-riichi-wait-banner{
   position:absolute;

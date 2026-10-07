@@ -86,6 +86,17 @@ function waitsFor(player){
   if(waits.length===1&&counts(player.hand)[idOf(waits[0])]===4)return [];
   return waits;
 }
+function waitHasYaku(player,win,game){
+  const baseCtx={
+    seatWind:player.wind,roundWind:player.roundWind,
+    doraIndicators:game.doraIndicators,uraIndicators:game.uraIndicators
+  };
+  const ron=calcWin(player,win,{...baseCtx,tsumo:false,houtei:game.wall.length===0});
+  if(ron?.valid)return true;
+  const tsumoPlayer={...player,hand:sortTiles([...player.hand,win]),lastDraw:win};
+  const tsumo=calcWin(tsumoPlayer,win,{...baseCtx,tsumo:true,haitei:game.wall.length===0});
+  return !!tsumo?.valid;
+}
 function isTenpai(p){return waitsFor(p).length>0}
 function handWithWin(p,win,tsumo){return [...p.hand,...(!tsumo&&win?[win]:[]),...p.melds.flatMap(m=>m.tiles)]}
 function closedHand(p){return p.melds.every(m=>m.type==='ankan')}
@@ -1508,8 +1519,9 @@ class MahjongUI{
         const drawIndex=p.lastDraw==null?-1:[...entries].map((x)=>x.t===p.lastDraw?x.i:-1).filter(i=>i>=0).pop()??-1;
         const riichiWaits=waitsFor(p);
         const waitStatus=riichiWaits.length?furitenStatus(p,riichiWaits):null;
+        const noYaku=riichiWaits.length>0&&riichiWaits.every(t=>!waitHasYaku(p,t,g));
         const waitBanner=riichiWaits.length
-          ? `<div class="fnm-riichi-wait-banner"><span>待ち</span><div class="fnm-wait-tiles">${waitImages(riichiWaits)}</div>${furitenLabel(waitStatus)}</div>`
+          ? `<div class="fnm-riichi-wait-banner"><span>待ち</span><div class="fnm-wait-tiles">${waitImages(riichiWaits)}</div>${furitenLabel(waitStatus)}${noYaku?'<b class="fnm-no-yaku-label">役無し</b>':''}</div>`
           : '';
         hand.innerHTML=waitBanner+entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
           `<button class="fnm-hand-tile${p.forbidden.includes(tileBase(t))?' disabled':''}" data-hand-index="${i}">${imageTile(t)}</button>`
