@@ -67,8 +67,14 @@ function completeConcealed(tiles,melds){
   const kans=melds.filter(m=>m.type==='ankan'||m.type==='daiminkan'||m.type==='kakan').length;
   const needTiles=14+kans-meldTiles,needSets=4-melds.length;
   if(tiles.length!==needTiles||needSets<0)return {ok:false};
-  if(!melds.length&&(isChiitoi(tiles)||isKokushi(tiles)))return {ok:true,special:isChiitoi(tiles)?'chiitoi':'kokushi'};
-  const comps=decomposeStandard(tiles,needSets);return comps.length?{ok:true,comps}:{ok:false};
+  const chiitoi=!melds.length&&isChiitoi(tiles);
+  const kokushi=!melds.length&&isKokushi(tiles);
+  // Special hands are candidates, not mutually exclusive with a standard
+  // decomposition.  A seven-pairs-shaped hand can also be Ryanpeikou.
+  const comps=decomposeStandard(tiles,needSets);
+  if(chiitoi)return {ok:true,special:'chiitoi',comps};
+  if(kokushi)return {ok:true,special:'kokushi',comps};
+  return comps.length?{ok:true,comps}:{ok:false};
 }
 function waitsFor(player){
   const waits=[];
@@ -446,87 +452,21 @@ function aiCallEvaluation(game,p,type,used,called){
   if(type==='pon'&&isHonor(called)&&[31,32,33,27+p.wind,27+p.roundWind].includes(idOf(called)))accept=true;
   return {...best,accept,path,baseSh,baseUke};
 }
-function discardLeavesTenpai(p,tile){const h=p.hand.slice(),i=h.findIndex(x=>x===tile);if(i<0)return false;h.splice(i,1);return waitsFor({...p,hand:h}).length>0}
+function discardLeavesTenpai(p,tile){const h=p.hand.slice(),i=h.findIndex(x=>x===tile);if(i<0)return false;h.splice(i,1);return waitsFor({...p,hand:sortTiles(h),lastDraw:null}).length>0}
+function waitsAfterDiscard(p,tile){
+  const h=removeTiles(p.hand,[tile]);
+  return h?waitsFor({...p,hand:sortTiles(h),lastDraw:null}):[];
+}
+function currentWaits(p){
+  if(p.riichi&&p.lastDraw!=null)return waitsAfterDiscard(p,p.lastDraw);
+  return waitsFor(p);
+}
+function hasRealYaku(score){
+  return !!score?.valid&&Array.isArray(score.yaku)&&score.yaku.some(y=>!['ドラ','裏ドラ','赤ドラ'].includes(y.name));
+}
 function canRiichiTile(p,tile,game){
   if(p.riichi||!closedHand(p)||p.score<1000||game.wall.length<RULES.riichiMinWall)return false;
   return discardLeavesTenpai(p,tile);
-}
-function riichiWaitsAfterDiscard(p,tile){
-  const h=removeTiles(p.hand,[tile]);
-  if(!h)return [];
-  return waitsFor({...p,hand:sortTiles(h)});
-}
-function formatWaits(waits){
-  return waits.map(t=>LABEL[t]||t).join('・');
-}
-const MAHJONG_AUDIO_POOL=Object.create(null);
-const MAHJONG_AUDIO_TIMERS=new Set();
-let MAHJONG_AUDIO_UNLOCKED=false;
-function mahjongAudioPool(name){
-  if(MAHJONG_AUDIO_POOL[name])return MAHJONG_AUDIO_POOL[name];
-  const file=`./assets/audio/${name}.wav`;
-  const pool=[];
-  for(let i=0;i<3;i++){
-    try{const a=new Audio(file);a.preload='auto';a.volume=.72;pool.push(a)}catch(_){}
-  }
-  MAHJONG_AUDIO_POOL[name]=pool;
-  return pool;
-}
-function unlockMahjongAudio(){
-  // iOS/Safari: do NOT call play() for every sound during the first gesture.
-  // Doing so causes the entire sound bank to be heard at game start.
-  // Only create/preload the pools here; the actual game action owns playback.
-  if(MAHJONG_AUDIO_UNLOCKED)return;
-  try{if(typeof S!=='undefined'&&!S.sound)return}catch(_){ }
-  MAHJONG_AUDIO_UNLOCKED=true;
-  for(const name of ['dahai11','pon','chii','kan','richi','ron','tsumo','puchun']){
-    const pool=mahjongAudioPool(name);
-    for(const a of pool){try{a.load()}catch(_){} }
-  }
-}
-function cancelMahjongAudioTimers(){
-  for(const id of MAHJONG_AUDIO_TIMERS)clearTimeout(id);
-  MAHJONG_AUDIO_TIMERS.clear();
-}
-function mahjongAudioLater(name,delay=0){
-  const id=setTimeout(()=>{
-    MAHJONG_AUDIO_TIMERS.delete(id);
-    mahjongAudio(name);
-  },Math.max(0,Number(delay)||0));
-  MAHJONG_AUDIO_TIMERS.add(id);
-  return id;
-}
-
-function mahjongAudio(name){
-  try{if(typeof S!=='undefined'&&!S.sound)return false}catch(_){}
-  const pool=mahjongAudioPool(name);
-  const a=pool.find(x=>x.paused||x.ended)||pool[0];
-  if(!a)return false;
-  try{a.currentTime=0}catch(_){}
-  try{const p=a.play();if(p&&typeof p.catch==='function')p.catch(()=>{});return true}catch(_){return false}
-}
-function waitImages(waits){
-  return waits.map(t=>imageTile(t,'fnm-wait-tile')).join('');
-}
-
-// Furiten is a restriction on Ron, not on tenpai itself.
-// Permanent furiten: at least one of the player's current winning tile types
-// is already in that player's river. Temporary/riichi furiten blocks Ron on
-// every wait until the corresponding state is cleared.
-function furitenStatus(player, waits){
-  const bases=new Set((waits||[]).map(tileBase));
-  const riverFuriten=player.river.some(r=>bases.has(tileBase(r.tile)));
-  const temporary=!!player.temporaryFuriten;
-  const riichi=!!player.riichiFuriten;
-  return {
-    furiten:riverFuriten||temporary||riichi,
-    river:riverFuriten,
-    temporary,
-    riichi
-  };
-}
-function furitenLabel(status){
-  return status?.furiten ? '<b class="fnm-furiten-label">フリテン</b>' : '';
 }
 function kanPreservesWaits(game,seat,target){
   const p=game.players[seat];if(!p.riichi)return true;
@@ -595,7 +535,7 @@ class Game{
     if(p.forbidden.includes(tileBase(tile)))return null;
     if(declareRiichi&&!canRiichiTile(p,tile,this))return null;
     const idx=p.hand.findIndex(t=>t===tile);if(idx<0)return null;
-    if(declareRiichi){p.riichi=true;p.doubleRiichi=!this.anyCall&&p.river.length===0;p.ippatsu=true;p.score-=RULES.riichiCost;this.riichiSticks++;mahjongAudio('richi')}
+    if(declareRiichi){p.riichi=true;p.doubleRiichi=!this.anyCall&&p.river.length===0;p.ippatsu=true;p.score-=RULES.riichiCost;this.riichiSticks++}
     const out=p.hand.splice(idx,1)[0];
     p.hand=sortTiles(p.hand);
     p.lastDraw=null;
@@ -606,14 +546,7 @@ class Game{
     p.forbidden=[];
     if(p.riichi&&!declareRiichi)p.ippatsu=false;
     if(p.river.length===1)this.firstDiscards.push(out);
-    // Every discard starts a fresh reaction window.  A previous pass must never
-    // suppress Pon/Ron/Chi on a later discard; reactionPassed is per-discard state.
-    this.reactionPassed=new Set();
     this.lastDiscard=out;this.lastActor=seat;this.phase='reaction';this.pending=null;
-    // The declaration sound can be consumed by the host audio manager if both sounds
-    // are fired in the same frame. Keep the discard sound explicitly after richi.
-    if(declareRiichi)mahjongAudioLater('dahai11',260);
-    else mahjongAudio('dahai11');
     return out;
   }
   nextAfterNoCall(){const next=(this.lastActor+1)%4;this.draw(next);}
@@ -634,8 +567,7 @@ class Game{
       houtei:this.wall.length===0
     });
     // Ron must have a real yaku. Dora/red-dora alone are not a yaku and cannot enable a Ron.
-    const hasYaku=!!score?.valid&&Array.isArray(score.yaku)&&score.yaku.some(y=>!['ドラ','裏ドラ','赤ドラ'].includes(y.name));
-    return score?.valid&&hasYaku?score:null;
+    return hasRealYaku(score)?score:null;
   }
   ronCandidates(){
     if(this.phase!=='reaction'||this.lastDiscard==null||this.lastActor==null)return [];
@@ -650,16 +582,14 @@ class Game{
   actionOptions(seat){
     if(this.phase!=='reaction'||this.lastDiscard==null)return {ron:false,pon:false,daiminkan:false,chi:[]};
     const p=this.players[seat],t=this.lastDiscard;if(!p||seat===this.lastActor)return {ron:false,pon:false,daiminkan:false,chi:[]};
-    const selfRon=!!this.ronScore(seat);
     const allRons=this.ronCandidates();
-    // Ron is the only reaction that outranks every call.  Otherwise the caller's
-    // legal Pon/Chi/Kan options must remain available until that caller passes.
-    if(selfRon||allRons.length)return {ron:selfRon,pon:false,daiminkan:false,chi:[]};
-    if(this.abortiveReason())return {ron:false,pon:false,daiminkan:false,chi:[]};
-    if(p.riichi||this.kanCount>=RULES.maxKan)return {ron:false,pon:false,daiminkan:false,chi:[]};
+    const r=allRons.some(x=>x.seat===seat);
+    if(this.abortiveReason())return {ron:r,pon:false,daiminkan:false,chi:[]};
+    if(p.riichi||this.kanCount>=RULES.maxKan)return {ron:r,pon:false,daiminkan:false,chi:[]};
     const pon=legalPon(p,t),daiminkan=legalDaiminkan(p,t);
+    // Chi is only legal for the player immediately following the discarder in turn order.
     const chi=seat===(this.lastActor+1)%4?chiOptions(p.hand,t):[];
-    return {ron:false,pon,daiminkan,chi};
+    return {ron:r,pon,daiminkan,chi};
   }
   pass(seat){
     if(this.phase!=='reaction')return false;
@@ -675,39 +605,27 @@ class Game{
     if([31,32,33].includes(calledId)&&[31,32,33].every(hasSet)&&p.paoDaisangen==null)p.paoDaisangen=meld.from;
     if(calledId>=27&&calledId<=30&&[27,28,29,30].every(hasSet)&&p.paoDaisuushii==null)p.paoDaisuushii=meld.from;
   }
-  removeClaimedDiscard(from,riverId){
-    if(from==null||riverId==null)return false;
-    const q=this.players[from];if(!q?.river?.length)return false;
-    const i=q.river.findIndex(r=>r.id===riverId);
-    if(i<0)return false;
-    q.river.splice(i,1);
-    return true;
-  }
   callMeld(seat,type,used){
     if(this.phase!=='reaction'||seat===this.lastActor)return false;
     const higherRon=this.ronCandidates().filter(x=>x.seat!==seat);
     if(higherRon.length)return false;
-    const p=this.players[seat],called=this.lastDiscard,from=this.lastActor;
-    const riverId=this.lastRiverId();
-    if(!p||p.riichi)return false;
+    const p=this.players[seat],called=this.lastDiscard,from=this.lastActor;if(!p||p.riichi)return false;
     if(type==='pon'){
       if(!legalPon(p,called)||used.length!==2||used.some(x=>tileBase(x)!==tileBase(called)))return false;
       const rest=removeTiles(p.hand,used);if(!rest)return false;p.hand=sortTiles(rest);
-      const meld={type:'pon',tiles:[...used,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:riverId};
-      p.melds.push(meld);
-      this.removeClaimedDiscard(from,riverId);this.updatePaoAfterCall(p,meld);
+      const meld={type:'pon',tiles:[...used,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:this.lastRiverId()};
+      p.melds.push(meld);this.updatePaoAfterCall(p,meld);
       p.called=true;p.forbidden=[tileBase(called)];
       this.lastCall={id:++this.callSeq,seat,type:'pon',from,tile:called,tiles:meld.tiles.slice()};
     }else if(type==='chi'){
       if(seat!==(from+1)%4||used.length!==2||!chiOptions(p.hand,called).some(o=>waitKey([...o,called])===waitKey([...used,called])))return false;
       const rest=removeTiles(p.hand,used);if(!rest)return false;p.hand=sortTiles(rest);
-      const meld={type:'chi',tiles:[...used,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:riverId};
+      const meld={type:'chi',tiles:[...used,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:this.lastRiverId()};
       p.melds.push(meld);
-      this.removeClaimedDiscard(from,riverId);
       p.called=true;p.forbidden=this.forbiddenAfterChi(used,called);
       this.lastCall={id:++this.callSeq,seat,type:'chi',from,tile:called,tiles:meld.tiles.slice()};
     }else return false;
-    this.finishCall(seat,type);return true;
+    this.finishCall(seat);return true;
   }
   forbiddenAfterChi(used,called){
     const ids=[...used.map(idOf),idOf(called)].sort((a,b)=>a-b),out=new Set([tileBase(called)]);
@@ -717,7 +635,7 @@ class Game{
     }
     return [...out];
   }
-  finishCall(seat,type){this.anyCall=true;for(const q of this.players)if(q.riichi)q.ippatsu=false;this.current=seat;this.phase='discard';this.lastDiscard=null;this.lastActor=null;this.pending=null;this.players[seat].lastDraw=null;mahjongAudio(type==='pon'?'pon':'chii')}
+  finishCall(seat){this.anyCall=true;for(const q of this.players)if(q.riichi)q.ippatsu=false;this.current=seat;this.phase='discard';this.lastDiscard=null;this.lastActor=null;this.pending=null;this.players[seat].lastDraw=null}
   kanOptions(seat){
     const p=this.players[seat];if(!p)return [];
     const c=counts(p.hand),out=[];
@@ -733,8 +651,7 @@ class Game{
       const from=this.lastActor,called=this.lastDiscard,riverId=this.lastRiverId();
       p.hand=removeTiles(p.hand,actual);
       const meld={type:'daiminkan',tiles:[...actual,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:riverId};
-      p.melds.push(meld);
-      this.removeClaimedDiscard(from,riverId);this.updatePaoAfterCall(p,meld);
+      p.melds.push(meld);this.updatePaoAfterCall(p,meld);
       this.lastCall={id:++this.callSeq,seat,type:'daiminkan',from,tile:called,tiles:meld.tiles.slice()};
       this.lastDiscard=null;this.lastActor=seat;this.finishKan(seat,'daiminkan');return true;
     }
@@ -781,7 +698,6 @@ class Game{
     p.forbidden=[];
     if(type==='ankan')this.revealKanDora();
     else this.pendingKanDora=true;
-    mahjongAudio('kan');
     this.kanAbortPending=this.kanCount===4&&this.kanOwners.size>1;
     // Four-kan abort is declared immediately after the fourth kan; no rinshan draw
     // or settlement occurs in this case.
@@ -834,13 +750,11 @@ class MahjongUI{
     this.lastCallId=0;
     this.suppressClickUntil=0;
     this.suppressClickTarget=null;
-    this.winEffectKey=null;
-    this.winEffectPlaying=false;
-    this.winSoundKey=null;
-    this.winEffectTimers=new Set();
-    this.hostHandlers=null;
-    this.lastActionKey='';
-    this.lastActionAt=0;
+    this.suppressChooseClickUntil=0;
+    this.riichiPreviewIndex=-1;
+    this.lastWinPresentationKey=null;
+    this.winAudio=null;
+    this.winEffectTimer=null;
     this.mount();
   }
 
@@ -880,31 +794,31 @@ class MahjongUI{
           <section class="fnm-seat fnm-seat-bottom">
             <div class="fnm-river river-bottom" id="river0"></div>
             <div class="fnm-meld meld-bottom" id="meld0"></div>
+            <div class="fnm-wait-display hidden" id="waitDisplay"></div>
             <div class="fnm-self-hand" id="hand0"></div>
           </section>
 
           <div class="fnm-center" id="center">
             <div class="fnm-center-topline">
-              <div class="fnm-round-info">
-                <strong id="roundText">東1局</strong>
-                <span id="honbaText">0本場</span>
-              </div>
-              <span class="fnm-kyotaku"><span class="fnm-stick-label">供託</span><b id="kyotakuCount">0</b></span>
+              <strong id="roundText">東1局</strong>
+              <span id="honbaText">0本場</span>
+              <span class="fnm-kyotaku"><span class="fnm-stick-label">供託</span><span id="stickArea"></span></span>
             </div>
             <div class="fnm-center-meta">
               <div class="fnm-remain"><span>残り牌</span><b id="remainText">70</b></div>
               <div class="fnm-honba"><span id="honbaStickArea"></span></div>
             </div>
             <div class="fnm-scoregrid">
-              <div class="fnm-scoreitem" data-center-seat="2"><span class="fnm-score-riichi-stick" aria-hidden="true"></span><i id="centerWind2">西</i><b id="centerScore2">25,000</b></div>
-              <div class="fnm-scoreitem" data-center-seat="3"><span class="fnm-score-riichi-stick" aria-hidden="true"></span><i id="centerWind3">北</i><b id="centerScore3">25,000</b></div>
-              <div class="fnm-scoreitem" data-center-seat="0"><span class="fnm-score-riichi-stick" aria-hidden="true"></span><i id="centerWind0">東</i><b id="centerScore0">25,000</b></div>
-              <div class="fnm-scoreitem" data-center-seat="1"><span class="fnm-score-riichi-stick" aria-hidden="true"></span><i id="centerWind1">南</i><b id="centerScore1">25,000</b></div>
+              <div class="fnm-scoreitem" data-center-seat="2"><i id="centerWind2">西</i><b id="centerScore2">25,000</b><em id="centerRiichi2" class="fnm-riichi-badge" hidden>リーチ</em></div>
+              <div class="fnm-scoreitem" data-center-seat="3"><i id="centerWind3">北</i><b id="centerScore3">25,000</b><em id="centerRiichi3" class="fnm-riichi-badge" hidden>リーチ</em></div>
+              <div class="fnm-scoreitem" data-center-seat="0"><i id="centerWind0">東</i><b id="centerScore0">25,000</b><em id="centerRiichi0" class="fnm-riichi-badge" hidden>リーチ</em></div>
+              <div class="fnm-scoreitem" data-center-seat="1"><i id="centerWind1">南</i><b id="centerScore1">25,000</b><em id="centerRiichi1" class="fnm-riichi-badge" hidden>リーチ</em></div>
             </div>
             <div class="fnm-dora-block"><span>ドラ表示牌</span><div class="fnm-dora" id="doraArea"></div></div>
           </div>
 
           <div class="fnm-callcutin hidden" id="callCutin"></div>
+          <div class="fnm-yakuman-effect hidden" id="yakumanEffect" aria-hidden="true"></div>
           <div class="fnm-ops" id="ops"></div>
           <div class="fnm-prompt" id="prompt"></div>
           <div class="fnm-overlay hidden" id="overlay"></div>
@@ -915,20 +829,11 @@ class MahjongUI{
 
   bind(){
     if(!this.callBound){
-      // Keep stable function references so stop() can remove every listener.
-      // Native touch/pointer/click paths are de-duplicated before dispatch.
-      this.hostHandlers={
-        touchstart:()=>unlockMahjongAudio(),
-        pointerdown:e=>{if(e.pointerType==='touch'||e.pointerType==='mouse')unlockMahjongAudio()},
-        touchend:e=>this.onTouchEnd(e),
-        pointerup:e=>this.onPointerUp(e),
-        click:e=>this.onClick(e)
-      };
-      this.host.addEventListener('touchstart',this.hostHandlers.touchstart,{passive:true,capture:true});
-      this.host.addEventListener('pointerdown',this.hostHandlers.pointerdown,{passive:true,capture:true});
-      this.host.addEventListener('touchend',this.hostHandlers.touchend,{passive:false,capture:true});
-      this.host.addEventListener('pointerup',this.hostHandlers.pointerup,{passive:false,capture:true});
-      this.host.addEventListener('click',this.hostHandlers.click);
+      // iPhone/iPad are the primary target: handle native touch events first.
+      // Desktop pointer/click handling remains only as a compatibility path.
+      this.host.addEventListener('touchend',e=>this.onTouchEnd(e),{passive:false,capture:true});
+      this.host.addEventListener('pointerup',e=>this.onPointerUp(e),{passive:false,capture:true});
+      this.host.addEventListener('click',e=>this.onClick(e));
       this.callBound=true;
     }
     if(!this.resizeBound){
@@ -959,41 +864,21 @@ class MahjongUI{
   }
 
   start(){
-    cancelMahjongAudioTimers();
     this.running=true;
     this.game.reset();
     this.game.start();
     this.riichiMode=false;
-    this.winEffectKey=null;
-    this.winEffectPlaying=false;
-    this.winSoundKey=null;
-    for(const id of this.winEffectTimers)clearTimeout(id);
-    this.winEffectTimers.clear();
+    this.riichiPreviewIndex=-1;
     this.lastCallId=0;
-    this.lastActionKey='';
-    this.lastActionAt=0;
+    this.lastWinPresentationKey=null;
     this.render();
     this.schedule();
   }
 
   stop(){
-    cancelMahjongAudioTimers();
     this.running=false;
     if(this.timer){clearTimeout(this.timer);this.timer=null}
     if(this.callTimer){clearTimeout(this.callTimer);this.callTimer=null}
-    for(const id of this.winEffectTimers)clearTimeout(id);
-    this.winEffectTimers.clear();
-    if(this.callBound&&this.hostHandlers){
-      this.host.removeEventListener('touchstart',this.hostHandlers.touchstart,{capture:true});
-      this.host.removeEventListener('pointerdown',this.hostHandlers.pointerdown,{capture:true});
-      this.host.removeEventListener('touchend',this.hostHandlers.touchend,{capture:true});
-      this.host.removeEventListener('pointerup',this.hostHandlers.pointerup,{capture:true});
-      this.host.removeEventListener('click',this.hostHandlers.click);
-      this.hostHandlers=null;
-      this.callBound=false;
-    }
-    const effectVideo=$(this.host,'.fnm-yakuman-video');
-    if(effectVideo){try{effectVideo.pause()}catch(_){}try{effectVideo.removeAttribute('src');effectVideo.load()}catch(_){}}
     if(this.resizeObserver){this.resizeObserver.disconnect();this.resizeObserver=null}
     if(this.resizeBound){
       window.removeEventListener('resize',this.resizeHandler);
@@ -1002,19 +887,18 @@ class MahjongUI{
       this.resizeBound=false;
     }
     this.riichiMode=false;
-    this.winEffectKey=null;
-    this.winEffectPlaying=false;
-    this.winSoundKey=null;
-    this.lastActionKey='';
-    this.lastActionAt=0;
+    this.riichiPreviewIndex=-1;
+    if(this.winAudio){try{this.winAudio.pause();this.winAudio.currentTime=0}catch(_){} this.winAudio=null}
+    if(this.winEffectTimer){clearTimeout(this.winEffectTimer);this.winEffectTimer=null}
+    const effect=$(this.host,'#yakumanEffect');
+    if(effect){effect.classList.add('hidden');effect.innerHTML=''}
   }
 
   schedule(){
     if(!this.running)return;
     if(this.timer)clearTimeout(this.timer);
     const g=this.game;
-    // All CPU decisions/reactions use one fixed 2-second cadence.
-    const delay=(g.phase==='reaction'||(g.phase==='discard'&&g.current!==0))?2000:250;
+    const delay=g.phase==='reaction'?1200:(g.phase==='discard'&&g.current!==0?1200:300);
     this.timer=setTimeout(()=>{
       if(!this.running)return;
       try{this.stepAI()}
@@ -1059,7 +943,7 @@ class MahjongUI{
           tenhou:p.seat===g.dealer&&g.turnNo===1,
           chihou:p.seat!==g.dealer&&g.turnNo<=4&&!g.anyCall
         });
-        if(win.valid){
+        if(hasRealYaku(win)){
           g.phase='win';
           g.pending={winners:[{seat:p.seat,tile:draw,tsumo:true,score:win,from:p.seat}],ctx:{tsumo:true}};
           this.render();
@@ -1117,12 +1001,8 @@ class MahjongUI{
     // has a legal action at the current reaction priority. This is what prevents the
     // CPU from stealing a legal player pon/chi window.
     const humanOpts=g.actionOptions(0);
-    const humanRon=!!humanOpts.ron;
     if(!g.reactionPassed.has(0)){
-      if(humanRon)return false;
-      // Keep a legal human call window open until the player chooses it or passes.
-      // Pon is legal against a discard from ANY other seat, including honors.
-      if(humanOpts.pon||humanOpts.daiminkan||humanOpts.chi.length)return false;
+      if(humanOpts.ron)return false;
     }
 
     const rons=g.ronCandidates();
@@ -1176,12 +1056,7 @@ class MahjongUI{
         if(humanHasPon && bestAI.prio<3)return false;
         if(humanHasChi && bestAI.prio<2)return false;
         const humanDist=(0-g.lastActor+4)%4;
-        // A human player's legal Pon/kan window must remain selectable.
-        // Do not let an AI of the same call priority steal the player's call
-        // merely because its seat is closer to the discarder. AI calls are
-        // evaluated only after the human passes. Ron still retains absolute
-        // priority through actionOptions()/ronCandidates().
-        if(humanHasPon&&bestAI.prio===3)return false;
+        if(humanHasPon&&bestAI.prio===3&&bestAI.distance<humanDist)return false;
         if(humanHasChi&&bestAI.prio===2)return false;
         // The AI has the higher-priority call, so it may proceed.
       }
@@ -1203,20 +1078,24 @@ class MahjongUI{
     return true;
   }
 
-  claimActionInput(t){
-    const action=String(t?.dataset?.action||'');
-    const key=action+'|'+String(t?.dataset?.handIndex??t?.dataset?.chooseIndex??t?.id??'');
-    const now=typeof performance!=='undefined'?performance.now():Date.now();
-    if(this.lastActionKey===key&&now-this.lastActionAt<900)return false;
-    this.lastActionKey=key;
-    this.lastActionAt=now;
-    return true;
-  }
-
   onTouchEnd(e){
+    const choose=e.target?.closest?.('#overlay [data-choose-index]');
+    if(choose&&this.host.contains(choose)){
+      e.preventDefault();
+      e.stopPropagation();
+      const index=Number(choose.dataset.chooseIndex);
+      const now=typeof performance!=='undefined'?performance.now():Date.now();
+      this.suppressChooseClickUntil=now+900;
+      if(this.riichiPreviewIndex===index){
+        this.handleRiichiTile(index);
+      }else{
+        this.riichiPreviewIndex=index;
+        this.render();
+      }
+      return;
+    }
     const t=e.target?.closest?.('#ops [data-action]');
     if(!t||!this.host.contains(t))return;
-    if(!this.claimActionInput(t))return;
     e.preventDefault();
     e.stopPropagation();
     this.suppressClickTarget=t;
@@ -1233,7 +1112,6 @@ class MahjongUI{
     }
     const t=e.target?.closest?.('#ops [data-action]');
     if(!t||!this.host.contains(t))return;
-    if(!this.claimActionInput(t))return;
     e.preventDefault();
     e.stopPropagation();
     this.suppressClickTarget=t;
@@ -1245,6 +1123,11 @@ class MahjongUI{
     const t=e.target?.closest?.('[data-action],[data-hand-index],[data-riichi-cancel],[data-next],[data-close],[data-choose-index]');
     if(!t||!this.host.contains(t))return;
     const now=typeof performance!=='undefined'?performance.now():Date.now();
+    if(t.dataset.chooseIndex!=null&&now<this.suppressChooseClickUntil){
+      this.suppressChooseClickUntil=0;
+      e.preventDefault();
+      return;
+    }
     if(t.dataset.action&&this.suppressClickTarget===t&&now<this.suppressClickUntil){
       this.suppressClickTarget=null;
       this.suppressClickUntil=0;
@@ -1252,10 +1135,10 @@ class MahjongUI{
       return;
     }
     e.preventDefault();
-    if(t.dataset.action){if(!this.claimActionInput(t))return;this.handleAction(t.dataset.action);return}
+    if(t.dataset.action){this.handleAction(t.dataset.action);return}
     if(t.dataset.handIndex!=null){this.handleTile(Number(t.dataset.handIndex));return}
     if(t.dataset.chooseIndex!=null){this.handleRiichiTile(Number(t.dataset.chooseIndex));return}
-    if(t.hasAttribute('data-riichi-cancel')){this.riichiMode=false;this.render();return}
+    if(t.hasAttribute('data-riichi-cancel')){this.riichiMode=false;this.riichiPreviewIndex=-1;this.render();return}
     if(t.hasAttribute('data-next')){this.advanceAfterResult();return}
     if(t.hasAttribute('data-close')){try{window.closeGame?.()}catch(_){}}
   }
@@ -1270,30 +1153,21 @@ class MahjongUI{
       return;
     }
     if(action==='ron'){
-      const humanRon=g.ronScore(0);
-      if(humanRon){
-        const human={seat:0,tile:g.lastDiscard,tsumo:false,score:humanRon,distance:(0-g.lastActor+4)%4,from:g.lastActor};
-        const others=g.ronCandidates().filter(x=>x.seat!==0).map(x=>({
+      const r=g.ronCandidates().find(x=>x.seat===0);
+      if(r){
+        g.phase='win';
+        g.pending={winners:g.ronCandidates().map(x=>({
           seat:x.seat,tile:g.lastDiscard,tsumo:false,score:x.score,
           distance:x.distance,from:g.lastActor
-        }));
-        const winners=[human,...others].sort((a,b)=>(a.distance??0)-(b.distance??0));
-        g.phase='win';
-        g.pending={winners,ctx:{tsumo:false}};
+        })),ctx:{tsumo:false}};
         this.render();
       }
       return;
     }
     if(action==='pon'){
-      // Re-check the player's own legal Pon at click time.  This prevents a stale
-      // rendered action row from silently turning into a pass after a reaction update.
-      if(g.phase!=='reaction'||g.lastDiscard==null||g.lastActor===0)return;
-      const p=g.players[0];
-      if(!p||p.riichi||g.reactionPassed.has(0)||g.abortiveReason())return;
-      if(g.ronCandidates().length)return;
-      const used=takeMatching(p.hand,g.lastDiscard,2);
-      if(used.length!==2||!legalPon(p,g.lastDiscard))return;
-      if(g.callMeld(0,'pon',used))this.render();
+      const used=takeMatching(g.players[0].hand,g.lastDiscard,2);
+      if(used.length===2&&g.callMeld(0,'pon',used))this.render();
+      else if(g.ronCandidates().some(x=>x.seat!==0))this.resolveAIReactions(),this.render();
       return;
     }
     if(action==='daiminkan'){
@@ -1331,6 +1205,7 @@ class MahjongUI{
     }
     if(action==='riichi'){
       this.riichiMode=true;
+      this.riichiPreviewIndex=-1;
       this.render();
       return;
     }
@@ -1353,7 +1228,6 @@ class MahjongUI{
     }
     this.resolveAIReactions();
     this.render();
-    this.schedule();
   }
 
   handleRiichiTile(index){
@@ -1363,9 +1237,9 @@ class MahjongUI{
     if(!t||!canRiichiTile(p,t,g))return;
     if(g.discard(0,t,true)){
       this.riichiMode=false;
+      this.riichiPreviewIndex=-1;
       this.resolveAIReactions();
       this.render();
-      this.schedule();
     }
   }
 
@@ -1381,7 +1255,7 @@ class MahjongUI{
           chihou:p.seat!==g.dealer&&g.turnNo<=4&&!g.anyCall
         };
         const w=calcWin(p,p.lastDraw,ctx);
-        if(w?.valid===true&&Array.isArray(w.yaku))a.push({id:'tsumo',label:'ツモ',primary:true});
+        if(hasRealYaku(w))a.push({id:'tsumo',label:'ツモ',primary:true});
       }
       if(!p.riichi&&g.kyuushukyuhai(0))a.push({id:'kyuushukyuhai',label:'九種九牌'});
       for(const k of g.kanOptions(0)){
@@ -1395,16 +1269,11 @@ class MahjongUI{
     }else if(g.phase==='reaction'){
       if(g.reactionPassed?.has(0))return a;
       const o=g.actionOptions(0);
-      const humanRon=!!g.ronScore(0);
-      if(humanRon)o.ron=true;
-      if(humanRon)a.push({id:'ron',label:'ロン',danger:true});
+      if(o.ron)a.push({id:'ron',label:'ロン',danger:true});
       if(o.daiminkan)a.push({id:'daiminkan',label:'大明槓'});
-      // Pon is re-evaluated directly from the player's hand.  This intentionally
-      // covers honors and every discard source; actionOptions still enforces Ron priority.
-      const directPon=!humanRon&&o.pon&&legalPon(p,g.lastDiscard);
-      if(directPon)a.push({id:'pon',label:'ポン'});
+      if(o.pon)a.push({id:'pon',label:'ポン'});
       o.chi.forEach(opt=>a.push({id:`chi:${JSON.stringify(opt)}`,label:`チー ${opt.map(t=>LABEL[t]).join('・')}`}));
-      if(o.ron||o.daiminkan||directPon||o.chi.length)a.push({id:'pass',label:'パス'});
+      if(o.ron||o.daiminkan||o.pon||o.chi.length)a.push({id:'pass',label:'パス'});
     }
     return a;
   }
@@ -1422,12 +1291,10 @@ class MahjongUI{
     if(this.riichiMode){
       ov.classList.remove('hidden');
       const p=this.game.players[0],hand=p.hand;
-      ov.innerHTML=`<div class="fnm-choose"><b>立直</b><span>宣言牌を選択</span><div class="fnm-choose-hand">${hand.map((t,i)=>{
-        const waits=canRiichiTile(p,t,this.game)?riichiWaitsAfterDiscard(p,t):[];
-        const waitText=waits.length?formatWaits(waits):'';
-        const status=waits.length?furitenStatus({...p,river:p.river},waits):null;
-        const waitMarkup=waits.length?`<span class="fnm-riichi-waits">${waitImages(waits)}${furitenLabel(status)}</span>`:'';
-        return `<button class="fnm-riichi-choice${waits.length?' has-wait':''}" data-choose-index="${i}" aria-label="${esc(waits.length?`待ち ${waitText}${status?.furiten?' フリテン':''}`:'立直不可')}">${waitMarkup}${imageTile(t)}</button>`;
+      ov.innerHTML=`<div class="fnm-choose"><b>立直</b><span>牌に触れると、その牌を切った後の待ちを確認できます。もう一度触れると宣言します。</span><div class="fnm-choose-hand">${hand.map((t,i)=>{
+        const waits=canRiichiTile(p,t,this.game)?waitsAfterDiscard(p,t):[];
+        const preview=this.riichiPreviewIndex===i;
+        return `<button class="fnm-riichi-choice${waits.length?' legal':''}${preview?' is-preview':''}" data-choose-index="${i}" aria-label="${esc(waits.length?'待ち '+waits.map(x=>LABEL[x]||x).join('、'):'立直不可')}"><span class="fnm-riichi-waits">${waits.length?waits.map(x=>imageTile(x,'fnm-wait-tile')).join(''):''}</span>${imageTile(t)}</button>`;
       }).join('')}</div><button data-riichi-cancel>キャンセル</button></div>`;
     }else if(this.game.phase!=='win'&&this.game.phase!=='drawEnd'&&this.game.phase!=='abortive'&&this.game.phase!=='sessionEnd'){
       ov.classList.add('hidden');
@@ -1482,12 +1349,7 @@ class MahjongUI{
       if(s===0 && g.phase!=='drawEnd'){
         const entries=p.hand.map((t,i)=>({t,i}));
         const drawIndex=p.lastDraw==null?-1:[...entries].map((x)=>x.t===p.lastDraw?x.i:-1).filter(i=>i>=0).pop()??-1;
-        const riichiWaits=waitsFor(p);
-        const waitStatus=riichiWaits.length?furitenStatus(p,riichiWaits):null;
-        const waitBanner=riichiWaits.length
-          ? `<div class="fnm-riichi-wait-banner"><span>待ち</span><div class="fnm-wait-tiles">${waitImages(riichiWaits)}</div>${furitenLabel(waitStatus)}</div>`
-          : '';
-        hand.innerHTML=waitBanner+entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
+        hand.innerHTML=entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
           `<button class="fnm-hand-tile${p.forbidden.includes(tileBase(t))?' disabled':''}" data-hand-index="${i}">${imageTile(t)}</button>`
         ).join('');
         if(drawIndex>=0){
@@ -1500,6 +1362,16 @@ class MahjongUI{
           ? p.hand.map(t=>imageTile(t)).join('')
           : Array.from({length:p.hand.length},()=>backTile()).join('');
       }
+    }
+
+    const waitEl=$(this.host,'#waitDisplay');
+    if(waitEl){
+      const p=g.players[0];
+      const waits=g.phase==='drawEnd'||g.phase==='win'||g.phase==='abortive'||g.phase==='sessionEnd'?[]:currentWaits(p);
+      waitEl.classList.toggle('hidden',waits.length===0);
+      waitEl.innerHTML=waits.length
+        ? `<span class="fnm-wait-label">待ち</span><span class="fnm-wait-tiles">${waits.map(t=>imageTile(t,'fnm-wait-tile')).join('')}</span>`
+        : '';
     }
   }
 
@@ -1548,8 +1420,11 @@ class MahjongUI{
     $(this.host,'#honbaText').textContent=g.honba>0?`${g.honba}本場`:'0本場';
     $(this.host,'#remainText').textContent=fmt(g.wall.length);
 
-    const kyotakuCount=$(this.host,'#kyotakuCount');
-    if(kyotakuCount)kyotakuCount.textContent=String(g.riichiSticks);
+    const stickArea=$(this.host,'#stickArea');
+    if(stickArea){
+      stickArea.innerHTML=Array.from({length:g.riichiSticks},()=>'<img class="fnm-point-stick riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false">').join('');
+      stickArea.classList.toggle('has-sticks',g.riichiSticks>0);
+    }
     const honbaArea=$(this.host,'#honbaStickArea');
     if(honbaArea){
       honbaArea.innerHTML=Array.from({length:g.honba},()=>'<img class="fnm-point-stick honba-stick" src="./assets/images/100.gif" alt="" draggable="false">').join('');
@@ -1561,6 +1436,7 @@ class MahjongUI{
       const item=$(this.host,`[data-center-seat="${s}"]`);
       const w=$(this.host,`#centerWind${s}`);
       const score=$(this.host,`#centerScore${s}`);
+      const riichi=$(this.host,`#centerRiichi${s}`);
       if(item){
         item.classList.toggle('is-self',s===0);
         item.classList.toggle('is-active',g.current===s);
@@ -1568,11 +1444,7 @@ class MahjongUI{
       }
       if(w)w.textContent=WINDS[p.wind];
       if(score)score.textContent=fmt(p.score);
-      const riichiStick=item?.querySelector('.fnm-score-riichi-stick');
-      if(riichiStick){
-        riichiStick.innerHTML=p.riichi?'<img class="fnm-point-stick riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false">':'';
-        riichiStick.hidden=!p.riichi;
-      }
+      if(riichi)riichi.hidden=!p.riichi;
       const card=$(this.host,`#card${s}`);
       if(card){
         const badge=card.querySelector('.fnm-card-riichi');
@@ -1608,6 +1480,48 @@ class MahjongUI{
     this.callTimer=setTimeout(()=>box.classList.add('hidden'),1600);
   }
 
+  playSound(src){
+    try{
+      if(this.winAudio){try{this.winAudio.pause()}catch(_){}this.winAudio=null}
+      const audio=new Audio(src);
+      audio.preload='auto';
+      audio.currentTime=0;
+      this.winAudio=audio;
+      audio.addEventListener('ended',()=>{if(this.winAudio===audio)this.winAudio=null},{once:true});
+      const p=audio.play();
+      if(p?.catch)p.catch(()=>{});
+      return audio;
+    }catch(_){return null}
+  }
+
+  playYakumanTsumoEffect(w){
+    if(w?.seat!==0||!w?.tsumo||!w?.score?.yakuman)return;
+    const g=this.game,key=`${g.roundIndex}|${w.seat}|${w.tile}|${w.score.yakuman}|${g.discardSerial}|${g.callSeq}`;
+    if(this.lastWinPresentationKey===key)return;
+    this.lastWinPresentationKey=key;
+    const box=$(this.host,'#yakumanEffect');
+    if(!box)return;
+    if(this.winEffectTimer){clearTimeout(this.winEffectTimer);this.winEffectTimer=null}
+    box.innerHTML='<video class="fnm-yakuman-video" src="./assets/video/puchun_effect.mp4" playsinline preload="auto" autoplay></video>';
+    box.classList.remove('hidden');
+    const video=box.querySelector('video');
+    let finished=false;
+    const finish=()=>{
+      if(finished)return;
+      finished=true;
+      box.classList.add('hidden');
+      box.innerHTML='';
+      this.winEffectTimer=null;
+      // puchun_effect.mp4 contains its own audio; tsumo.wav begins only after it ends.
+      this.playSound('./assets/audio/tsumo.wav');
+    };
+    video.addEventListener('ended',finish,{once:true});
+    video.addEventListener('error',finish,{once:true});
+    const playResult=video.play();
+    if(playResult?.catch)playResult.catch(()=>{finish()});
+    this.winEffectTimer=setTimeout(finish,2600);
+  }
+
   showRuntimeError(err){
     const ov=$(this.host,'#overlay');
     if(!ov)return;
@@ -1615,82 +1529,24 @@ class MahjongUI{
     ov.innerHTML=`<div class="fnm-result fnm-error"><small>対局エラー</small><h2>対局を停止しました</h2><p>${esc(err?.stack||err?.message||String(err))}</p></div>`;
   }
 
-  playYakumanTsumoEffect(key,done){
-    const ov=$(this.host,'#overlay');
-    if(!ov)return;
-    try{if(typeof S!=='undefined'&&!S.sound){this.winEffectPlaying=false;done?.();return}}catch(_){ }
-    this.winEffectPlaying=true;
-    ov.classList.remove('hidden');
-    ov.innerHTML=`<div class="fnm-yakuman-effect"><video class="fnm-yakuman-video" playsinline webkit-playsinline preload="auto"></video></div>`;
-    const video=$(this.host,'.fnm-yakuman-video');
-    if(!video){this.winEffectPlaying=false;done?.();return}
-    video.src='./assets/video/puchun_effect.mp4';
-    video.muted=false;
-    video.volume=1;
-    let finished=false;
-    const clearEffectTimers=()=>{
-      for(const id of this.winEffectTimers)clearTimeout(id);
-      this.winEffectTimers.clear();
-    };
-    const scheduleEffectFinish=ms=>{
-      const id=setTimeout(()=>{this.winEffectTimers.delete(id);finish()},ms);
-      this.winEffectTimers.add(id);
-    };
-    const finish=()=>{
-      if(finished)return;
-      finished=true;
-      clearEffectTimers();
-      try{video.pause()}catch(_){ }
-      try{video.removeAttribute('src');video.load()}catch(_){ }
-      this.winEffectPlaying=false;
-      mahjongAudio('tsumo');
-      done?.();
-    };
-    video.addEventListener('ended',finish,{once:true});
-    video.addEventListener('error',()=>{
-      if(finished)return;
-      try{mahjongAudio('puchun')}catch(_){ }
-      scheduleEffectFinish(1700);
-    },{once:true});
-    scheduleEffectFinish(2100);
-    try{
-      const play=video.play();
-      if(play&&typeof play.catch==='function'){
-        play.catch(()=>{
-          try{video.muted=true;const retry=video.play();if(retry&&typeof retry.catch==='function')retry.catch(()=>{ })}catch(_){ }
-          try{mahjongAudio('puchun')}catch(_){ }
-        });
-      }
-    }catch(_){
-      try{mahjongAudio('puchun')}catch(_){ }
-    }
-  }
-
-
   showWin(){
     const g=this.game,w=g.pending?.winners||[],ov=$(this.host,'#overlay');
     if(!w.length)return;
     const names=w.map(x=>g.players[x.seat].name).join('・');
-    const winKey=`${g.roundIndex}:${g.discardSerial}:${w.map(x=>`${x.seat}-${x.tile}-${x.tsumo?'T':'R'}`).join(',')}`;
-    const selfYakumanTsumo=w.length===1&&w[0].seat===0&&w[0].tsumo&&!!w[0].score?.yakuman;
-    if(selfYakumanTsumo&&this.winEffectKey!==winKey){
-      this.winEffectKey=winKey;
-      this.playYakumanTsumoEffect(winKey,()=>this.render());
-      return;
-    }
-    if(!selfYakumanTsumo&&this.winSoundKey!==winKey){
-      this.winSoundKey=winKey;
-      mahjongAudio(w[0].tsumo?'tsumo':'ron');
-    }
     ov.classList.remove('hidden');
-    ov.innerHTML=`<div class="fnm-result fnm-win-result"><small>${w[0].tsumo?'ツモ':'ロン'}${w.length>1?' / '+(w.length===2?'ダブル':'トリプル')+'ロン':''}</small>
-      <h2>${esc(names)}<span>和了</span></h2>
-      ${w.map(x=>`<section class="fnm-win-player"><b>${esc(g.players[x.seat].name)}</b>
-        <div class="fnm-yaku fnm-win-yaku">${x.score.yaku.map(y=>`<span>${esc(y.name)}${y.yakuman?'・役満':'・'+y.han+'翻'}</span>`).join('')}</div>
-        <div class="fnm-win-hanfu">${x.score.yakuman?x.score.limit:(x.score.han+'翻 '+x.score.fu+'符')}</div>
-        <strong class="fnm-win-score">${esc(this.paymentText(x))}</strong>
-      </section>`).join('')}
+    ov.innerHTML=`<div class="fnm-result"><small>${w[0].tsumo?'ツモ':'ロン'}${w.length>1?' / '+(w.length===2?'ダブル':'トリプル')+'ロン':''}</small>
+      <h2>${esc(names)} 和了</h2>
+      ${w.map(x=>`<section><b>${esc(g.players[x.seat].name)}</b>
+        <div class="fnm-yaku">${x.score.yaku.map(y=>`<span>${esc(y.name)} ${y.yakuman?'役満':y.han+'翻'}</span>`).join('')}</div>
+        <strong>${x.score.yakuman?x.score.limit:(x.score.han+'翻 '+x.score.fu+'符')}</strong>
+        <p>${esc(this.paymentText(x))}</p></section>`).join('')}
       <button data-next>次へ</button></div>`;
+    if(w[0].seat===0&&w[0].tsumo){
+      if(w[0].score?.yakuman)this.playYakumanTsumoEffect(w[0]);
+      else this.playSound('./assets/audio/tsumo.wav');
+    }else if(w[0].seat===0){
+      this.playSound('./assets/audio/win.wav');
+    }
   }
 
   showDraw(){
@@ -1740,9 +1596,7 @@ class MahjongUI{
     g.startHand(false);
     if(g.phase==='sessionEnd'){this.render();return}
     this.riichiMode=false;
-    this.winEffectKey=null;
-    this.winEffectPlaying=false;
-    this.winSoundKey=null;
+    this.riichiPreviewIndex=-1;
     const ov=$(this.host,'#overlay');
     ov.classList.add('hidden');
     this.render();
