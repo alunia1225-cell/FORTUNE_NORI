@@ -1376,25 +1376,26 @@
 
 
 /* 2026-10-07 / canonical meld placement — caller-local RIGHT side
-   Coordinate mapping is based on each seat's own facing direction.
-   seat 0 bottom/self  -> screen RIGHT
-   seat 1 right/kamicha -> screen TOP
-   seat 2 top/opposite  -> screen LEFT
-   seat 3 left/shimocha -> screen BOTTOM
-   Do not convert this to a single screen-space side. */
+   Local perspective mapping from the human player (seat 0):
+     seat 0 self     -> screen RIGHT
+     seat 1 right    -> screen TOP
+     seat 2 opposite -> screen LEFT
+     seat 3 left     -> screen BOTTOM
+   The meld blocks are placed beside the corresponding hand, not in a generic
+   screen corner. This keeps the same local-side rule for every house. */
 .fn-mahjong-host .meld-bottom{
   left:auto!important;right:48px!important;top:auto!important;bottom:78px!important;
   transform:none!important;transform-origin:center center!important;
 }
 .fn-mahjong-host .meld-right{
-  left:auto!important;right:28px!important;top:125px!important;bottom:auto!important;
+  left:auto!important;right:70px!important;top:120px!important;bottom:auto!important;
   transform:rotate(-90deg)!important;transform-origin:center center!important;
 }
 .fn-mahjong-host .meld-top{
-  left:48px!important;right:auto!important;top:68px!important;bottom:auto!important;
+  left:330px!important;right:auto!important;top:92px!important;bottom:auto!important;
   transform:rotate(180deg)!important;transform-origin:center center!important;
 }
 .fn-mahjong-host .meld-left{
-  left:80px!important;right:auto!important;top:auto!important;bottom:125px!important;
+  left:70px!important;right:auto!important;top:auto!important;bottom:120px!important;
   transform:rotate(90deg)!important;transform-origin:center center!important;
 }

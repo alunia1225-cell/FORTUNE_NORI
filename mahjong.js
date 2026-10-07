@@ -586,6 +586,9 @@ class Game{
     p.forbidden=[];
     if(p.riichi&&!declareRiichi)p.ippatsu=false;
     if(p.river.length===1)this.firstDiscards.push(out);
+    // Every discard starts a fresh reaction window.  A previous pass must never
+    // suppress Pon/Ron/Chi on a later discard; reactionPassed is per-discard state.
+    this.reactionPassed=new Set();
     this.lastDiscard=out;this.lastActor=seat;this.phase='reaction';this.pending=null;
     // The declaration sound can be consumed by the host audio manager if both sounds
     // are fired in the same frame. Keep the discard sound explicitly after richi.
