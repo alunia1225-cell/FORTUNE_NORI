@@ -508,6 +508,26 @@ function mahjongAudio(name){
 function waitImages(waits){
   return waits.map(t=>imageTile(t,'fnm-wait-tile')).join('');
 }
+
+// Furiten is a restriction on Ron, not on tenpai itself.
+// Permanent furiten: at least one of the player's current winning tile types
+// is already in that player's river. Temporary/riichi furiten blocks Ron on
+// every wait until the corresponding state is cleared.
+function furitenStatus(player, waits){
+  const bases=new Set((waits||[]).map(tileBase));
+  const riverFuriten=player.river.some(r=>bases.has(tileBase(r.tile)));
+  const temporary=!!player.temporaryFuriten;
+  const riichi=!!player.riichiFuriten;
+  return {
+    furiten:riverFuriten||temporary||riichi,
+    river:riverFuriten,
+    temporary,
+    riichi
+  };
+}
+function furitenLabel(status){
+  return status?.furiten ? '<b class="fnm-furiten-label">フリテン</b>' : '';
+}
 function kanPreservesWaits(game,seat,target){
   const p=game.players[seat];if(!p.riichi)return true;
   const before=waitsFor(p);
@@ -1405,7 +1425,9 @@ class MahjongUI{
       ov.innerHTML=`<div class="fnm-choose"><b>立直</b><span>宣言牌を選択</span><div class="fnm-choose-hand">${hand.map((t,i)=>{
         const waits=canRiichiTile(p,t,this.game)?riichiWaitsAfterDiscard(p,t):[];
         const waitText=waits.length?formatWaits(waits):'';
-        return `<button class="fnm-riichi-choice${waits.length?' has-wait':''}" data-choose-index="${i}" aria-label="${esc(waits.length?`待ち ${waitText}`:'立直不可')}">${waits.length?`<span class="fnm-riichi-waits">${waitImages(waits)}</span>`:''}${imageTile(t)}</button>`;
+        const status=waits.length?furitenStatus({...p,river:p.river},waits):null;
+        const waitMarkup=waits.length?`<span class="fnm-riichi-waits">${waitImages(waits)}${furitenLabel(status)}</span>`:'';
+        return `<button class="fnm-riichi-choice${waits.length?' has-wait':''}" data-choose-index="${i}" aria-label="${esc(waits.length?`待ち ${waitText}${status?.furiten?' フリテン':''}`:'立直不可')}">${waitMarkup}${imageTile(t)}</button>`;
       }).join('')}</div><button data-riichi-cancel>キャンセル</button></div>`;
     }else if(this.game.phase!=='win'&&this.game.phase!=='drawEnd'&&this.game.phase!=='abortive'&&this.game.phase!=='sessionEnd'){
       ov.classList.add('hidden');
@@ -1461,8 +1483,9 @@ class MahjongUI{
         const entries=p.hand.map((t,i)=>({t,i}));
         const drawIndex=p.lastDraw==null?-1:[...entries].map((x)=>x.t===p.lastDraw?x.i:-1).filter(i=>i>=0).pop()??-1;
         const riichiWaits=waitsFor(p);
+        const waitStatus=riichiWaits.length?furitenStatus(p,riichiWaits):null;
         const waitBanner=riichiWaits.length
-          ? `<div class="fnm-riichi-wait-banner"><span>待ち</span><div class="fnm-wait-tiles">${waitImages(riichiWaits)}</div></div>`
+          ? `<div class="fnm-riichi-wait-banner"><span>待ち</span><div class="fnm-wait-tiles">${waitImages(riichiWaits)}</div>${furitenLabel(waitStatus)}</div>`
           : '';
         hand.innerHTML=waitBanner+entries.filter(x=>x.i!==drawIndex).map(({t,i})=>
           `<button class="fnm-hand-tile${p.forbidden.includes(tileBase(t))?' disabled':''}" data-hand-index="${i}">${imageTile(t)}</button>`

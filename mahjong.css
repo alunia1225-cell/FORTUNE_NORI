@@ -1399,3 +1399,22 @@
   left:70px!important;right:auto!important;top:auto!important;bottom:120px!important;
   transform:rotate(90deg)!important;transform-origin:center center!important;
 }
+
+
+/* Furiten marker: shown immediately beside the wait tiles. */
+.fn-mahjong-host .fnm-furiten-label{
+  display:inline-flex;
+  align-items:center;
+  margin-left:4px;
+  color:#ff4b4b;
+  font-size:10px;
+  line-height:1;
+  font-weight:1000;
+  text-shadow:0 0 5px rgba(255,50,50,.28);
+  white-space:nowrap;
+}
+.fn-mahjong-host .fnm-riichi-waits .fnm-furiten-label{
+  align-self:center;
+  margin-left:3px;
+  font-size:8px;
+}
