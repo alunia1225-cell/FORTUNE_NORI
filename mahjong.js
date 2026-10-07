@@ -1584,10 +1584,13 @@ class MahjongUI{
     $(this.host,'#honbaText').textContent=g.honba>0?`${g.honba}本場`:'0本場';
     $(this.host,'#remainText').textContent=fmt(g.wall.length);
 
+    // The aggregate center stick row is intentionally empty.
+    // g.riichiSticks is the actual carry-over pot; individual riichi state is
+    // rendered only above each player's score.
     const stickArea=$(this.host,'#stickArea');
     if(stickArea){
-      stickArea.innerHTML=Array.from({length:g.riichiSticks},()=>'<img class="fnm-point-stick riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false">').join('');
-      stickArea.classList.toggle('has-sticks',g.riichiSticks>0);
+      stickArea.innerHTML='';
+      stickArea.classList.remove('has-sticks');
     }
     const kyotakuCount=$(this.host,'#kyotakuCount');
     if(kyotakuCount)kyotakuCount.textContent=String(g.riichiSticks);
@@ -1803,7 +1806,7 @@ class MahjongUI{
     const leader=Math.max(...g.players.map(p=>p.score));
     const south4=g.roundIndex===7,west4=g.roundIndex===11;
     if(south4&&dealerWin&&g.players[g.dealer].score>=RULES.firstRequiredPoints){g.endSession('あがりやめ');return}
-    if((south4||g.roundIndex>7)&&leader>=RULES.firstRequiredPoints&&!dealerWin){g.endSession(south4?'オーラス終了':'サドンデス終了');return}
+    if((south4||g.roundIndex>7)&&leader>=RULES.firstRequiredPoints){g.endSession(south4?'オーラス終了':'サドンデス終了');return}
     if(west4){g.endSession('西4局終了');return}
     if(dealerWin){g.honba++;g._advance=0}
     else{g.honba=0;g.dealer=(g.dealer+1)%4;g._advance=1}
