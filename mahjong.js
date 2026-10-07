@@ -655,23 +655,35 @@ class Game{
     if([31,32,33].includes(calledId)&&[31,32,33].every(hasSet)&&p.paoDaisangen==null)p.paoDaisangen=meld.from;
     if(calledId>=27&&calledId<=30&&[27,28,29,30].every(hasSet)&&p.paoDaisuushii==null)p.paoDaisuushii=meld.from;
   }
+  removeClaimedDiscard(from,riverId){
+    if(from==null||riverId==null)return false;
+    const q=this.players[from];if(!q?.river?.length)return false;
+    const i=q.river.findIndex(r=>r.id===riverId);
+    if(i<0)return false;
+    q.river.splice(i,1);
+    return true;
+  }
   callMeld(seat,type,used){
     if(this.phase!=='reaction'||seat===this.lastActor)return false;
     const higherRon=this.ronCandidates().filter(x=>x.seat!==seat);
     if(higherRon.length)return false;
-    const p=this.players[seat],called=this.lastDiscard,from=this.lastActor;if(!p||p.riichi)return false;
+    const p=this.players[seat],called=this.lastDiscard,from=this.lastActor;
+    const riverId=this.lastRiverId();
+    if(!p||p.riichi)return false;
     if(type==='pon'){
       if(!legalPon(p,called)||used.length!==2||used.some(x=>tileBase(x)!==tileBase(called)))return false;
       const rest=removeTiles(p.hand,used);if(!rest)return false;p.hand=sortTiles(rest);
-      const meld={type:'pon',tiles:[...used,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:this.lastRiverId()};
-      p.melds.push(meld);this.updatePaoAfterCall(p,meld);
+      const meld={type:'pon',tiles:[...used,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:riverId};
+      p.melds.push(meld);
+      this.removeClaimedDiscard(from,riverId);this.updatePaoAfterCall(p,meld);
       p.called=true;p.forbidden=[tileBase(called)];
       this.lastCall={id:++this.callSeq,seat,type:'pon',from,tile:called,tiles:meld.tiles.slice()};
     }else if(type==='chi'){
       if(seat!==(from+1)%4||used.length!==2||!chiOptions(p.hand,called).some(o=>waitKey([...o,called])===waitKey([...used,called])))return false;
       const rest=removeTiles(p.hand,used);if(!rest)return false;p.hand=sortTiles(rest);
-      const meld={type:'chi',tiles:[...used,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:this.lastRiverId()};
+      const meld={type:'chi',tiles:[...used,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:riverId};
       p.melds.push(meld);
+      this.removeClaimedDiscard(from,riverId);
       p.called=true;p.forbidden=this.forbiddenAfterChi(used,called);
       this.lastCall={id:++this.callSeq,seat,type:'chi',from,tile:called,tiles:meld.tiles.slice()};
     }else return false;
@@ -701,7 +713,8 @@ class Game{
       const from=this.lastActor,called=this.lastDiscard,riverId=this.lastRiverId();
       p.hand=removeTiles(p.hand,actual);
       const meld={type:'daiminkan',tiles:[...actual,called],from,calledAt:calledSlot(seat,from),calledTile:called,calledRiverId:riverId};
-      p.melds.push(meld);this.updatePaoAfterCall(p,meld);
+      p.melds.push(meld);
+      this.removeClaimedDiscard(from,riverId);this.updatePaoAfterCall(p,meld);
       this.lastCall={id:++this.callSeq,seat,type:'daiminkan',from,tile:called,tiles:meld.tiles.slice()};
       this.lastDiscard=null;this.lastActor=seat;this.finishKan(seat,'daiminkan');return true;
     }
