@@ -908,10 +908,22 @@ class MahjongUI{
               <div class="fnm-honba"><span id="honbaStickArea"></span></div>
             </div>
             <div class="fnm-scoregrid">
-              <div class="fnm-scoreitem" data-center-seat="2"><span class="fnm-score-riichi" id="centerRiichi2" hidden><img class="riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false"></span><i id="centerWind2">西</i><b id="centerScore2">25,000</b></div>
-              <div class="fnm-scoreitem" data-center-seat="3"><span class="fnm-score-riichi" id="centerRiichi3" hidden><img class="riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false"></span><i id="centerWind3">北</i><b id="centerScore3">25,000</b></div>
-              <div class="fnm-scoreitem" data-center-seat="0"><span class="fnm-score-riichi" id="centerRiichi0" hidden><img class="riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false"></span><i id="centerWind0">東</i><b id="centerScore0">25,000</b></div>
-              <div class="fnm-scoreitem" data-center-seat="1"><span class="fnm-score-riichi" id="centerRiichi1" hidden><img class="riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false"></span><i id="centerWind1">南</i><b id="centerScore1">25,000</b></div>
+              <div class="fnm-scoreitem" data-center-seat="2">
+                <span class="fnm-center-riichi" id="centerRiichi2" hidden><img class="riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false"></span>
+                <i id="centerWind2">西</i><b id="centerScore2">25,000</b>
+              </div>
+              <div class="fnm-scoreitem" data-center-seat="3">
+                <span class="fnm-center-riichi" id="centerRiichi3" hidden><img class="riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false"></span>
+                <i id="centerWind3">北</i><b id="centerScore3">25,000</b>
+              </div>
+              <div class="fnm-scoreitem" data-center-seat="0">
+                <span class="fnm-center-riichi" id="centerRiichi0" hidden><img class="riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false"></span>
+                <i id="centerWind0">東</i><b id="centerScore0">25,000</b>
+              </div>
+              <div class="fnm-scoreitem" data-center-seat="1">
+                <span class="fnm-center-riichi" id="centerRiichi1" hidden><img class="riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false"></span>
+                <i id="centerWind1">南</i><b id="centerScore1">25,000</b>
+              </div>
             </div>
             <div class="fnm-dora-block"><span>ドラ表示牌</span><div class="fnm-dora" id="doraArea"></div></div>
           </div>
@@ -1560,13 +1572,10 @@ class MahjongUI{
     $(this.host,'#honbaText').textContent=g.honba>0?`${g.honba}本場`:'0本場';
     $(this.host,'#remainText').textContent=fmt(g.wall.length);
 
-    // Global riichi sticks are kept as the kyotaku count. The visible stick for
-    // each player belongs above that player's score and is cleared automatically
-    // when startHand() resets p.riichi for the new hand.
     const stickArea=$(this.host,'#stickArea');
     if(stickArea){
-      stickArea.innerHTML='';
-      stickArea.classList.remove('has-sticks');
+      stickArea.innerHTML=Array.from({length:g.riichiSticks},()=>'<img class="fnm-point-stick riichi-stick" src="./assets/images/1000.gif" alt="" draggable="false">').join('');
+      stickArea.classList.toggle('has-sticks',g.riichiSticks>0);
     }
     const kyotakuCount=$(this.host,'#kyotakuCount');
     if(kyotakuCount)kyotakuCount.textContent=String(g.riichiSticks);
@@ -1770,16 +1779,15 @@ class MahjongUI{
     if(!winners.length)return;
     const sticks=g.riichiSticks*1000;
     this.applyPayments(winners);
-    if(g.players.some(p=>p.score<0)){g.endSession('飛び終了');return}
-    const dealerWin=winners.some(w=>w.seat===g.dealer);
-    // Kyotaku belongs to the winning hand before the round-end / agari-yame
-    // decision. Otherwise 30,000-point checks could use a stale score and the
-    // riichi sticks could disappear without being awarded.
+    // Carry-over riichi sticks are part of the final score used for
+    // termination checks. Award them before evaluating tobi/南4終了/etc.
     if(sticks){
       const head=[...winners].sort((a,b)=>(a.distance??0)-(b.distance??0))[0];
       if(head)g.players[head.seat].score+=sticks;
       g.riichiSticks=0;
     }
+    if(g.players.some(p=>p.score<0)){g.endSession('飛び終了');return}
+    const dealerWin=winners.some(w=>w.seat===g.dealer);
     const leader=Math.max(...g.players.map(p=>p.score));
     const south4=g.roundIndex===7,west4=g.roundIndex===11;
     if(south4&&dealerWin&&g.players[g.dealer].score>=RULES.firstRequiredPoints){g.endSession('あがりやめ');return}

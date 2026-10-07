@@ -1393,82 +1393,66 @@
 }
 
 
-/* 2026-10-07 / center score + riichi stick layout
-   - Individual riichi sticks sit directly above each player's score.
-   - Per-player sticks disappear with p.riichi at the next hand.
-   - The aggregate kyotaku count remains in the round header.
-   - Left/right score displays are lowered and kept near the side edges. */
-.fn-mahjong-host .fnm-riichi-sticks{
-  display:none!important;
-}
-.fn-mahjong-host .fnm-scoregrid{
-  position:absolute!important;
-  inset:0!important;
-  display:block!important;
-  height:auto!important;
-}
+/* 2026-10-07 / requested-only center score + riichi-stick layout
+   - Per-player riichi stick is anchored directly above that player's score.
+   - It is driven by p.riichi, so it clears automatically when startHand()
+     resets the player's riichi state for the next hand.
+   - Side score displays are lowered without changing their left/right orientation.
+*/
 .fn-mahjong-host .fnm-scoreitem{
-  position:absolute!important;
-  width:74px!important;
-  height:22px!important;
-  padding:0 4px!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:3px!important;
-  box-sizing:border-box!important;
-  border-radius:5px!important;
+  overflow:visible!important;
 }
-.fn-mahjong-host .fnm-scoreitem>i{
-  width:17px!important;height:17px!important;flex:0 0 17px!important;
-  font-size:8px!important;
-}
-.fn-mahjong-host .fnm-scoreitem>b{
-  font-size:9px!important;line-height:1!important;white-space:nowrap!important;
-}
-.fn-mahjong-host .fnm-score-riichi{
+.fn-mahjong-host .fnm-center-riichi{
   position:absolute!important;
   left:50%!important;
-  bottom:calc(100% + 2px)!important;
+  top:-8px!important;
+  width:26px!important;
+  height:5px!important;
   transform:translateX(-50%)!important;
-  width:25px!important;
-  height:4px!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  z-index:5!important;
+  z-index:30!important;
+  pointer-events:none!important;
 }
-.fn-mahjong-host .fnm-score-riichi[hidden]{display:none!important}
-.fn-mahjong-host .fnm-score-riichi .riichi-stick{
+.fn-mahjong-host .fnm-center-riichi[hidden]{display:none!important}
+.fn-mahjong-host .fnm-center-riichi .riichi-stick{
   display:block!important;
-  width:25px!important;
+  width:23px!important;
   height:3px!important;
   max-width:none!important;
   max-height:none!important;
   object-fit:fill!important;
 }
-/* Top / bottom players stay centered. */
 .fn-mahjong-host [data-center-seat="2"]{
-  left:50%!important;top:4px!important;right:auto!important;bottom:auto!important;
+  left:50%!important;
+  top:3px!important;
   transform:translateX(-50%)!important;
 }
 .fn-mahjong-host [data-center-seat="0"]{
-  left:50%!important;top:auto!important;right:auto!important;bottom:4px!important;
+  left:50%!important;
+  bottom:3px!important;
   transform:translateX(-50%)!important;
 }
-/* Left/right scores are deliberately lowered from the vertical midpoint. */
 .fn-mahjong-host [data-center-seat="3"]{
-  left:2px!important;right:auto!important;top:132px!important;bottom:auto!important;
-  transform:rotate(90deg)!important;transform-origin:center center!important;
+  left:2px!important;
+  right:auto!important;
+  top:58%!important;
+  transform:translateY(-50%) rotate(90deg)!important;
+  transform-origin:center center!important;
 }
 .fn-mahjong-host [data-center-seat="1"]{
-  left:auto!important;right:2px!important;top:132px!important;bottom:auto!important;
-  transform:rotate(-90deg)!important;transform-origin:center center!important;
+  right:2px!important;
+  left:auto!important;
+  top:58%!important;
+  transform:translateY(-50%) rotate(-90deg)!important;
+  transform-origin:center center!important;
 }
-/* Keep the stick visually above the score even on the rotated side displays. */
-.fn-mahjong-host [data-center-seat="3"] .fnm-score-riichi{
+/* Counter-rotate the stick so it remains a horizontal point stick above the
+   visually rotated side score. */
+.fn-mahjong-host [data-center-seat="3"] .fnm-center-riichi{
   transform:translateX(-50%) rotate(-90deg)!important;
 }
-.fn-mahjong-host [data-center-seat="1"] .fnm-score-riichi{
+.fn-mahjong-host [data-center-seat="1"] .fnm-center-riichi{
   transform:translateX(-50%) rotate(90deg)!important;
 }
