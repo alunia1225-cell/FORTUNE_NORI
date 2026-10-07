@@ -629,9 +629,13 @@ class Game{
     if(this.phase!=='reaction'||this.lastDiscard==null||this.lastActor==null)return null;
     const p=this.players[seat];
     if(!p||seat===this.lastActor||this.reactionPassed.has(seat))return null;
-    if(p.temporaryFuriten||p.riichiFuriten)return null;
-    // Permanent furiten: a player cannot Ron on a tile type already present in their river.
-    if(p.river.some(r=>tileBase(r.tile)===tileBase(this.lastDiscard)))return null;
+    // Furiten is evaluated against the player's entire current wait, not only
+    // against the tile being discarded right now.  If any winning tile in the
+    // current wait has already appeared in the player's river, Ron is forbidden.
+    // The same rule covers temporary and riichi furiten.
+    const waits=waitsFor(p);
+    const furiten=furitenStatus(p,waits);
+    if(furiten.furiten)return null;
     const score=calcWin(p,this.lastDiscard,{
       tsumo:false,
       seatWind:p.wind,
